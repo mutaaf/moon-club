@@ -36,7 +36,7 @@ hc=$(grep -rnE 'Requests\.byok\(.*consent: *\.(anthropic|openai|gemini|xai)' Moo
 [ -z "$hc" ] || { echo "✗ hard-coded BYOK consent:"; echo "$hc"; fail=1; }
 
 # 5. No force-unwrapped data lookups in views: synced/league/transferred state can name things this build lacks (0.8.0 crash).
-fu=$(grep -rnE '(companies\[[^]]*\]!|state\.[A-Za-z]+!|\.last!|\.first!)' MoonClub Shared MoonClubWidgets | grep -v 'Tab.allCases' | grep -v 'WorldGames.swift:612' || true)
+fu=$(grep -rnE '(companies\[[^]]*\]!|state\.[A-Za-z]+!|\.last!|\.first!)' MoonClub Shared MoonClubWidgets | grep -v 'Tab.allCases' || true)
 [ -z "$fu" ] || { echo "✗ force-unwrapped data in views (use app.company(_:) / if let):"; echo "$fu"; fail=1; }
 v=$(sed -nE 's/.*MARKETING_VERSION: *"([^"]+)".*/\1/p' project.yml | head -1)
 node scripts/asc.mjs notes "$v" >/dev/null || { echo "✗ release-notes/$v.md missing or invalid (see release-notes/README.md)"; fail=1; }

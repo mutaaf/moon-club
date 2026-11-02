@@ -659,7 +659,7 @@ struct SmoothRound: View {
     let candles = ys.enumerated().map { Candle(d: "\($0.offset)", o: $0.element, h: $0.element, l: $0.element, c: $0.element) }
     let real = ChartMath.sma(ys, window: 7)
     let jumpy = ys.enumerated().map { i, y -> Double? in i < 6 ? nil : y + (i % 2 == 0 ? 3 : -3) }               // zig-zags even more
-    let flat = ys.enumerated().map { i, _ -> Double? in i < 6 ? nil : (ys.first! + ys.last!) / 2 + Double(i - 20) * 0.05 } // ignores the price
+    let flat = ys.enumerated().map { i, _ -> Double? in i < 6 ? nil : ((ys.first ?? 0) + (ys.last ?? 0)) / 2 + Double(i - 20) * 0.05 } // ignores the price
     var lines = [real, jumpy, flat]; lines.rotate(by: order)
     let correct = lines.firstIndex { $0 == real }!
     return VStack(spacing: 12) {
