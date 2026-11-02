@@ -341,7 +341,7 @@ struct ReadDayGame: View {
       let story = Self.order[i % Self.order.count]
       let (sym, c) = rounds.day(i, story: story)
       let opts = Self.options(story, i)
-      ReadDayRound(company: companyName(sym, app), candle: c, options: opts, correct: opts.firstIndex(of: story.line)!, answer: answer, answered: answered)
+      ReadDayRound(company: companyName(sym, app), candle: c, options: opts, correct: opts.firstIndex(of: story.line) ?? 0, answer: answer, answered: answered)
     }
   }
   static func options(_ s: DayStory, _ i: Int) -> [String] {
@@ -390,7 +390,7 @@ struct CandleMatchGame: View {
     GameShell(node: node, rounds: 4, intro: "Tap the candle that tells the story.", onFinish: onFinish) { i, answer, answered in
       let target = Self.shapes[i % 4]
       let pool = Self.pool(target, i)
-      CandleMatchRound(story: target.0, candles: pool.map(\.1), correct: pool.firstIndex { $0.0 == target.0 }!, answer: answer, answered: answered)
+      CandleMatchRound(story: target.0, candles: pool.map(\.1), correct: pool.firstIndex { $0.0 == target.0 } ?? 0, answer: answer, answered: answered)
     }
   }
 }
@@ -593,7 +593,7 @@ struct PatternRound: View {
   var body: some View {
     VStack(spacing: 12) {
       ChartCard(caption: "Practice chart") { CandleChart(candles: candles) }
-      Choices(options: options.map(\.name), correct: options.firstIndex(of: pattern)!, answered: answered, picked: picked) { i in
+      Choices(options: options.map(\.name), correct: options.firstIndex(of: pattern) ?? 0, answered: answered, picked: picked) { i in
         picked = i
         answer(RoundResult(right: options[i] == pattern, why: pattern.clue))
       }
@@ -661,7 +661,7 @@ struct SmoothRound: View {
     let jumpy = ys.enumerated().map { i, y -> Double? in i < 6 ? nil : y + (i % 2 == 0 ? 3 : -3) }               // zig-zags even more
     let flat = ys.enumerated().map { i, _ -> Double? in i < 6 ? nil : ((ys.first ?? 0) + (ys.last ?? 0)) / 2 + Double(i - 20) * 0.05 } // ignores the price
     var lines = [real, jumpy, flat]; lines.rotate(by: order)
-    let correct = lines.firstIndex { $0 == real }!
+    let correct = lines.firstIndex { $0 == real } ?? 0
     return VStack(spacing: 12) {
       ChartCard(caption: "Practice chart") { CandleChart(candles: candles, line: true, smooth: lines, smoothColors: Self.colors) }
       Choices(options: Self.names, correct: correct, answered: answered, picked: picked) { i in
