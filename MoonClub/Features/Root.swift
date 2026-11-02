@@ -23,6 +23,7 @@ struct RootView: View {
   @State private var gate = false
   @State private var grownUps = false
   @State private var quest: String?
+  @State private var whatsNew: [ReleaseNews] = []
 
   var body: some View {
     Group {
@@ -32,11 +33,15 @@ struct RootView: View {
     .sheet(isPresented: $gate) { ParentGate { gate = false; grownUps = true } }
     .fullScreenCover(isPresented: $grownUps, onDismiss: { app.refreshBrain() }) { GrownUpsView() }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
+    .fullScreenCover(isPresented: Binding(get: { !whatsNew.isEmpty }, set: { if !$0 { whatsNew = [] } })) {
+      WhatsNewModal(news: whatsNew) { whatsNew = [] }
+    }
     .environment(\.openQuest, OpenQuest { quest = $0 })
     .task { await app.loadMarket() }
     .onAppear {
       let args = ProcessInfo.processInfo.arguments
       if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
+      if quest == nil { whatsNew = WhatsNewStore.pending() }
       #if DEBUG
       if args.contains("-demo") && args.contains("-grownups") { grownUps = true } // screenshots only; release builds always use the gate
       if args.contains("-demo") && args.contains("-liveactivity") { LiveActivities.demo() } // simulator check of the real Live Activity

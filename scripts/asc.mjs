@@ -81,7 +81,14 @@ function version() {
 export function notesFor(v = version()) {
   const f = join(ROOT, "release-notes", `${v}.md`);
   if (!existsSync(f)) throw new Error(`No release notes for ${v}. Write release-notes/${v}.md first (style: release-notes/README.md).`);
-  const text = readFileSync(f, "utf8")
+  const raw = readFileSync(f, "utf8");
+  const kid = raw.match(/^## Luna's news\n([\s\S]*?)(?=^## |(?![\s\S]))/m);
+  const kidLines = kid ? kid[1].split("\n").filter((l) => /^- \[[a-z0-9.]+\] \S/.test(l)) : [];
+  if (kidLines.length < 1 || kidLines.length > 4) throw new Error(`release-notes/${v}.md needs a "## Luna's news" section with 1–4 "- [sf.symbol] kid line" items (shown in the in-app update reel).`);
+  const long = kidLines.find((l) => l.replace(/^- \[[^\]]+\] /, "").length > 90);
+  if (long) throw new Error(`release-notes/${v}.md: Luna's news lines must be ≤ 90 characters: ${long}`);
+  const text = raw
+    .replace(/^## Luna's news\n[\s\S]*?(?=^## |(?![\s\S]))/m, "") // kid reel lives in the app; TestFlight gets the grown-up notes
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/\*\*(.+?)\*\*/g, "$1")

@@ -3,6 +3,10 @@
 Every TestFlight build, GitHub release and in-app "What's new" note comes from `release-notes/<MARKETING_VERSION>.md`.
 `make testflight` refuses to ship without it, and `scripts/check-rules.sh` lints it.
 
+**Two audiences per file:**
+- **`## Luna's news`** (required) has 1–4 kid lines. Each is `- [sf.symbol.name] Text`, ≤ 90 characters, written in Luna's voice at a grade-≤5 reading level. These power the in-app update reel that pops up once after each update. It's stripped from TestFlight.
+- **Everything else** is for grown-ups and testers.
+
 **The vibe:** fun, warm and full of pop-culture nods. Picture a trailer voice-over written by a Pixar intern who reads the patch notes.
 - **At least three pop-culture references per release.** Movies, games, cartoons, sports, space missions.
 - **Family-friendly only.** Pick things a 9-year-old *and* their parent would get: Pixar, Star Wars, Marvel, Mario, Pokémon, Minecraft, Bluey, Harry Potter, Back to the Future, Apollo 13, Shark Tank, Indiana Jones…
