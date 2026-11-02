@@ -16,7 +16,9 @@ targets:
   MoonClub:
     type: application
     platform: iOS
-    sources: [MoonClub]
+    sources:
+      - MoonClub
+      - { path: release-notes, type: folder, buildPhase: resources }
     dependencies: [{ package: MoonClubCore }]
     settings:
       base:

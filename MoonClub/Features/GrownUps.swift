@@ -46,6 +46,7 @@ struct GrownUpsView: View {
         Section {
           HStack(spacing: 14) { Luna(size: 54); VStack(alignment: .leading) { Text("Moon Club").font(.kTitle); Text("Metaphases Kids · prototype").font(.caption).foregroundStyle(.secondary) } }
         }
+        WhatsNewSection()
         Section("What kids learn") {
           bullet("What a company, a share and a profit are, in plain words.")
           bullet("How prices move when more people want to buy or sell.")
@@ -156,6 +157,40 @@ struct LeagueSettings: View {
     }
     ForEach(app.state.league) { p in
       HStack { Text("\(app.content.players[p.emoji]) \(app.content.playerNames[p.emoji]) · \(p.guesses.count) guesses"); Spacer(); Button("Remove", role: .destructive) { app.mutate { $0.removePlayer(p.emoji) } }.font(.caption) }
+    }
+  }
+}
+
+/// "What's new": the same release notes TestFlight shows (release-notes/<version>.md, bundled as a folder resource).
+struct WhatsNewSection: View {
+  static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+  static let lines: [String] = {
+    guard let url = Bundle.main.url(forResource: version, withExtension: "md", subdirectory: "release-notes"),
+          let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+    return text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty && !$0.hasPrefix("<!--") }
+  }()
+  @State private var open = false
+  var body: some View {
+    if let first = Self.lines.first {
+      Section {
+        DisclosureGroup(isExpanded: $open) {
+          ForEach(Array(Self.lines.dropFirst().enumerated()), id: \.offset) { _, line in row(line) }
+        } label: {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("What's new").font(.headline)
+            Text(first.replacingOccurrences(of: "# ", with: "")).font(.caption).foregroundStyle(.secondary)
+          }
+        }
+        .accessibilityIdentifier("whats-new")
+      }
+    }
+  }
+  @ViewBuilder func row(_ line: String) -> some View {
+    if line.hasPrefix("#") {
+      Text(line.drop(while: { $0 == "#" || $0 == " " })).font(.subheadline.weight(.semibold)).padding(.top, 4)
+    } else {
+      let body = line.hasPrefix("- ") ? "• " + line.dropFirst(2) : Substring(line)
+      Text((try? AttributedString(markdown: String(body))) ?? AttributedString(String(body))).font(.callout)
     }
   }
 }

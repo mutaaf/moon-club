@@ -1,5 +1,6 @@
 #!/bin/sh
 # Archive Moon Club and upload it to TestFlight with an App Store Connect API key.
+# Then sets the TestFlight notes from release-notes/<version>.md, hands the build to testers and cuts a GitHub release.
 # Needs .env.testflight (gitignored) — see docs/TESTFLIGHT.md. Build numbers are UTC timestamps.
 set -e
 cd "$(dirname "$0")/.."
@@ -7,6 +8,9 @@ cd "$(dirname "$0")/.."
 . ./.env.testflight
 : "${TEAM_ID:?}" "${ASC_KEY_ID:?}" "${ASC_ISSUER_ID:?}" "${ASC_KEY_PATH:?}"
 BUILD=$(date -u +%Y%m%d%H%M)
+VERSION=$(sed -nE 's/.*MARKETING_VERSION: *"([^"]+)".*/\1/p' project.yml | head -1)
+node scripts/asc.mjs notes "$VERSION" >/dev/null   # no fun release notes, no ship
+node scripts/asc.mjs bundle
 make test
 xcodegen generate >/dev/null
 rm -rf build/archive
@@ -20,4 +24,9 @@ cat > build/archive/export.plist <<PLIST
 PLIST
 xcodebuild -exportArchive -archivePath build/archive/MoonClub.xcarchive -exportOptionsPlist build/archive/export.plist -exportPath build/archive/out \
   -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-echo "✓ Build $BUILD uploaded. It appears in TestFlight after processing (about 5–15 minutes)."
+echo "✓ Build $VERSION ($BUILD) uploaded."
+node scripts/asc.mjs ship "$BUILD"
+if command -v gh >/dev/null; then
+  git tag -f "v$VERSION-$BUILD" && git push -f origin "v$VERSION-$BUILD" >/dev/null 2>&1 || true
+  gh release create "v$VERSION-$BUILD" --prerelease --title "Moon Club $VERSION ($BUILD) on TestFlight" --notes-file "release-notes/$VERSION.md" >/dev/null && echo "✓ GitHub release v$VERSION-$BUILD"
+fi

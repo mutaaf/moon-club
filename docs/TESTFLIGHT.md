@@ -23,7 +23,15 @@ Ready in the repo:
 ```sh
 make testflight
 ```
-This runs the rules and every test, then archives with automatic signing (Xcode creates the distribution certificate and profile through the API key) and uploads. Build numbers are UTC timestamps, so they always increase.
+This checks `release-notes/<version>.md` exists (house style: `release-notes/README.md`: fun, family-friendly pop-culture nods, no links), registers the bundle id if needed, runs the rules and every test, then archives with automatic signing (Xcode creates the distribution certificate and profile through the API key) and uploads. Build numbers are UTC timestamps, so they always increase. After upload, `scripts/asc.mjs ship` waits for processing, then:
+- sets the TestFlight "What to Test" text from the release notes
+- makes sure the internal group **Moon Club Crew** exists (it gets every build automatically)
+- cuts a GitHub pre-release with the same notes
+
+The same notes appear in the app under For grown-ups → What's new.
+`BETA_EXTERNAL=1 make testflight` also adds the build to the external group **Nephew Squad** (public link, capped at 25) and submits it for Beta App Review.
+The first external submission needs the beta app description and review contact filled in once, under TestFlight → Test Information.
+`node scripts/asc.mjs whoami` checks the key.
 
 ## Testers
 - **Internal testers** (people on your App Store Connect team, up to 100) can install as soon as processing finishes. This is the fastest way to reach your own kids' devices: sign them in with a family Apple ID that is on the team, or use your own.

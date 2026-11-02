@@ -31,7 +31,13 @@ struct RootView: View {
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
     .environment(\.openQuest, OpenQuest { quest = $0 })
     .task { await app.loadMarket() }
-    .onAppear { if let s = ProcessInfo.processInfo.arguments.firstIndex(of: "-quest") { quest = ProcessInfo.processInfo.arguments[s + 1] } }
+    .onAppear {
+      let args = ProcessInfo.processInfo.arguments
+      if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
+      #if DEBUG
+      if args.contains("-demo") && args.contains("-grownups") { grownUps = true } // screenshots only; release builds always use the gate
+      #endif
+    }
     .tint(Palette.accent)
   }
 
