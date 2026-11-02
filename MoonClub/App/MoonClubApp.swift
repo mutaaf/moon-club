@@ -12,6 +12,7 @@ import MoonClubCore
 struct MoonClubApp: App {
   @State private var app: AppModel?
   @State private var loadError: String?
+  @Environment(\.scenePhase) private var phase
 
   init() {}
 
@@ -23,6 +24,7 @@ struct MoonClubApp: App {
         else { Color(Palette.paper).ignoresSafeArea() }
       }
       .task { boot() }
+      .onChange(of: phase) { _, p in if p == .active { app?.reloadFromStore() } }
     }
     // A second window for Luna's Word Book (iPhone Duo open, iPad): same model, same process.
     WindowGroup("Word Book", id: WordBookView.windowID, for: String.self) { $word in
@@ -50,7 +52,7 @@ struct MoonClubApp: App {
         #endif
         services = Services(market: FakeMarket(today: clock.today()), luna: LunaRouter(brains: BrainKind.allCases.map(FakeBrain.init), resolve: { BrainStore.resolve() }), voice: FakeVoice(), store: MemoryStore(seeded), clock: clock, sync: DemoSync(on: args.contains("-syncOn")))
       } else {
-        services = Services(market: LiveMarketData(), luna: LunaRouter(brains: [OnDeviceBrain(), FreeBrain(contentVersion: content.generated), ByokBrain()], resolve: { BrainStore.resolve() }), voice: LiveVoice(), store: FileProgressStore(), clock: SystemClock(), sync: ICloudSync())
+        services = Services(market: LiveMarketData(), luna: LunaRouter(brains: [OnDeviceBrain(), FreeBrain(contentVersion: content.generated), ByokBrain()], resolve: { BrainStore.resolve() }), voice: LiveVoice(), store: SharedProgressStore(), clock: SystemClock(), sync: ICloudSync())
       }
       app = AppModel(content: content, services: services)
     } catch {

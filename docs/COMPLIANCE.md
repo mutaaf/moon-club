@@ -29,3 +29,9 @@ The user's call (2026-11-02): ship a working prototype to their own kids and bet
 - [ ] **iCloud sync note in the privacy policy.** Say that progress can sync through the family's iCloud account if a grown-up turns it on, and that we never receive it.
 - [ ] Accessibility audit with VoiceOver on device.
 - [ ] Legal review of "pretend money / not investment advice" copy.
+
+## Widgets and Live Activities (0.7.0)
+- Widgets read a tiny snapshot the app writes to a shared keychain group on this device: app content (company nicknames, lesson titles), small numbers and dates. They hold no free text, no names and nothing a kid typed (enforced by a unit test's key allowlist). No network from the widget extension.
+- Live Activities update locally only: no push token is ever requested (`check-rules.sh`).
+- Keychain items are `AfterFirstUnlockThisDeviceOnly`: never synced to iCloud, readable by Lock Screen widgets after the first unlock. They survive deleting the app (an iOS keychain behavior), still only on this device. "Reset all progress" in the grown-up corner clears them. Before a public release, consider moving to an App Group container, which is deleted with the app. That needs a one-time developer-portal setup.
+

@@ -23,7 +23,7 @@ Ready in the repo:
 ```sh
 make testflight
 ```
-This checks `release-notes/<version>.md` exists (house style: `release-notes/README.md`: fun, family-friendly pop-culture nods, no links), registers the bundle id if needed, runs the rules and every test, then archives with automatic signing (Xcode creates the distribution certificate and profile through the API key) and uploads. Build numbers are UTC timestamps, so they always increase. After upload, `scripts/asc.mjs ship` waits for processing, then:
+This checks `release-notes/<version>.md` exists (house style: `release-notes/README.md`: fun, family-friendly pop-culture nods, no links), registers the bundle ids (app + `.widgets` extension) if needed, runs `asc.mjs signing` (our own Apple Distribution certificate and one App Store profile per bundle id: the App Manager key can't use cloud signing), runs the rules and every test, then archives and exports with manual signing and uploads. Build numbers are UTC timestamps, so they always increase. After upload, `scripts/asc.mjs ship` waits for processing, then:
 - sets the TestFlight "What to Test" text from the release notes
 - makes sure the internal group **Moon Club Crew** exists (it gets every build automatically)
 - cuts a GitHub pre-release with the same notes

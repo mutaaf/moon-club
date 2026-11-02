@@ -6,7 +6,7 @@
 //   node scripts/asc.mjs bundle            register com.mutaafaziz.moonclub (idempotent)
 //   node scripts/asc.mjs ship <build>      wait for processing, set the release notes, hand the build to testers
 //   node scripts/asc.mjs capabilities      enable the bundle id's capabilities (iCloud key-value storage)
-//   node scripts/asc.mjs signing           create/install an Apple Distribution cert + App Store profile (no cloud signing)
+//   node scripts/asc.mjs signing           create/install an Apple Distribution cert + one App Store profile per bundle id (no cloud signing)
 //   node scripts/asc.mjs notes [version]   print the TestFlight notes that would be sent (lint)
 //
 // Testers: internal group "Moon Club Crew" (access to all builds, so new builds reach it automatically).
@@ -18,6 +18,11 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE = "com.mutaafaziz.moonclub";
+/** Everything we sign: the app and its widget/Live Activity extension, each with its own App Store profile. */
+const TARGETS = [
+  { id: BUNDLE, name: "Moon Club", profile: "Moon Club App Store" },
+  { id: `${BUNDLE}.widgets`, name: "Moon Club Widgets", profile: "Moon Club Widgets App Store" },
+];
 const INTERNAL = "Moon Club Crew";
 const EXTERNAL = "Nephew Squad";
 const API = "https://api.appstoreconnect.apple.com";
@@ -143,10 +148,16 @@ async function ship(buildNumber) {
 }
 
 async function bundle() {
-  const r = await api("GET", `/v1/bundleIds?filter[identifier]=${BUNDLE}`);
-  if (r.data.some((x) => x.attributes.identifier === BUNDLE)) return console.log(`✓ bundle id ${BUNDLE} already registered`);
-  await api("POST", "/v1/bundleIds", { data: { type: "bundleIds", attributes: { identifier: BUNDLE, name: "Moon Club", platform: "IOS" } } });
-  console.log(`✓ registered bundle id ${BUNDLE}`);
+  for (const t of TARGETS) await bundleId(t);
+}
+/** Find or register one bundle id (idempotent). */
+async function bundleId(t) {
+  const r = await api("GET", `/v1/bundleIds?filter[identifier]=${t.id}`);
+  const hit = r.data.find((x) => x.attributes.identifier === t.id);
+  if (hit) { console.log(`✓ bundle id ${t.id} already registered`); return hit; }
+  const c = (await api("POST", "/v1/bundleIds", { data: { type: "bundleIds", attributes: { identifier: t.id, name: t.name, platform: "IOS" } } })).data;
+  console.log(`✓ registered bundle id ${t.id}`);
+  return c;
 }
 
 async function whoami() {
@@ -159,7 +170,7 @@ async function whoami() {
  *  an Apple Distribution certificate from our own CSR, plus an App Store profile, both installed locally. */
 async function signing() {
   const { execFileSync } = await import("node:child_process");
-  const { writeFileSync, mkdirSync } = await import("node:fs");
+  const { writeFileSync, mkdirSync, readdirSync, unlinkSync } = await import("node:fs");
   const dir = join(process.env.HOME, ".appstoreconnect", "signing");
   const certs = await api("GET", "/v1/certificates?filter[certificateType]=DISTRIBUTION,IOS_DISTRIBUTION&limit=50");
   const keyPath = join(dir, "dist.key");
@@ -175,17 +186,25 @@ async function signing() {
   writeFileSync(join(dir, "dist.cer"), der);
   execFileSync("sh", ["-c", `openssl x509 -inform der -in "${dir}/dist.cer" -out "${dir}/dist.pem" && openssl pkcs12 -export -legacy -inkey "${keyPath}" -in "${dir}/dist.pem" -out "${dir}/dist.p12" -passout pass:moonclub 2>/dev/null || openssl pkcs12 -export -inkey "${keyPath}" -in "${dir}/dist.pem" -out "${dir}/dist.p12" -passout pass:moonclub; security import "${dir}/dist.p12" -k ~/Library/Keychains/login.keychain-db -P moonclub -T /usr/bin/codesign >/dev/null 2>&1 || true`]);
   console.log("✓ distribution identity in the login keychain");
-  const bid = (await api("GET", `/v1/bundleIds?filter[identifier]=${BUNDLE}`)).data.find((x) => x.attributes.identifier === BUNDLE);
-  await capabilities(bid.id); // before the profile, so the profile carries them
-  const name = "Moon Club App Store";
-  const profs = await api("GET", `/v1/profiles?filter[name]=${encodeURIComponent(name)}&limit=10`);
-  for (const p of profs.data) await api("DELETE", `/v1/profiles/${p.id}`); // re-create so it always holds the current cert
-  const prof = (await api("POST", "/v1/profiles", { data: { type: "profiles", attributes: { name, profileType: "IOS_APP_STORE" }, relationships: {
-    bundleId: { data: { type: "bundleIds", id: bid.id } }, certificates: { data: [{ type: "certificates", id: cert.id }] } } } })).data;
   const pdir = join(process.env.HOME, "Library", "Developer", "Xcode", "UserData", "Provisioning Profiles");
   mkdirSync(pdir, { recursive: true });
-  writeFileSync(join(pdir, `${prof.attributes.uuid}.mobileprovision`), Buffer.from(prof.attributes.profileContent, "base64"));
-  console.log(`✓ installed profile “${name}” (${prof.attributes.uuid})`);
+  for (const t of TARGETS) {
+    const bid = await bundleId(t);
+    if (t.id === BUNDLE) await capabilities(bid.id); // before the profile, so the profile carries them (iCloud KVS)
+    const profs = await api("GET", `/v1/profiles?filter[name]=${encodeURIComponent(t.profile)}&limit=10`);
+    for (const p of profs.data) await api("DELETE", `/v1/profiles/${p.id}`); // re-create so it always holds the current cert
+    // Drop stale local copies of this profile name, so the export can only pick the fresh one.
+    for (const f of readdirSync(pdir).filter((f) => f.endsWith(".mobileprovision"))) {
+      try {
+        const xml = execFileSync("security", ["cms", "-D", "-i", join(pdir, f)], { stdio: ["ignore", "pipe", "ignore"] }).toString();
+        if (xml.match(/<key>Name<\/key>\s*<string>([^<]*)<\/string>/)?.[1] === t.profile) unlinkSync(join(pdir, f));
+      } catch {}
+    }
+    const prof = (await api("POST", "/v1/profiles", { data: { type: "profiles", attributes: { name: t.profile, profileType: "IOS_APP_STORE" }, relationships: {
+      bundleId: { data: { type: "bundleIds", id: bid.id } }, certificates: { data: [{ type: "certificates", id: cert.id }] } } } })).data;
+    writeFileSync(join(pdir, `${prof.attributes.uuid}.mobileprovision`), Buffer.from(prof.attributes.profileContent, "base64"));
+    console.log(`✓ installed profile “${t.profile}” (${prof.attributes.uuid})`);
+  }
 }
 
 /** Put every App Store Connect team member into the internal group (internal testers must be team users). */
@@ -257,7 +276,10 @@ async function link() {
   console.log(`${g.attributes.publicLink ?? "(no public link)"}  review: ${subs.data[0]?.attributes.betaReviewState ?? "not submitted"}`);
 }
 
+/** Debug passthrough: node scripts/asc.mjs call GET "/v1/bundleIds?limit=5" ['<json body>'] (prints JSON; never the key). */
+async function call(method, path, body) { console.log(JSON.stringify(await api(method, path, body ? JSON.parse(body) : undefined), null, 2)); }
+
 const [cmd, arg] = process.argv.slice(2);
-const run = { whoami, bundle, signing, "beta-info": betaInfo, link, crew, capabilities: () => capabilities(), ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
+const run = { whoami, bundle, signing, "beta-info": betaInfo, link, crew, capabilities: () => capabilities(), call: () => call(arg, process.argv[4], process.argv[5]), ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
 if (!run) { console.log("usage: asc.mjs whoami | bundle | ship <build> | notes [version]"); process.exit(2); }
 Promise.resolve().then(run).catch((e) => { console.error("✗ " + e.message); process.exit(1); });

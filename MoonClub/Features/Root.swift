@@ -39,8 +39,10 @@ struct RootView: View {
       if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
       #if DEBUG
       if args.contains("-demo") && args.contains("-grownups") { grownUps = true } // screenshots only; release builds always use the gate
+      if args.contains("-demo") && args.contains("-liveactivity") { LiveActivities.demo() } // simulator check of the real Live Activity
       #endif
     }
+    .onOpenURL { url in if let t = app.open(url) { tab = t } }
     .tint(Palette.accent)
     .modifier(TracksHinge(duo: duo))
   }

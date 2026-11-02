@@ -10,7 +10,7 @@ settings:
     DEVELOPMENT_TEAM: Z73865R687
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.6.0"
+    MARKETING_VERSION: "0.7.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   MoonClub:
@@ -18,13 +18,23 @@ targets:
     platform: iOS
     sources:
       - MoonClub
+      - Shared
       - { path: release-notes, type: folder, buildPhase: resources }
-    dependencies: [{ package: MoonClubCore }]
+    dependencies:
+      - { package: MoonClubCore }
+      - { target: MoonClubWidgets }
     entitlements:
       path: MoonClub/MoonClub.entitlements
       properties:
         # iCloud key-value storage: opt-in progress sync on the family's own devices (MoonClub/Live/CloudSync.swift)
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
+        keychain-access-groups: ["$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"]
+    info:
+      path: MoonClub/Info.plist
+      properties:
+        MoonKeychainGroup: "$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"
+        CFBundleURLTypes:
+          - { CFBundleURLName: com.mutaafaziz.moonclub, CFBundleURLSchemes: [moonclub] }
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mutaafaziz.moonclub
@@ -40,13 +50,47 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         ENABLE_PREVIEWS: YES
+  # Widgets + Live Activities. Reads the shared-keychain snapshot only (no network); shares Theme + Shared/ with the app.
+  MoonClubWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - MoonClubWidgets
+      - Shared
+      - MoonClub/Design/Theme.swift
+    dependencies: [{ package: MoonClubCore }]
+    entitlements:
+      path: MoonClubWidgets/MoonClubWidgets.entitlements
+      properties:
+        keychain-access-groups: ["$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"]
+    info:
+      path: MoonClubWidgets/Info.plist
+      properties:
+        MoonKeychainGroup: "$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"
+        NSExtension: { NSExtensionPointIdentifier: com.apple.widgetkit-extension }
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mutaafaziz.moonclub.widgets
+        PRODUCT_NAME: MoonClubWidgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Moon Club
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        SKIP_INSTALL: YES
   MoonClubTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [MoonClubTests]
+    sources:
+      - MoonClubTests
+      # Widget views compile into the tests too, so WidgetRenderTests can draw every family and Live Activity view.
+      - MoonClubWidgets/WidgetEntry.swift
+      - MoonClubWidgets/WidgetDesign.swift
+      - MoonClubWidgets/WidgetViews.swift
+      - MoonClubWidgets/MoonLiveActivity.swift
     dependencies: [{ target: MoonClub }, { package: MoonClubCore }]
-    settings: { base: { GENERATE_INFOPLIST_FILE: YES, PRODUCT_BUNDLE_IDENTIFIER: com.mutaafaziz.moonclub.tests } }
+    settings: { base: { GENERATE_INFOPLIST_FILE: YES, PRODUCT_BUNDLE_IDENTIFIER: com.mutaafaziz.moonclub.tests, SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_RENDER_TESTS" } }
 schemes:
   MoonClub:
     build: { targets: { MoonClub: all, MoonClubTests: [test] } }

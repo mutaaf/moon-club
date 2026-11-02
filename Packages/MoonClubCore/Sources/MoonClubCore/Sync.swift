@@ -51,6 +51,7 @@ public enum Sync {
     r.piggy = mergePiggy(a.piggy, o.piggy)
     r.me = maxOpt(a.me, o.me)
     r.recapSeen = maxOpt(a.recapSeen, o.recapSeen)
+    r.storyRead = maxOpt(a.storyRead, o.storyRead) // latest day the Story was marked read (app or widget)
     r.league = mergeLeague(a.league, o.league)  // "me" is filtered where the league is shown (filtering here would break associativity)
     return r
   }

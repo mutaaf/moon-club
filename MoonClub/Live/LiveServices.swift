@@ -194,14 +194,5 @@ final class LiveVoice: NSObject, VoiceService, @unchecked Sendable, AVSpeechSynt
   nonisolated func audioPlayerDidFinishPlaying(_ p: AVAudioPlayer, successfully: Bool) { Task { @MainActor in self.resume() } }
 }
 
-// MARK: Progress — one JSON file in Application Support, written atomically. Never leaves the device.
-final class FileProgressStore: ProgressStore, @unchecked Sendable {
-  private let url: URL
-  init(fileName: String = "progress.json") {
-    let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("MoonClub")
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    url = dir.appendingPathComponent(fileName)
-  }
-  func load() -> KidsState { (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(KidsState.self, from: $0) } ?? KidsState() }
-  func save(_ s: KidsState) { if let d = try? JSONEncoder().encode(s) { try? d.write(to: url, options: [.atomic, .completeFileProtection]) } }
-}
+// Progress lives in the shared keychain group now: see Shared/MoonShare.swift (SharedProgressStore, with a one-time move
+// from the old Application Support file).

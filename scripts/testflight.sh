@@ -11,7 +11,7 @@ BUILD=$(date -u +%Y%m%d%H%M)
 VERSION=$(sed -nE 's/.*MARKETING_VERSION: *"([^"]+)".*/\1/p' project.yml | head -1)
 node scripts/asc.mjs notes "$VERSION" >/dev/null   # no fun release notes, no ship
 node scripts/asc.mjs bundle
-node scripts/asc.mjs signing   # our own distribution cert + App Store profile: App Manager keys cannot use cloud signing
+node scripts/asc.mjs signing   # our own distribution cert + an App Store profile per bundle id (app, widgets): App Manager keys cannot use cloud signing
 make test
 xcodegen generate >/dev/null
 rm -rf build/archive
@@ -23,7 +23,8 @@ cat > build/archive/export.plist <<PLIST
 <plist version="1.0"><dict><key>method</key><string>app-store-connect</string><key>teamID</key><string>$TEAM_ID</string>
 <key>destination</key><string>upload</string><key>signingStyle</key><string>manual</string>
 <key>signingCertificate</key><string>Apple Distribution</string>
-<key>provisioningProfiles</key><dict><key>com.mutaafaziz.moonclub</key><string>Moon Club App Store</string></dict></dict></plist>
+<key>provisioningProfiles</key><dict><key>com.mutaafaziz.moonclub</key><string>Moon Club App Store</string>
+<key>com.mutaafaziz.moonclub.widgets</key><string>Moon Club Widgets App Store</string></dict></dict></plist>
 PLIST
 xcodebuild -exportArchive -archivePath build/archive/MoonClub.xcarchive -exportOptionsPlist build/archive/export.plist -exportPath build/archive/out \
   -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
