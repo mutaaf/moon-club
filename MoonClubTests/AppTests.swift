@@ -15,7 +15,7 @@ final class AppTests: XCTestCase {
     let url = try XCTUnwrap(Bundle(for: AppModel.self).url(forResource: "kids-content", withExtension: "json"))
     let c = try KidsContent.load(try Data(contentsOf: url))
     let today = "2026-10-31"
-    let m = AppModel(content: c, services: Services(market: FakeMarket(today: today), luna: FakeLuna(), voice: FakeVoice(), store: MemoryStore(Demo.seeded(today: today)), clock: FixedClock(today)))
+    let m = AppModel(content: c, services: Services(market: FakeMarket(today: today), luna: LunaRouter(brains: [FakeBrain(kind: .free)], resolve: { .free }), voice: FakeVoice(), store: MemoryStore(Demo.seeded(today: today)), clock: FixedClock(today)))
     XCTAssertTrue(m.chaptersDone.contains("lemonade"))
     XCTAssertGreaterThan(m.points, 0)
     XCTAssertEqual(m.recap?.label, "This week")

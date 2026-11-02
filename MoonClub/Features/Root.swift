@@ -27,7 +27,7 @@ struct RootView: View {
     }
     .overlay(alignment: .top) { BadgeToast() }
     .sheet(isPresented: $gate) { ParentGate { gate = false; grownUps = true } }
-    .fullScreenCover(isPresented: $grownUps) { GrownUpsView() }
+    .fullScreenCover(isPresented: $grownUps, onDismiss: { app.refreshBrain() }) { GrownUpsView() }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
     .environment(\.openQuest, OpenQuest { quest = $0 })
     .task { await app.loadMarket() }

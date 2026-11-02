@@ -21,13 +21,16 @@ struct FakeMarket: MarketDataSource {
   }
 }
 
-struct FakeLuna: LunaService {
-  func ask(_ question: String, context: LunaContext) -> AsyncThrowingStream<String, Error> {
-    AsyncThrowingStream { c in
+/// A scripted brain per kind (demo mode still routes through the real LunaRouter + guard).
+struct FakeBrain: LunaBrain {
+  let kind: BrainKind
+  func stream(_ p: LunaPrompt) -> AsyncThrowingStream<String, Error> {
+    let line = kind == .byok
+      ? "Great question! A **share** is a tiny slice of a company, like one slice of a giant pizza. 🍕 If a company is cut into 100 slices and you own 1, you own a small piece of it. When the company does well, each slice can be worth more. Here it's all pretend practice money!"
+      : "A **share** is a tiny slice of a company, like one slice of a pizza. If you own a share, you own a small piece of it! 🍕"
+    return AsyncThrowingStream { c in
       Task {
-        for w in "A **share** is a tiny slice of a company, like one slice of a pizza. If you own a share, you own a small piece of it! 🍕".split(separator: " ") {
-          c.yield(w + " "); try? await Task.sleep(for: .milliseconds(25))
-        }
+        for w in line.split(separator: " ") { c.yield(w + " "); try? await Task.sleep(for: .milliseconds(25)) }
         c.finish()
       }
     }
