@@ -126,7 +126,7 @@ async function ship(buildNumber) {
   console.log("✓ release notes set (What to Test)");
 
   await group(a.id, INTERNAL, true);
-  console.log(`✓ internal group “${INTERNAL}” gets every build automatically`);
+  await crew();
 
   if (process.env.BETA_EXTERNAL === "1") {
     const g = await group(a.id, EXTERNAL, false);
@@ -186,7 +186,26 @@ async function signing() {
   console.log(`✓ installed profile “${name}” (${prof.attributes.uuid})`);
 }
 
+/** Put every App Store Connect team member into the internal group (internal testers must be team users). */
+async function crew() {
+  const a = await app();
+  const g = await group(a.id, INTERNAL, true);
+  const users = (await api("GET", "/v1/users?limit=100")).data;
+  const have = new Set((await api("GET", `/v1/betaGroups/${g.id}/betaTesters?limit=200`)).data.map((t) => (t.attributes.email || "").toLowerCase()));
+  let added = 0;
+  for (const u of users) {
+    const email = (u.attributes.username || "").toLowerCase();
+    if (!email || have.has(email)) continue;
+    try {
+      await api("POST", "/v1/betaTesters", { data: { type: "betaTesters", attributes: { email, firstName: u.attributes.firstName, lastName: u.attributes.lastName },
+        relationships: { betaGroups: { data: [{ type: "betaGroups", id: g.id }] } } } });
+      added++;
+    } catch (e) { if (e.status !== 409) throw e; }
+  }
+  console.log(`✓ “${INTERNAL}”: ${have.size + added} tester(s) (${added} added); each gets a TestFlight invite email`);
+}
+
 const [cmd, arg] = process.argv.slice(2);
-const run = { whoami, bundle, signing, ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
+const run = { whoami, bundle, signing, crew, ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
 if (!run) { console.log("usage: asc.mjs whoami | bundle | ship <build> | notes [version]"); process.exit(2); }
 Promise.resolve().then(run).catch((e) => { console.error("✗ " + e.message); process.exit(1); });
