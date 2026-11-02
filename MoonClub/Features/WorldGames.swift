@@ -227,33 +227,32 @@ struct BuildCandleRound: View {
   let day: (o: Double, h: Double, l: Double, c: Double)
   let answer: (RoundResult) -> Void
   let answered: RoundResult?
-  @State private var v: [Double] = [6, 6, 10, 2] // start, end, high, low: spread out so every handle is easy to grab
+  /// start, end, high, low: a calm starting candle, every handle in a different spot.
+  @State private var v: [Double] = [5, 7, 10, 2]
   @State private var dragging: Int?
-  let domain = 0.0...12.0
   let names = ["Start", "End", "High", "Low"]
+  static let bodyWidth: CGFloat = 64, lane: CGFloat = 34, axis: CGFloat = 40
+  // Lanes: Start on the body's left edge, End on its right edge, High and Low on the wick (centered).
+  // Labels on the outside (Start left, End right, High above, Low below), so nothing overlaps. A faint
+  // ghost candle shows the shape being built; `set` keeps it a real candle (High on top, Low at the bottom).
   var body: some View {
     VStack(spacing: 12) {
       Text("It started at **\(coins(day.o))**, went as high as **\(coins(day.h))**, as low as **\(coins(day.l))**, and ended at **\(coins(day.c))**.")
         .font(.kRead).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
       ChartCard {
         GeometryReader { geo in
-          let h = geo.size.height
-          let y: (Double) -> CGFloat = { p in h - 10 - CGFloat(p / 12) * (h - 20) }
+          let h = geo.size.height, w = geo.size.width
+          let y: (Double) -> CGFloat = { p in h - 22 - CGFloat(p / 12) * (h - 44) }
+          let cx = Self.axis + (w - Self.axis) * 0.5
+          let xs: [CGFloat] = [cx - Self.bodyWidth / 2 - Self.lane, cx + Self.bodyWidth / 2 + Self.lane, cx, cx]
           ZStack(alignment: .topLeading) {
-            ForEach(0...12, id: \.self) { k in
-              if k % 2 == 0 {
-                Text("$\(k)").font(.caption2.monospacedDigit()).foregroundStyle(.secondary).position(x: 18, y: y(Double(k)))
-                Rectangle().fill(Palette.line.opacity(0.6)).frame(height: 0.5).position(x: geo.size.width / 2 + 18, y: y(Double(k))).frame(width: geo.size.width - 36)
-              }
-            }
-            BigCandle(o: v[0], h: max(v[2], v[0], v[1]), l: min(v[3], v[0], v[1]), c: v[1], domain: domain, labels: false)
-              .frame(width: geo.size.width * 0.5).offset(x: 30)
+            ghost(cx: cx, y: y, size: geo.size)
             ForEach(0..<4, id: \.self) { k in
-              handle(k).position(x: geo.size.width * (0.62 + 0.095 * Double(k)), y: y(v[k]))
+              label(k).position(labelPoint(k, x: xs[k], y: y(v[k])))
+              handle(k).position(x: xs[k], y: y(v[k]))
                 .gesture(DragGesture(minimumDistance: 0).onChanged { g in
                   dragging = k
-                  let p = (Double((h - 10 - g.location.y) / (h - 20)) * 12).rounded()
-                  let nv = max(0, min(12, p)); if nv != v[k] { v[k] = nv }
+                  set(k, (Double((h - 22 - g.location.y) / (h - 44)) * 12).rounded())
                 }.onEnded { _ in dragging = nil })
                 .disabled(answered != nil)
             }
@@ -268,16 +267,67 @@ struct BuildCandleRound: View {
       .sensoryFeedback(.selection, trigger: v)
     }
   }
-  private func handle(_ k: Int) -> some View {
-    VStack(spacing: 2) {
-      Circle().fill(k < 2 ? Palette.accent : Hue.grape.color).frame(width: 30, height: 30)
-        .overlay(Image(systemName: "arrow.up.and.down").font(.caption.weight(.bold)).foregroundStyle(.white))
-        .scaleEffect(dragging == k ? 1.2 : 1).animation(Motion.tap, value: dragging)
-      Text(names[k]).font(.caption2.weight(.bold)).foregroundStyle(Palette.ink2)
+  /// Keeps it a real candle: High ≥ the body ≥ Low, and High above Low.
+  private func set(_ k: Int, _ raw: Double) {
+    var n = v
+    n[k] = max(0, min(12, raw))
+    switch k {
+    case 2: n[2] = max(n[2], n[0], n[1], 1)
+    case 3: n[3] = min(n[3], n[0], n[1], 11)
+    default: n[2] = max(n[2], n[k]); n[3] = min(n[3], n[k])
     }
-    .frame(width: 56, height: 56).contentShape(Rectangle())
-    .accessibilityElement().accessibilityLabel("\(names[k]): \(coins(v[k]))")
-    .accessibilityAdjustableAction { d in v[k] = max(0, min(12, v[k] + (d == .increment ? 1 : -1))) }
+    if n[2] <= n[3] { if k == 3 { n[3] = n[2] - 1 } else { n[2] = n[3] + 1 } }
+    if n != v { v = n }
+  }
+
+  /// The price grid and the candle being built: faint with a dashed outline, solid once checked.
+  private func ghost(cx: CGFloat, y: @escaping (Double) -> CGFloat, size: CGSize) -> some View {
+    Canvas { g, sz in
+      for k in stride(from: 0, through: 12, by: 2) {
+        let yy = y(Double(k))
+        g.stroke(Path { $0.move(to: .init(x: Self.axis, y: yy)); $0.addLine(to: .init(x: sz.width, y: yy)) }, with: .color(Palette.line.opacity(0.7)), style: .init(lineWidth: 0.5, dash: [3, 4]))
+        g.draw(g.resolve(Text("$\(k)").font(.caption2.monospacedDigit()).foregroundColor(.secondary)), at: CGPoint(x: 18, y: yy))
+      }
+      let col = v[1] >= v[0] ? CandleChart.up : CandleChart.down
+      let strong = answered != nil
+      g.stroke(Path { $0.move(to: .init(x: cx, y: y(v[2]))); $0.addLine(to: .init(x: cx, y: y(v[3]))) }, with: .color(col.opacity(strong ? 1 : 0.45)), style: .init(lineWidth: 5, lineCap: .round))
+      let top = y(max(v[0], v[1])), bot = y(min(v[0], v[1]))
+      let candleBody = Path(roundedRect: CGRect(x: cx - Self.bodyWidth / 2, y: top, width: Self.bodyWidth, height: max(bot - top, 4)), cornerRadius: 10)
+      g.fill(candleBody, with: .color(col.opacity(strong ? 1 : 0.22)))
+      g.stroke(candleBody, with: .color(col.opacity(strong ? 1 : 0.7)), style: .init(lineWidth: 2, dash: strong ? [] : [6, 4]))
+      for (k, dx) in [(0, -1.0), (1, 1.0)] {   // dotted ties from the Start / End handles to the body's edges
+        let yy = y(v[k]), x0 = cx + CGFloat(dx) * Self.bodyWidth / 2, x1 = cx + CGFloat(dx) * (Self.bodyWidth / 2 + Self.lane)
+        g.stroke(Path { $0.move(to: .init(x: x0, y: yy)); $0.addLine(to: .init(x: x1, y: yy)) }, with: .color(Palette.accent.opacity(0.5)), style: .init(lineWidth: 1.5, dash: [2, 3]))
+      }
+    }
+    .frame(width: size.width, height: size.height)
+    .accessibilityHidden(true)
+  }
+
+  private func labelPoint(_ k: Int, x: CGFloat, y: CGFloat) -> CGPoint {
+    switch k {
+    case 0: return CGPoint(x: x - 44, y: y)     // Start: left of its handle
+    case 1: return CGPoint(x: x + 44, y: y)     // End: right of its handle
+    case 2: return CGPoint(x: x, y: y - 32)     // High: above
+    default: return CGPoint(x: x, y: y + 32)    // Low: below
+    }
+  }
+  private func label(_ k: Int) -> some View {
+    VStack(spacing: 0) {
+      Text(names[k]).font(.caption2.weight(.heavy)).foregroundStyle(Palette.ink2)
+      Text(coins(v[k])).font(.caption.monospacedDigit().weight(.semibold)).foregroundStyle(Palette.ink)
+    }
+    .fixedSize()
+    .allowsHitTesting(false)
+  }
+  private func handle(_ k: Int) -> some View {
+    Circle().fill(k < 2 ? Palette.accent : Hue.grape.color).frame(width: 30, height: 30)
+      .overlay(Image(systemName: "arrow.up.and.down").font(.caption.weight(.bold)).foregroundStyle(.white))
+      .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
+      .scaleEffect(dragging == k ? 1.2 : 1).animation(Motion.tap, value: dragging)
+      .frame(width: 44, height: 44).contentShape(Rectangle())
+      .accessibilityElement().accessibilityLabel("\(names[k]): \(coins(v[k]))")
+      .accessibilityAdjustableAction { d in set(k, v[k] + (d == .increment ? 1 : -1)) }
   }
 }
 

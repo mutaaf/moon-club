@@ -234,21 +234,27 @@ struct RecapCard: View {
   let recap: Recap
   @Environment(AppModel.self) private var app
   var body: some View {
+    // Short on purpose: title + read-aloud up top (always visible), the four numbers, one sentence.
+    // The full sentence list is what Luna reads aloud, so nothing is lost.
     let lines = recapLines(recap, levels: app.content.levels)
     Eyebrow(text: "\(recap.label) in the Moon Club")
-    HStack(spacing: 14) { MoonPhase(phase: recap.level, size: 64); Text("Look what you did!").font(.kHero) }
+    HStack(spacing: 12) {
+      MoonPhase(phase: recap.level, size: 44)
+      Text("Look what you did!").font(.kTitle).lineLimit(2).minimumScaleFactor(0.8)
+      Spacer(minLength: 0)
+      SpeakButton(source: .appCopy(lines.joined(separator: " ")))
+    }
     HStack(spacing: 8) {
       stat("\(recap.guesses)", recap.guesses == 1 ? "guess" : "guesses", Palette.lavender)
       stat("\(recap.right)", "right", Palette.mint)
       stat("\(recap.lessons)", recap.lessons == 1 ? "lesson" : "lessons", Palette.sky)
       if let p = recap.piggyPct { stat((p > 0 ? "+" : "") + toFixed(p, 1) + "%", "piggy bank", Palette.peach) }
     }
-    VStack(alignment: .leading, spacing: 6) { ForEach(lines, id: \.self) { Text("• " + $0).font(.body) } }
-    ReadAloud(source: .appCopy(lines.joined(separator: " ")))
+    if let last = lines.last { Text(last).font(.callout.weight(.medium)).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true) }
   }
   func stat(_ v: String, _ l: String, _ bg: Color) -> some View {
-    VStack(spacing: 2) { Text(v).font(.system(.title, design: .rounded).weight(.heavy)).minimumScaleFactor(0.6).lineLimit(1); Text(l).font(.caption) }
+    VStack(spacing: 2) { Text(v).font(.system(.title2, design: .rounded).weight(.heavy)).minimumScaleFactor(0.6).lineLimit(1); Text(l).font(.caption) }
       .foregroundStyle(Palette.midnight)
-      .frame(maxWidth: .infinity, minHeight: 72).background(bg, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .frame(maxWidth: .infinity, minHeight: 60).background(bg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
   }
 }

@@ -133,7 +133,7 @@ struct WorldView: View {
               }
             }
             if let p = layout.nodeIfAny(current.region, current.node, regions) {
-              RocketLuna().allowsHitTesting(false).place(CGPoint(x: p.x, y: p.y - 64))
+              RocketLuna().allowsHitTesting(false).place(layout.rocketCenter(current.region, current.node, regions[current.region]))
             }
           }
         }
@@ -207,8 +207,22 @@ enum MapDecor {
 struct MapLayout {
   let regions: [Region]
   let width: CGFloat
-  /// Each land is as tall as its trail needs (≈ 96 pt per stop), so stars never touch the next stop.
-  func band(_ ri: Int) -> CGFloat { max(width * 0.95, CGFloat(regions[safe: ri]?.nodes.count ?? 4) * 96 + 110) }
+  // Footprints. A stop is its circle (60 pt, a boss 76 pt) with a star pill hanging 4 pt below it.
+  static let diameter: CGFloat = 60, bossDiameter: CGFloat = 76
+  static let pill = CGSize(width: 52, height: 18), pillGap: CGFloat = 4
+  static let rocket = CGSize(width: 70, height: 90), rocketGap: CGFloat = 12
+  /// Vertical distance between stops: the tallest stop's lower half + pill (boss 38 + 22) + the next stop's
+  /// upper half (30) + 16 pt of air = 106, rounded up. Stops never overlap, whatever their x.
+  static let step: CGFloat = 108
+  /// Room above the boss and below the first stop (keeps stops clear of the land banners).
+  static let margin: CGFloat = 130
+  static func diameter(_ n: WorldNode) -> CGFloat { n.isBoss ? bossDiameter : diameter }
+
+  /// Each land is as tall as its trail needs, so stars never touch the next stop.
+  func band(_ ri: Int) -> CGFloat {
+    let n = CGFloat(max((regions[safe: ri]?.nodes.count ?? 4) - 1, 0))
+    return max(width * 0.9, n * Self.step + 2 * Self.margin)
+  }
   var size: CGSize { CGSize(width: width, height: regions.indices.reduce(0) { $0 + band($1) } + 180) }
   var islandSize: CGSize { islandSize(0) }
   func islandSize(_ ri: Int) -> CGSize { CGSize(width: width * 0.86, height: band(ri) * 0.86) }
@@ -217,13 +231,32 @@ struct MapLayout {
     let y = size.height - 90 - below - band(ri) / 2
     return CGPoint(x: width * (ri % 2 == 0 ? 0.47 : 0.53), y: y)
   }
+  /// The center of a stop's circle: an S-curve in x, a fixed `step` in y (first stop at the bottom).
   func node(_ ri: Int, _ ni: Int, count: Int) -> CGPoint {
-    let c = center(ri), b = band(ri)
+    let c = center(ri)
     let t = count > 1 ? CGFloat(ni) / CGFloat(count - 1) : 0
     let dir: CGFloat = ri % 2 == 0 ? 1 : -1
     let x = c.x + dir * sin(t * .pi * 1.6 - 0.6) * width * 0.25
-    let y = c.y + b * 0.33 - t * b * 0.66
+    let y = c.y + (CGFloat(count - 1) / 2 - CGFloat(ni)) * Self.step
     return CGPoint(x: x, y: y)
+  }
+  func circleFrame(_ ri: Int, _ ni: Int, _ r: Region) -> CGRect {
+    let p = node(ri, ni, count: r.nodes.count), d = Self.diameter(r.nodes[ni])
+    return CGRect(x: p.x - d / 2, y: p.y - d / 2, width: d, height: d)
+  }
+  func pillFrame(_ ri: Int, _ ni: Int, _ r: Region) -> CGRect {
+    let c = circleFrame(ri, ni, r)
+    return CGRect(x: c.midX - Self.pill.width / 2, y: c.maxY + Self.pillGap, width: Self.pill.width, height: Self.pill.height)
+  }
+  /// Luna's rocket parks beside the current stop (on the side facing the middle of the map), never on a stop.
+  func rocketCenter(_ ri: Int, _ ni: Int, _ r: Region) -> CGPoint {
+    let p = node(ri, ni, count: r.nodes.count), d = Self.diameter(r.nodes[ni])
+    let side: CGFloat = p.x < width / 2 ? 1 : -1
+    return CGPoint(x: p.x + side * (d / 2 + Self.rocketGap + Self.rocket.width / 2), y: p.y)
+  }
+  func rocketFrame(_ ri: Int, _ ni: Int, _ r: Region) -> CGRect {
+    let c = rocketCenter(ri, ni, r)
+    return CGRect(x: c.x - Self.rocket.width / 2, y: c.y - Self.rocket.height / 2, width: Self.rocket.width, height: Self.rocket.height)
   }
   func decor(_ ri: Int, angle: Double, radius: CGFloat) -> CGPoint {
     let c = center(ri), s = islandSize(ri)
@@ -328,10 +361,11 @@ struct NodeButton: View {
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var pulse = false
   var body: some View {
-    let d: CGFloat = node.isBoss ? 76 : 60
+    let d = MapLayout.diameter(node)
     Button(action: tap) {
-      VStack(spacing: 4) {
-        ZStack {
+      // The circle IS the stop's frame (placed at its center); the star pill hangs below as an overlay,
+      // at exactly the spot MapLayout.pillFrame reserves for it.
+      ZStack {
           if current && !rm {
             Circle().stroke(Hue.gold.color, lineWidth: 3).frame(width: d + 16, height: d + 16).scaleEffect(pulse ? 1.12 : 0.96).opacity(pulse ? 0 : 0.9)
           }
@@ -346,9 +380,13 @@ struct NodeButton: View {
             Image(systemName: "flag.fill").font(.system(size: 22, weight: .bold)).foregroundStyle(hue.color).offset(x: d * 0.42, y: -d * 0.46)
               .transition(.move(edge: .top).combined(with: .scale))
           }
-        }
+      }
+      .frame(width: d, height: d)
+      .overlay(alignment: .bottom) {
         StarRow(stars: stars, size: 11)
-          .padding(.horizontal, 6).padding(.vertical, 2).background(.white.opacity(0.9), in: Capsule())
+          .frame(width: MapLayout.pill.width, height: MapLayout.pill.height)
+          .background(.white.opacity(0.9), in: Capsule())
+          .offset(y: MapLayout.pillGap + MapLayout.pill.height)
       }
       .contentShape(Circle().inset(by: -10))
     }

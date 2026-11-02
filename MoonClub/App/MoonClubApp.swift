@@ -48,6 +48,8 @@ struct MoonClubApp: App {
         var seeded = args.contains("-fresh") ? KidsState() : Demo.seeded(today: clock.today())
         // Screenshots: -world mid|all seeds Market World progress (mid = three lands won; all = everything).
         if let i = args.firstIndex(of: "-world"), i + 1 < args.count { seeded = Demo.world(seeded, content: content, lands: args[i + 1] == "all" ? 99 : 3) }
+        // Screenshots never carry a stale badge toast: demo badges start seen (-toast keeps them fresh to film the toast).
+        if !args.contains("-toast") { seeded.seeBadges(seeded.badges(content)) }
         #if DEBUG
         // Screenshots: -brain onDevice|free|byok presets Luna's brain choice (demo only).
         if let i = args.firstIndex(of: "-brain"), let k = BrainKind(rawValue: args[i + 1]) { var b = BrainStore.load(); b.choice = k; BrainStore.save(b) }

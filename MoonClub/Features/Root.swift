@@ -29,7 +29,7 @@ struct RootView: View {
     Group {
       if hSize == .regular { split } else { tabs }
     }
-    .overlay(alignment: .top) { BadgeToast() }
+    .overlay(alignment: .bottom) { BadgeToast() }
     .sheet(isPresented: $gate) { ParentGate { gate = false; grownUps = true } }
     .fullScreenCover(isPresented: $grownUps, onDismiss: { app.refreshBrain() }) { GrownUpsView() }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
@@ -162,35 +162,57 @@ struct LevelRow: View {
   }
 }
 
-/// New-badge celebration: compact, auto-dismissing, with a particle burst and a success haptic.
+/// New-badge celebration: a compact pill that rises from the bottom, just above the tab bar, so it never
+/// covers a title, a navigation bar or a prompt. Each badge is marked seen the moment it appears (so it
+/// shows exactly once, even if the app is killed mid-toast), and the pill leaves by itself after 4 s.
 struct BadgeToast: View {
   @Environment(AppModel.self) private var app
+  @Environment(\.accessibilityReduceMotion) private var rm
   @State private var burst = 0
+  @State private var showing: Badge?
+  /// Space for the tab bar (or the bottom of the sidebar layout) under the pill.
+  static let tabBarClearance: CGFloat = 92
+
   var body: some View {
-    ZStack(alignment: .top) {
+    ZStack(alignment: .bottom) {
       Celebrate(trigger: burst).frame(height: 420)
-      if let b = app.freshBadges.first {
-        HStack(spacing: 12) {
-          MoonPhase(phase: b.phase, size: 34)
-          VStack(alignment: .leading, spacing: 2) {
-            Text("New badge: \(b.name)!").font(.subheadline.weight(.bold))
-            Text(b.why).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-          }
-          Spacer(minLength: 0)
-          Button("Yay!") { see() }.buttonStyle(.borderedProminent).buttonBorderShape(.capsule)
+      if let b = showing {
+        HStack(spacing: 10) {
+          MoonPhase(phase: b.phase, size: 28)
+          Text("New badge: **\(b.name)**").font(.subheadline).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.12), radius: 20, y: 8)
-        .padding(.horizontal, 16).padding(.top, 6)
-        .readable(520)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .padding(.leading, 10).padding(.trailing, 16).padding(.vertical, 8)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Hue.gold.color.opacity(0.6), lineWidth: 1))
+        .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
+        .padding(.bottom, Self.tabBarClearance)
+        .onTapGesture { withAnimation(Motion.safe(Motion.card, rm)) { showing = nil } }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
         .sensoryFeedback(.success, trigger: b.id)
-        .task(id: b.id) { burst += 1; try? await Task.sleep(for: .seconds(6)); see() }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("New badge: \(b.name). \(b.why)")
+        .accessibilityAddTraits(.isButton)
       }
     }
-    .animation(.spring(response: 0.45, dampingFraction: 0.8), value: app.freshBadges.first?.id)
+    .allowsHitTesting(showing != nil)
+    // Not `.task(id:)`: marking the badge seen changes that id, which would cancel the 4 s wait at once.
+    .onChange(of: app.freshBadges.first?.id, initial: true) { _, id in
+      guard id != nil, !busy else { return }
+      busy = true
+      Task { await present(); busy = false }
+    }
   }
-  private func see() { let ids = app.freshBadges.map(\.id); withAnimation { app.mutate { $0.seeBadges(ids) } } }
+  @State private var busy = false
+
+  /// Takes the next fresh badge, marks it seen at once, shows it for ~4 s, then looks for the next.
+  private func present() async {
+    guard showing == nil, let b = app.freshBadges.first else { return }
+    app.mutate { $0.seeBadges([b.id]) }
+    withAnimation(Motion.safe(Motion.celebrate, rm)) { showing = b }
+    burst += 1
+    try? await Task.sleep(for: .seconds(4))
+    withAnimation(Motion.safe(Motion.card, rm)) { showing = nil }
+    try? await Task.sleep(for: .milliseconds(400))
+    if app.freshBadges.first != nil { await present() }
+  }
 }
