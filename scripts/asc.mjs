@@ -5,6 +5,7 @@
 //   node scripts/asc.mjs whoami            check the key works and list the apps it can see
 //   node scripts/asc.mjs bundle            register com.mutaafaziz.moonclub (idempotent)
 //   node scripts/asc.mjs ship <build>      wait for processing, set the release notes, hand the build to testers
+//   node scripts/asc.mjs signing           create/install an Apple Distribution cert + App Store profile (no cloud signing)
 //   node scripts/asc.mjs notes [version]   print the TestFlight notes that would be sent (lint)
 //
 // Testers: internal group "Moon Club Crew" (access to all builds, so new builds reach it automatically).
@@ -151,7 +152,39 @@ async function whoami() {
   for (const x of r.data) console.log(`  ${x.attributes.bundleId}  ${x.attributes.name}`);
 }
 
+/** Distribution signing without Xcode cloud signing (App Manager keys can't use it):
+ *  an Apple Distribution certificate from our own CSR, plus an App Store profile, both installed locally. */
+async function signing() {
+  const { execFileSync } = await import("node:child_process");
+  const { writeFileSync, mkdirSync } = await import("node:fs");
+  const dir = join(process.env.HOME, ".appstoreconnect", "signing");
+  const certs = await api("GET", "/v1/certificates?filter[certificateType]=DISTRIBUTION,IOS_DISTRIBUTION&limit=50");
+  const keyPath = join(dir, "dist.key");
+  const mine = existsSync(join(dir, "dist.cer.id")) && certs.data.find((c) => c.id === readFileSync(join(dir, "dist.cer.id"), "utf8").trim());
+  let cert = mine;
+  if (!cert) {
+    const csr = readFileSync(join(dir, "dist.csr"), "utf8");
+    cert = (await api("POST", "/v1/certificates", { data: { type: "certificates", attributes: { certificateType: "DISTRIBUTION", csrContent: csr } } })).data;
+    writeFileSync(join(dir, "dist.cer.id"), cert.id);
+    console.log("✓ created Apple Distribution certificate");
+  }
+  const der = Buffer.from(cert.attributes.certificateContent, "base64");
+  writeFileSync(join(dir, "dist.cer"), der);
+  execFileSync("sh", ["-c", `openssl x509 -inform der -in "${dir}/dist.cer" -out "${dir}/dist.pem" && openssl pkcs12 -export -legacy -inkey "${keyPath}" -in "${dir}/dist.pem" -out "${dir}/dist.p12" -passout pass:moonclub 2>/dev/null || openssl pkcs12 -export -inkey "${keyPath}" -in "${dir}/dist.pem" -out "${dir}/dist.p12" -passout pass:moonclub; security import "${dir}/dist.p12" -k ~/Library/Keychains/login.keychain-db -P moonclub -T /usr/bin/codesign >/dev/null 2>&1 || true`]);
+  console.log("✓ distribution identity in the login keychain");
+  const bid = (await api("GET", `/v1/bundleIds?filter[identifier]=${BUNDLE}`)).data.find((x) => x.attributes.identifier === BUNDLE);
+  const name = "Moon Club App Store";
+  const profs = await api("GET", `/v1/profiles?filter[name]=${encodeURIComponent(name)}&limit=10`);
+  for (const p of profs.data) await api("DELETE", `/v1/profiles/${p.id}`); // re-create so it always holds the current cert
+  const prof = (await api("POST", "/v1/profiles", { data: { type: "profiles", attributes: { name, profileType: "IOS_APP_STORE" }, relationships: {
+    bundleId: { data: { type: "bundleIds", id: bid.id } }, certificates: { data: [{ type: "certificates", id: cert.id }] } } } })).data;
+  const pdir = join(process.env.HOME, "Library", "Developer", "Xcode", "UserData", "Provisioning Profiles");
+  mkdirSync(pdir, { recursive: true });
+  writeFileSync(join(pdir, `${prof.attributes.uuid}.mobileprovision`), Buffer.from(prof.attributes.profileContent, "base64"));
+  console.log(`✓ installed profile “${name}” (${prof.attributes.uuid})`);
+}
+
 const [cmd, arg] = process.argv.slice(2);
-const run = { whoami, bundle, ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
+const run = { whoami, bundle, signing, ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
 if (!run) { console.log("usage: asc.mjs whoami | bundle | ship <build> | notes [version]"); process.exit(2); }
 Promise.resolve().then(run).catch((e) => { console.error("✗ " + e.message); process.exit(1); });
