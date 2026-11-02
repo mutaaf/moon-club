@@ -1,0 +1,3984 @@
+{
+  "version": 1,
+  "generated": "2026-11-02T16:48:20.456Z",
+  "source": "github.com/mutaaf/metaphases shared/kids*.ts",
+  "companies": [
+    {
+      "s": "DIS",
+      "nick": "Disney",
+      "hook": "makes Disney movies, Pixar and Marvel",
+      "emoji": "🏰"
+    },
+    {
+      "s": "MCD",
+      "nick": "McDonald's",
+      "hook": "makes Happy Meals and fries",
+      "emoji": "🍟"
+    },
+    {
+      "s": "NKE",
+      "nick": "Nike",
+      "hook": "makes sneakers and sports clothes",
+      "emoji": "👟"
+    },
+    {
+      "s": "AAPL",
+      "nick": "Apple",
+      "hook": "makes the iPhone and iPad",
+      "emoji": "📱"
+    },
+    {
+      "s": "MSFT",
+      "nick": "Microsoft",
+      "hook": "makes Xbox and owns Minecraft",
+      "emoji": "🎮"
+    },
+    {
+      "s": "RBLX",
+      "nick": "Roblox",
+      "hook": "runs Roblox",
+      "emoji": "🧱"
+    },
+    {
+      "s": "SONY",
+      "nick": "Sony",
+      "hook": "makes the PlayStation",
+      "emoji": "🕹️"
+    },
+    {
+      "s": "HAS",
+      "nick": "Hasbro",
+      "hook": "makes toys like Monopoly and Play-Doh",
+      "emoji": "🎲"
+    },
+    {
+      "s": "KO",
+      "nick": "Coca-Cola",
+      "hook": "makes Coca-Cola and Sprite",
+      "emoji": "🥤"
+    },
+    {
+      "s": "PEP",
+      "nick": "PepsiCo",
+      "hook": "makes Pepsi, Doritos and Gatorade",
+      "emoji": "🥨"
+    },
+    {
+      "s": "NFLX",
+      "nick": "Netflix",
+      "hook": "streams shows and movies",
+      "emoji": "🍿"
+    },
+    {
+      "s": "GOOGL",
+      "nick": "Google",
+      "hook": "runs Google and YouTube",
+      "emoji": "▶️"
+    },
+    {
+      "s": "AMZN",
+      "nick": "Amazon",
+      "hook": "delivers packages and runs Prime Video",
+      "emoji": "📦"
+    },
+    {
+      "s": "WMT",
+      "nick": "Walmart",
+      "hook": "runs Walmart stores",
+      "emoji": "🛒"
+    },
+    {
+      "s": "TGT",
+      "nick": "Target",
+      "hook": "runs Target stores",
+      "emoji": "🎯"
+    },
+    {
+      "s": "SBUX",
+      "nick": "Starbucks",
+      "hook": "makes Starbucks drinks, even hot chocolate",
+      "emoji": "☕"
+    },
+    {
+      "s": "CMG",
+      "nick": "Chipotle",
+      "hook": "makes Chipotle burritos",
+      "emoji": "🌯"
+    },
+    {
+      "s": "HSY",
+      "nick": "Hershey",
+      "hook": "makes Hershey's chocolate and Reese's",
+      "emoji": "🍫"
+    },
+    {
+      "s": "TTWO",
+      "nick": "Take-Two",
+      "hook": "makes video games like NBA 2K",
+      "emoji": "🏀"
+    },
+    {
+      "s": "SPOT",
+      "nick": "Spotify",
+      "hook": "plays music on Spotify",
+      "emoji": "🎧"
+    },
+    {
+      "s": "TSLA",
+      "nick": "Tesla",
+      "hook": "makes electric cars",
+      "emoji": "🚗"
+    }
+  ],
+  "words": [
+    {
+      "word": "Share",
+      "means": "A tiny piece of a company that you can own.",
+      "example": "If Disney was a pizza, one share is one small slice."
+    },
+    {
+      "word": "Profit",
+      "means": "The money a company has left after it pays all its bills.",
+      "example": "You sell lemonade for $10. The lemons cost $4. Your profit is $6."
+    },
+    {
+      "word": "Earnings",
+      "means": "A company's report card. It says how much profit it made.",
+      "example": "Apple shares its earnings four times a year."
+    },
+    {
+      "word": "Beat",
+      "means": "When a company does better than grown-ups guessed.",
+      "example": "Grown-ups guessed $1. It made $2. It beat!"
+    },
+    {
+      "word": "Miss",
+      "means": "When a company does worse than grown-ups guessed.",
+      "example": "Grown-ups guessed $2. It made $1. It missed."
+    },
+    {
+      "word": "Stock market",
+      "means": "The place where people buy and sell shares.",
+      "example": "It's like a giant trading card swap, but for companies."
+    },
+    {
+      "word": "Price",
+      "means": "What someone will pay for one share right now.",
+      "example": "If many people want a share, its price goes up."
+    },
+    {
+      "word": "Invest",
+      "means": "Using money now so it might grow later.",
+      "example": "Planting a seed so it can grow into a tree."
+    },
+    {
+      "word": "Save",
+      "means": "Keeping money safe so you can use it later.",
+      "example": "Putting coins in a piggy bank."
+    },
+    {
+      "word": "Spread out",
+      "means": "Owning a little of many things instead of a lot of one.",
+      "example": "Not putting all your eggs in one basket."
+    },
+    {
+      "word": "Hype",
+      "means": "Lots of excited talk that might not be true.",
+      "example": "\"This will go to the moon!\" is hype, not a fact."
+    },
+    {
+      "word": "Market weather",
+      "means": "How brave or worried people feel about buying shares.",
+      "example": "Sunny means people feel brave. Cloudy means they feel worried."
+    }
+  ],
+  "terms": {
+    "company": {
+      "word": "Company",
+      "emoji": "🏪",
+      "means": "A team of people who sell something to make money.",
+      "example": "Nike is a company. It sells sneakers.",
+      "play": "company"
+    },
+    "profit": {
+      "word": "Profit",
+      "emoji": "✨",
+      "means": "The money left after a company pays its bills.",
+      "example": "You sell lemonade for $10. The lemons cost $4. You keep $6.",
+      "play": "company"
+    },
+    "share": {
+      "word": "Share",
+      "emoji": "🍕",
+      "means": "A tiny slice of a company that someone can own.",
+      "example": "Cut a pizza into 4 slices. One slice is one share.",
+      "play": "shares"
+    },
+    "stock": {
+      "word": "Stock market",
+      "emoji": "🏟️",
+      "means": "A big market where people buy and sell shares.",
+      "example": "It is like a giant swap meet for slices of companies.",
+      "play": "price"
+    },
+    "price": {
+      "word": "Price",
+      "emoji": "🏷️",
+      "means": "What someone will pay for one share right now.",
+      "example": "When lots of kids want a card, it costs more.",
+      "play": "price"
+    },
+    "report": {
+      "word": "Report card",
+      "emoji": "📝",
+      "means": "A company tells everyone how much money it made. It does this 4 times a year.",
+      "example": "Disney shares its report card in November.",
+      "play": "report"
+    },
+    "guess": {
+      "word": "Grown-ups' guess",
+      "emoji": "🔮",
+      "means": "Before the report card, experts guess the profit.",
+      "example": "They guess $2. That is the number to beat.",
+      "play": "report"
+    },
+    "beat": {
+      "word": "Beat",
+      "emoji": "👍",
+      "means": "The company made more than the grown-ups guessed.",
+      "example": "They guessed $2. It made $3. It beat!",
+      "play": "report"
+    },
+    "miss": {
+      "word": "Miss",
+      "emoji": "👎",
+      "means": "The company made less than the grown-ups guessed.",
+      "example": "They guessed $2. It made $1. It missed.",
+      "play": "report"
+    },
+    "mood": {
+      "word": "Market mood",
+      "emoji": "🌦️",
+      "means": "How brave or scared people feel about buying shares today.",
+      "example": "Sunny means brave. Stormy means scared."
+    },
+    "saving": {
+      "word": "Saving",
+      "emoji": "🫙",
+      "means": "Keeping money safe so you can use it later.",
+      "example": "You put $10 in a jar at the bank. It stays safe.",
+      "play": "save:jar"
+    },
+    "investing": {
+      "word": "Investing",
+      "emoji": "🌳",
+      "means": "Using money to buy a slice of a company so it can grow.",
+      "example": "It can grow more than a jar, but it can go down too.",
+      "play": "save:tree"
+    },
+    "interest": {
+      "word": "Interest",
+      "emoji": "➕",
+      "means": "A little extra money the bank pays you for keeping your money there.",
+      "example": "Keep $10 in the bank for a year. Get 20 cents extra.",
+      "play": "save:jar"
+    },
+    "dividend": {
+      "word": "Dividend",
+      "emoji": "🪙",
+      "means": "A little of a company's profit, shared with each owner.",
+      "example": "Own one slice. Get $1 when the company shares.",
+      "play": "dividends:payout"
+    }
+  },
+  "quest": {
+    "intro": "Before we look at real companies, let's run our own! Help me run a lemonade stand.",
+    "company": {
+      "title": "Run a company",
+      "ask": "Tap the cup to sell lemonade. Each cup sells for $1. Sell 10 cups!",
+      "done": "You sold $10 of lemonade. The lemons cost $4. So you have $6 left. That is your profit! Your stand is a company: a team that sells something."
+    },
+    "shares": {
+      "title": "Cut it into shares",
+      "ask": "You want a bigger stand, but you need money. Cut your stand into 4 slices. Tap a friend to sell them a slice for $5.",
+      "done": "Each slice is called a share. Your friends own a share of your stand now! You got $15 for a bigger stand. Real companies do this too."
+    },
+    "price": {
+      "title": "Watch the price move",
+      "ask": "Now lots of kids want a slice of your stand! Tap the buttons to see what happens to the price.",
+      "up": "Make the price go up to $8.",
+      "down": "Now make it go down to $4.",
+      "done": "More buyers made the price go up. More sellers made it go down. That is how prices move every day!"
+    },
+    "report": {
+      "title": "Report card day",
+      "ask": "It's time for your stand's report card! Grown-ups guessed your profit would be $6. Will you beat it or miss it?",
+      "reveal": "Open the report card",
+      "result": "Your stand made $7 of profit. That's more than $6, so it BEAT!",
+      "done": "Real companies like Disney and Apple share a report card 4 times a year. Now you can guess theirs!"
+    },
+    "finish": "You did it! You know what a company, a share, a price and a report card are. You earned the Lemonade Boss badge!"
+  },
+  "questChapters": {
+    "CHAPTERS": [
+      {
+        "id": "lemonade",
+        "emoji": "🍋",
+        "title": "Luna's Lemonade Stand",
+        "blurb": "What a company, a share and a price are.",
+        "badge": "lemonade"
+      },
+      {
+        "id": "save",
+        "emoji": "🌳",
+        "title": "Save or Grow?",
+        "blurb": "A savings jar or a money tree. When do you pick each?",
+        "badge": "smart-saver"
+      },
+      {
+        "id": "dividends",
+        "emoji": "🪙",
+        "title": "Your Slice Pays You",
+        "blurb": "Some companies share their profit with owners.",
+        "badge": "dividend-detective"
+      }
+    ],
+    "CH_STAGES": {
+      "save": [
+        "jar",
+        "tree",
+        "choose",
+        "check"
+      ],
+      "dividends": [
+        "payout",
+        "snowball",
+        "real",
+        "check"
+      ]
+    },
+    "DIV": {
+      "intro": "Remember how Bear, Bunny and Frog each own a slice of your stand? When the stand makes a profit, it can share some with them!",
+      "payout": {
+        "title": "Pay the owners",
+        "ask": "Your stand made $8 of profit. It keeps $4 to grow. The other $4 goes to the owners: $1 for each slice. Tap each owner to hand out a coin!",
+        "done": "Every owner got $1, even you! A company can share its profit like this. That is a dividend.",
+        "remember": "A dividend is a bit of the profit. Each owner gets some."
+      },
+      "snowball": {
+        "title": "Spend or replant?",
+        "ask": "You own 4 slices, so you get $4 each season. You can spend it, or replant it to buy more slices. Which ends up with more slices? Guess, then tap!",
+        "tap": "Next season",
+        "done": "Spending was fun, and that's OK! But replanting bought more slices. More slices pay more coins. It's like a snowball. It gets bigger as it rolls.",
+        "remember": "Replanting dividends buys more slices, and more slices pay more."
+      },
+      "real": {
+        "title": "Real companies",
+        "ask": "Do these real companies pay dividends? Guess for each one, then flip the card!",
+        "yes": "gives owners a bit of its profit, a few times a year.",
+        "no": "puts its money back in to grow.",
+        "done": "Some companies share profit with owners. Others put it all back into growing. Both are normal!",
+        "remember": "Some companies pay dividends. Some use all their money to grow."
+      },
+      "check": {
+        "title": "Quick check",
+        "done": "Chapter done! You know what a dividend is."
+      },
+      "finish": "You are a Dividend Detective! Some companies share their profit with owners. Replant it, and it can grow."
+    },
+    "DIV_CARDS": [
+      {
+        "s": "KO",
+        "pays": true
+      },
+      {
+        "s": "TSLA",
+        "pays": false
+      },
+      {
+        "s": "MCD",
+        "pays": true
+      },
+      {
+        "s": "RBLX",
+        "pays": false
+      },
+      {
+        "s": "HSY",
+        "pays": true
+      },
+      {
+        "s": "NFLX",
+        "pays": false
+      },
+      {
+        "s": "WMT",
+        "pays": true
+      },
+      {
+        "s": "AMZN",
+        "pays": false
+      },
+      {
+        "s": "PEP",
+        "pays": true
+      }
+    ],
+    "DIV_CHECK": [
+      {
+        "q": "What is a dividend?",
+        "options": [
+          "Profit shared with the owners",
+          "A new kind of toy",
+          "Money you owe the bank"
+        ],
+        "answer": 0,
+        "why": "A dividend is a bit of profit. The company shares it with the people who own its shares."
+      },
+      {
+        "q": "If you replant your dividends, you get…",
+        "options": [
+          "More slices",
+          "Fewer slices"
+        ],
+        "answer": 0,
+        "why": "Replanting buys more slices, and more slices pay you more next time."
+      }
+    ],
+    "JAR_RATE": 2,
+    "PAY_PER_SLICE": 1,
+    "SAVE": {
+      "intro": "You made $10 at your lemonade stand. Nice! Now what? You can keep it safe, or help it grow. Let's try both.",
+      "jar": {
+        "title": "The savings jar",
+        "ask": "Put your $10 in a savings jar at the bank. The bank pays you a little extra each year to keep it there. Tap to make a year go by!",
+        "tap": "A year goes by",
+        "done": "Your money grew a tiny bit every year. It never went down. That's saving: safe and slow. The extra the bank pays you is called interest.",
+        "remember": "Saving is safe. It grows slowly, and it does not go down."
+      },
+      "tree": {
+        "title": "The money tree",
+        "ask": "Now plant $10 as a money tree. That means you buy a slice of a company. Tap to make 10 years go by. Watch both lines!",
+        "tap": "A year goes by",
+        "downYear": "Oh no! A bad year. The tree lost some leaves. Don't worry. Wait and see.",
+        "upYear": "A good year! The tree grew.",
+        "done": "Some years the tree went down. But after 10 years it grew much more than the jar! That's investing: it can grow more, but it can go down too. It needs time.",
+        "remember": "Investing can grow more over many years. But it can go down too, so it needs time."
+      },
+      "choose": {
+        "title": "Jar or tree?",
+        "ask": "Here's the secret: pick by WHEN you need the money. Need it soon? Use the jar. Need it in many years? Plant a tree. Sort each card!",
+        "done": "You sorted them all! Money for soon goes in the jar. Money for a long time from now can grow in a tree.",
+        "remember": "Soon means save. Far away means you can invest."
+      },
+      "check": {
+        "title": "Quick check",
+        "done": "Chapter done! Now you know when to save and when to grow."
+      },
+      "finish": "You are a Smart Saver! You know that saving is safe and slow, and investing can grow more but needs time."
+    },
+    "SAVE_CHECK": [
+      {
+        "q": "Which one can go DOWN some years?",
+        "options": [
+          "The money tree",
+          "The savings jar"
+        ],
+        "answer": 0,
+        "why": "An investment can go down in a bad year. Savings in the bank do not."
+      },
+      {
+        "q": "You need money for a game next week. Where should it be?",
+        "options": [
+          "In the savings jar",
+          "In the money tree"
+        ],
+        "answer": 0,
+        "why": "Next week is soon. Keep money you need soon in the jar."
+      }
+    ],
+    "SEASONS": 6,
+    "SLICES": 4,
+    "SLICE_PRICE": 5,
+    "SORT_ITEMS": [
+      {
+        "id": "toy",
+        "emoji": "🧸",
+        "text": "A toy next week",
+        "answer": "save",
+        "why": "Next week is soon. The tree might have a bad week, so keep it in the jar."
+      },
+      {
+        "id": "college",
+        "emoji": "🎓",
+        "text": "College in 10 years",
+        "answer": "invest",
+        "why": "10 years is a long time. A tree has time to grow, even after bad years."
+      },
+      {
+        "id": "gift",
+        "emoji": "🎁",
+        "text": "A birthday gift for Mom this month",
+        "answer": "save",
+        "why": "This month is very soon. Keep it safe in the jar."
+      },
+      {
+        "id": "grownup",
+        "emoji": "🧑‍💼",
+        "text": "When you're a grown-up",
+        "answer": "invest",
+        "why": "That's many years away. Lots of time for a tree to grow."
+      },
+      {
+        "id": "bike",
+        "emoji": "🚲",
+        "text": "A new bike next summer",
+        "answer": "save",
+        "why": "Next summer is not very far. The jar keeps it safe until then."
+      }
+    ],
+    "START": 10,
+    "TREE_YEARS": [
+      14,
+      8,
+      -15,
+      18,
+      9,
+      6,
+      -8,
+      14,
+      10,
+      18
+    ]
+  },
+  "units": [
+    {
+      "id": "money",
+      "title": "Money basics",
+      "emoji": "💰",
+      "blurb": "What money is, and how to plan it."
+    },
+    {
+      "id": "companies",
+      "title": "Companies",
+      "emoji": "🏪",
+      "blurb": "Who makes the things you love."
+    },
+    {
+      "id": "shares",
+      "title": "Shares and the market",
+      "emoji": "🍕",
+      "blurb": "Owning a tiny slice."
+    },
+    {
+      "id": "report",
+      "title": "Report cards",
+      "emoji": "📝",
+      "blurb": "How companies show their grades."
+    },
+    {
+      "id": "growing",
+      "title": "Saving and investing",
+      "emoji": "🌱",
+      "blurb": "Keep it safe, or help it grow."
+    },
+    {
+      "id": "dividends",
+      "title": "Dividends",
+      "emoji": "🍰",
+      "blurb": "When your slice pays you."
+    },
+    {
+      "id": "smart",
+      "title": "Money-smart",
+      "emoji": "🧠",
+      "blurb": "Spread out, be patient, check facts."
+    }
+  ],
+  "lessons": [
+    {
+      "id": "money",
+      "unit": "money",
+      "title": "What is money?",
+      "emoji": "💵",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🐄",
+          "text": "Long ago, people traded things. A cow for some bread!"
+        },
+        {
+          "t": "say",
+          "emoji": "🤔",
+          "text": "That was hard. What if the baker did not want a cow?"
+        },
+        {
+          "t": "say",
+          "emoji": "💵",
+          "text": "So people made money. Everyone agrees it is worth something."
+        },
+        {
+          "t": "check",
+          "q": "Why did people make money?",
+          "options": [
+            "To make trading easy",
+            "Because cows are boring",
+            "To use as paper"
+          ],
+          "answer": 0,
+          "why": "Money makes trading easy, because everyone takes it."
+        }
+      ]
+    },
+    {
+      "id": "earn",
+      "unit": "money",
+      "title": "Where does money come from?",
+      "emoji": "🧑‍🍳",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🧑‍🍳",
+          "text": "Grown-ups earn money by doing work. A cook cooks. A nurse helps sick people."
+        },
+        {
+          "t": "say",
+          "emoji": "🍋",
+          "text": "Kids can earn too! You can sell lemonade or help a neighbor."
+        },
+        {
+          "t": "say",
+          "emoji": "⏰",
+          "text": "Earning takes time and work. That is why money matters."
+        },
+        {
+          "t": "check",
+          "q": "How do most grown-ups get money?",
+          "options": [
+            "By working",
+            "It grows on trees",
+            "They print it at home"
+          ],
+          "answer": 0,
+          "why": "Most grown-ups earn money by doing a job."
+        }
+      ]
+    },
+    {
+      "id": "needs",
+      "unit": "money",
+      "title": "Needs and wants",
+      "emoji": "🎒",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🍎",
+          "text": "A need is something you must have. Like food, a home and clothes."
+        },
+        {
+          "t": "say",
+          "emoji": "🎮",
+          "text": "A want is something nice to have. Like a new game or candy."
+        },
+        {
+          "t": "sort",
+          "q": "Is it a need or a want?",
+          "buckets": [
+            "Need",
+            "Want"
+          ],
+          "items": [
+            {
+              "emoji": "🍎",
+              "text": "Food",
+              "b": 0
+            },
+            {
+              "emoji": "🎮",
+              "text": "A new game",
+              "b": 1
+            },
+            {
+              "emoji": "🧥",
+              "text": "A warm coat",
+              "b": 0
+            },
+            {
+              "emoji": "🍭",
+              "text": "Candy",
+              "b": 1
+            },
+            {
+              "emoji": "🏠",
+              "text": "A home",
+              "b": 0
+            },
+            {
+              "emoji": "🧸",
+              "text": "One more toy",
+              "b": 1
+            }
+          ],
+          "why": "Needs come first. Wants come next, if there is money left."
+        }
+      ]
+    },
+    {
+      "id": "budget",
+      "unit": "money",
+      "title": "Make a money plan",
+      "emoji": "📋",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "📋",
+          "text": "A budget is a plan for your money. You plan before you spend."
+        },
+        {
+          "t": "say",
+          "emoji": "🫙",
+          "text": "Try three jars: Spend, Save and Share. Put some money in each one."
+        },
+        {
+          "t": "say",
+          "emoji": "✅",
+          "text": "When you see something fun, check your Spend jar first."
+        },
+        {
+          "t": "check",
+          "q": "A budget is…",
+          "options": [
+            "A plan for your money",
+            "A kind of candy",
+            "A piggy bank"
+          ],
+          "answer": 0,
+          "why": "A budget is a plan. It helps you choose before you spend."
+        }
+      ]
+    },
+    {
+      "id": "company",
+      "unit": "companies",
+      "title": "What is a company?",
+      "emoji": "🏪",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "👟",
+          "text": "A company is a team of people. They work together to sell something."
+        },
+        {
+          "t": "say",
+          "emoji": "🎮",
+          "text": "Some sell things you can hold, like shoes or toys. Some sell things you use, like games or videos."
+        },
+        {
+          "t": "say",
+          "emoji": "✨",
+          "text": "When people buy what it sells, the company gets money. If it gets more than it spends, the extra is profit."
+        },
+        {
+          "t": "check",
+          "q": "What does a company do?",
+          "options": [
+            "Sells things to people",
+            "Only plays games",
+            "Makes the weather"
+          ],
+          "answer": 0,
+          "why": "A company sells things or services to people."
+        },
+        {
+          "t": "check",
+          "q": "Profit is…",
+          "options": [
+            "Money left after paying the bills",
+            "A kind of fruit",
+            "All the money a company spends"
+          ],
+          "answer": 0,
+          "why": "Profit is the money left after the bills are paid."
+        }
+      ]
+    },
+    {
+      "id": "profit",
+      "unit": "companies",
+      "title": "Money in, money out",
+      "emoji": "🧾",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "💵",
+          "text": "Money in is all the money a company gets from selling things."
+        },
+        {
+          "t": "say",
+          "emoji": "🧾",
+          "text": "Money out is what it pays for. Workers, rent and supplies."
+        },
+        {
+          "t": "say",
+          "emoji": "✨",
+          "text": "Money in minus money out is profit. If money out is bigger, that is a loss."
+        },
+        {
+          "t": "check",
+          "q": "A shop sells $20 of cookies. The flour cost $5. What is the profit?",
+          "options": [
+            "$15",
+            "$25",
+            "$5"
+          ],
+          "answer": 0,
+          "why": "$20 take away $5 is $15."
+        }
+      ]
+    },
+    {
+      "id": "grow",
+      "unit": "companies",
+      "title": "How companies grow",
+      "emoji": "🌱",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🍋",
+          "text": "A lemonade stand can grow into a lemonade shop."
+        },
+        {
+          "t": "say",
+          "emoji": "🧱",
+          "text": "To grow, it needs money for a bigger shop and more workers."
+        },
+        {
+          "t": "say",
+          "emoji": "🍕",
+          "text": "One way to get that money is to sell shares of the company."
+        },
+        {
+          "t": "check",
+          "q": "Why might a company sell shares?",
+          "options": [
+            "To get money to grow",
+            "To get smaller",
+            "Just for fun"
+          ],
+          "answer": 0,
+          "why": "Selling shares brings in money the company can use to grow."
+        }
+      ]
+    },
+    {
+      "id": "share",
+      "unit": "shares",
+      "title": "What is a share?",
+      "emoji": "🍕",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🍕",
+          "text": "Think of a big company like a pizza cut into lots and lots of slices."
+        },
+        {
+          "t": "say",
+          "emoji": "🧩",
+          "text": "Each slice is called a share. If you own a share, you own a tiny piece of that company."
+        },
+        {
+          "t": "say",
+          "emoji": "🏟️",
+          "text": "People buy and sell shares in a place called the stock market. Grown-ups need a special account to do it."
+        },
+        {
+          "t": "check",
+          "q": "If you own a share of a company, you own…",
+          "options": [
+            "A tiny piece of it",
+            "The whole company",
+            "One of its stores"
+          ],
+          "answer": 0,
+          "why": "A share is a tiny slice of the company. Like one slice of a pizza."
+        },
+        {
+          "t": "check",
+          "q": "Where do people buy and sell shares?",
+          "options": [
+            "The stock market",
+            "The toy store",
+            "The bank vault"
+          ],
+          "answer": 0,
+          "why": "Shares are bought and sold on the stock market."
+        }
+      ]
+    },
+    {
+      "id": "owner",
+      "unit": "shares",
+      "title": "Being an owner",
+      "emoji": "👑",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "👑",
+          "text": "If you own a share, you are a part owner of the company."
+        },
+        {
+          "t": "say",
+          "emoji": "🗳️",
+          "text": "Owners can vote on some big choices. One share is one vote."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "If the company does well, your share can be worth more."
+        },
+        {
+          "t": "check",
+          "q": "Owning one share of Nike makes you…",
+          "options": [
+            "A tiny part owner of Nike",
+            "The boss of Nike",
+            "A Nike worker"
+          ],
+          "answer": 0,
+          "why": "One share makes you a tiny part owner. Lots of other people own parts too."
+        }
+      ]
+    },
+    {
+      "id": "market",
+      "unit": "shares",
+      "title": "The stock market",
+      "emoji": "🏟️",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🏟️",
+          "text": "The stock market is a big place where people buy and sell shares."
+        },
+        {
+          "t": "say",
+          "emoji": "💻",
+          "text": "Today it is mostly on computers. It opens in the morning and closes in the afternoon."
+        },
+        {
+          "t": "say",
+          "emoji": "🔔",
+          "text": "In New York, a bell rings to start the day and to end it!"
+        },
+        {
+          "t": "check",
+          "q": "What do people trade on the stock market?",
+          "options": [
+            "Shares",
+            "Pets",
+            "Pizza"
+          ],
+          "answer": 0,
+          "why": "The stock market is where shares are traded."
+        }
+      ]
+    },
+    {
+      "id": "prices",
+      "unit": "shares",
+      "title": "Why do prices go up and down?",
+      "emoji": "🎢",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🏷️",
+          "text": "The price of a share is what someone will pay for it right now."
+        },
+        {
+          "t": "say",
+          "emoji": "🙋",
+          "text": "When lots of people want to buy, the price goes up. When lots want to sell, it goes down."
+        },
+        {
+          "t": "say",
+          "emoji": "🃏",
+          "text": "It is a bit like trading cards. When everyone wants a card, people will give more for it."
+        },
+        {
+          "t": "say",
+          "emoji": "〰️",
+          "text": "Prices move every day. Small ups and downs are normal."
+        },
+        {
+          "t": "check",
+          "q": "If lots of people want to buy a share, the price…",
+          "options": [
+            "Goes up",
+            "Goes down",
+            "Stays stuck"
+          ],
+          "answer": 0,
+          "why": "More buyers than sellers pushes the price up."
+        },
+        {
+          "t": "check",
+          "q": "Is it normal for prices to move a little every day?",
+          "options": [
+            "Yes",
+            "No, never"
+          ],
+          "answer": 0,
+          "why": "Prices wiggle every day. That is normal."
+        }
+      ]
+    },
+    {
+      "id": "ticker",
+      "unit": "shares",
+      "title": "Ticker nicknames",
+      "emoji": "🔤",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🔤",
+          "text": "Each company has a short nickname. It is called a ticker."
+        },
+        {
+          "t": "say",
+          "emoji": "🍎",
+          "text": "Apple is AAPL. Disney is DIS. Coca-Cola is KO."
+        },
+        {
+          "t": "say",
+          "emoji": "👀",
+          "text": "Grown-ups use tickers to find a company fast."
+        },
+        {
+          "t": "check",
+          "q": "What is DIS?",
+          "options": [
+            "Disney's ticker",
+            "A kind of dish",
+            "A dinosaur"
+          ],
+          "answer": 0,
+          "why": "DIS is Disney's short nickname on the stock market."
+        }
+      ]
+    },
+    {
+      "id": "report-card",
+      "unit": "report",
+      "title": "What is a report card?",
+      "emoji": "📝",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🎒",
+          "text": "You get a report card from school. Companies get one too!"
+        },
+        {
+          "t": "say",
+          "emoji": "📅",
+          "text": "Four times a year, each company tells everyone how it did. Grown-ups call this an earnings report."
+        },
+        {
+          "t": "say",
+          "emoji": "💵",
+          "text": "It says how much money came in, and how much profit the company made."
+        },
+        {
+          "t": "say",
+          "emoji": "🌙",
+          "text": "Metaphases shows when each company will share its report card. We draw the time as a moon."
+        },
+        {
+          "t": "check",
+          "q": "How many times a year does a company share its report card?",
+          "options": [
+            "4 times",
+            "Once",
+            "Every day"
+          ],
+          "answer": 0,
+          "why": "Companies report four times a year, once every three months."
+        },
+        {
+          "t": "check",
+          "q": "What do grown-ups call a company's report card?",
+          "options": [
+            "An earnings report",
+            "A gift card",
+            "A birthday card"
+          ],
+          "answer": 0,
+          "why": "It is called an earnings report."
+        }
+      ]
+    },
+    {
+      "id": "guess",
+      "unit": "report",
+      "title": "The grown-ups' guess",
+      "emoji": "🔮",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🔮",
+          "text": "Before a report card, experts guess the profit."
+        },
+        {
+          "t": "say",
+          "emoji": "📊",
+          "text": "They put all the guesses together and find the middle. That is the number to beat."
+        },
+        {
+          "t": "say",
+          "emoji": "⏳",
+          "text": "Then everyone waits to see what really happened."
+        },
+        {
+          "t": "check",
+          "q": "What are the experts guessing?",
+          "options": [
+            "The company's profit",
+            "The weather",
+            "Tomorrow's lunch"
+          ],
+          "answer": 0,
+          "why": "They guess the profit, so we can see if the company beats it."
+        }
+      ]
+    },
+    {
+      "id": "beat",
+      "unit": "report",
+      "title": "What does \"beat\" mean?",
+      "emoji": "🎯",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🔮",
+          "text": "Before a report card comes out, grown-ups make a guess. They guess how much profit the company will make."
+        },
+        {
+          "t": "say",
+          "emoji": "🎯",
+          "text": "If the company makes more than the guess, it beat. If it makes less, it missed."
+        },
+        {
+          "t": "say",
+          "emoji": "🤷",
+          "text": "Sometimes a company beats and the price still goes down. People may have hoped for even more!"
+        },
+        {
+          "t": "check",
+          "q": "Grown-ups guessed $2. The company made $3. Did it beat or miss?",
+          "options": [
+            "Beat",
+            "Miss"
+          ],
+          "answer": 0,
+          "why": "$3 is more than the $2 guess, so it beat."
+        },
+        {
+          "t": "check",
+          "q": "Can a price go down even when a company beats?",
+          "options": [
+            "Yes, sometimes",
+            "No, never"
+          ],
+          "answer": 0,
+          "why": "Yes! People may have hoped for even more good news."
+        }
+      ]
+    },
+    {
+      "id": "after",
+      "unit": "report",
+      "title": "Why prices jump on report day",
+      "emoji": "🎢",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "📝",
+          "text": "On report card day, prices can jump up or fall down fast."
+        },
+        {
+          "t": "say",
+          "emoji": "😮",
+          "text": "That is because people learn lots of new facts all at once."
+        },
+        {
+          "t": "say",
+          "emoji": "🔭",
+          "text": "People also hear what the company thinks comes next."
+        },
+        {
+          "t": "check",
+          "q": "Why can a price jump on report card day?",
+          "options": [
+            "People learn new facts all at once",
+            "The building moves",
+            "It is a holiday"
+          ],
+          "answer": 0,
+          "why": "New facts arrive all at once, so people change their minds fast."
+        }
+      ]
+    },
+    {
+      "id": "saving",
+      "unit": "growing",
+      "title": "Saving vs investing",
+      "emoji": "🐷",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🐷",
+          "text": "Saving is keeping your money safe, like in a piggy bank. It stays the same."
+        },
+        {
+          "t": "say",
+          "emoji": "🌳",
+          "text": "Investing is using money to buy things like shares. It can grow, but it can also shrink."
+        },
+        {
+          "t": "say",
+          "emoji": "🤝",
+          "text": "Grown-ups often do both. They save money they need soon. They invest money they will not need for a long time."
+        },
+        {
+          "t": "check",
+          "q": "Money in a piggy bank…",
+          "options": [
+            "Stays the same",
+            "Grows by itself",
+            "Turns into shares"
+          ],
+          "answer": 0,
+          "why": "Saved money stays the same. It does not grow or shrink."
+        },
+        {
+          "t": "check",
+          "q": "Investing can make money…",
+          "options": [
+            "Grow or shrink",
+            "Only grow",
+            "Go away for sure"
+          ],
+          "answer": 0,
+          "why": "Investing can go up or down. That is the risk."
+        }
+      ]
+    },
+    {
+      "id": "interest",
+      "unit": "growing",
+      "title": "Interest: a little extra",
+      "emoji": "🏦",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🏦",
+          "text": "A bank keeps your money safe. It even pays you a little to keep it there."
+        },
+        {
+          "t": "say",
+          "emoji": "🪙",
+          "text": "That little extra is called interest. Put in $100, and a year later you may have $102."
+        },
+        {
+          "t": "say",
+          "emoji": "🐢",
+          "text": "Interest is slow, but it is safe."
+        },
+        {
+          "t": "check",
+          "q": "Interest is…",
+          "options": [
+            "A little extra money the bank pays you",
+            "A fee to play games",
+            "A kind of share"
+          ],
+          "answer": 0,
+          "why": "It is the small extra the bank adds to your money."
+        }
+      ]
+    },
+    {
+      "id": "snowball",
+      "unit": "growing",
+      "title": "The money snowball",
+      "emoji": "⛄",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "⛄",
+          "text": "Roll a snowball and it picks up more snow. It gets bigger faster and faster."
+        },
+        {
+          "t": "say",
+          "emoji": "💰",
+          "text": "Money can do that too. The money you grow can grow more money."
+        },
+        {
+          "t": "say",
+          "emoji": "⏳",
+          "text": "That is why starting early helps. Time makes the snowball big."
+        },
+        {
+          "t": "check",
+          "q": "Why does starting early help?",
+          "options": [
+            "More time for the snowball to grow",
+            "Banks like kids best",
+            "It does not help"
+          ],
+          "answer": 0,
+          "why": "More years means more time for growth to pile up."
+        }
+      ]
+    },
+    {
+      "id": "risk",
+      "unit": "growing",
+      "title": "Risk: ups and downs",
+      "emoji": "🎢",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🎢",
+          "text": "Risk means things might not go the way you hope."
+        },
+        {
+          "t": "say",
+          "emoji": "🫙",
+          "text": "A savings jar has low risk. It will not grow much, but it will not shrink."
+        },
+        {
+          "t": "say",
+          "emoji": "🌳",
+          "text": "Investing has more risk. It can grow more, but some years it goes down."
+        },
+        {
+          "t": "sort",
+          "q": "Low risk or high risk?",
+          "buckets": [
+            "Low risk",
+            "High risk"
+          ],
+          "items": [
+            {
+              "emoji": "🐷",
+              "text": "Money in a piggy bank",
+              "b": 0
+            },
+            {
+              "emoji": "🚀",
+              "text": "All your money in one new company",
+              "b": 1
+            },
+            {
+              "emoji": "🏦",
+              "text": "Money in a bank",
+              "b": 0
+            },
+            {
+              "emoji": "📣",
+              "text": "A stock a video says will go to the moon",
+              "b": 1
+            }
+          ],
+          "why": "Safe places grow slowly. Big promises can go up or down a lot."
+        }
+      ]
+    },
+    {
+      "id": "which",
+      "unit": "growing",
+      "title": "Save it or invest it?",
+      "emoji": "🤔",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🗓️",
+          "text": "Need the money soon? Save it. Then it will be there when you need it."
+        },
+        {
+          "t": "say",
+          "emoji": "🌳",
+          "text": "Will you not need it for many years? Investing gives it time to grow."
+        },
+        {
+          "t": "sort",
+          "q": "Save it or invest it?",
+          "buckets": [
+            "Save",
+            "Invest"
+          ],
+          "items": [
+            {
+              "emoji": "🧸",
+              "text": "A toy next week",
+              "b": 0
+            },
+            {
+              "emoji": "🎓",
+              "text": "College in 10 years",
+              "b": 1
+            },
+            {
+              "emoji": "🎂",
+              "text": "A gift for mom this month",
+              "b": 0
+            },
+            {
+              "emoji": "🏡",
+              "text": "When you are a grown-up",
+              "b": 1
+            }
+          ],
+          "why": "Soon means save. A long time means it can be invested."
+        }
+      ]
+    },
+    {
+      "id": "dividend",
+      "unit": "dividends",
+      "title": "What is a dividend?",
+      "emoji": "🍰",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🍰",
+          "text": "Some companies share part of their profit with their owners. That is a dividend."
+        },
+        {
+          "t": "say",
+          "emoji": "🪙",
+          "text": "If you own a share, you might get a little money every few months."
+        },
+        {
+          "t": "say",
+          "emoji": "🥤",
+          "text": "Coca-Cola and McDonald's pay them. Some do not."
+        },
+        {
+          "t": "check",
+          "q": "A dividend is…",
+          "options": [
+            "Profit a company shares with its owners",
+            "A kind of pizza",
+            "A school test"
+          ],
+          "answer": 0,
+          "why": "It is a bit of the profit. The owners get it."
+        }
+      ]
+    },
+    {
+      "id": "no-dividend",
+      "unit": "dividends",
+      "title": "Why some don't pay",
+      "emoji": "🚀",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🚀",
+          "text": "Some companies keep all their profit to grow faster."
+        },
+        {
+          "t": "say",
+          "emoji": "🔧",
+          "text": "They build new things, hire workers and open new stores."
+        },
+        {
+          "t": "say",
+          "emoji": "🤞",
+          "text": "Owners hope the company grows. Then their shares may be worth more later."
+        },
+        {
+          "t": "check",
+          "q": "Why might a company skip dividends?",
+          "options": [
+            "To use the money to grow",
+            "Because it forgot",
+            "It is against the rules"
+          ],
+          "answer": 0,
+          "why": "Some companies use all their profit to grow."
+        }
+      ]
+    },
+    {
+      "id": "replant",
+      "unit": "dividends",
+      "title": "Spend it or plant it?",
+      "emoji": "🌻",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🌻",
+          "text": "When you get a dividend, you can spend it. Or you can use it to buy more shares."
+        },
+        {
+          "t": "say",
+          "emoji": "⛄",
+          "text": "Buying more shares is like adding snow to your snowball."
+        },
+        {
+          "t": "say",
+          "emoji": "📅",
+          "text": "Over many years, that can grow a lot."
+        },
+        {
+          "t": "check",
+          "q": "Using dividends to buy more shares is like…",
+          "options": [
+            "Adding snow to a snowball",
+            "Throwing seeds away",
+            "Eating all the cake"
+          ],
+          "answer": 0,
+          "why": "More shares can pay you more. So the snowball grows."
+        }
+      ]
+    },
+    {
+      "id": "baskets",
+      "unit": "smart",
+      "title": "Don't put all your eggs in one basket",
+      "emoji": "🧺",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🥚",
+          "text": "Imagine you carry all your eggs in one basket. If you trip, they all break!"
+        },
+        {
+          "t": "say",
+          "emoji": "🧺",
+          "text": "If you split them into many baskets, one trip only breaks a few."
+        },
+        {
+          "t": "say",
+          "emoji": "🍕",
+          "text": "Money works the same way. Owning a little of many companies is safer than a lot of one."
+        },
+        {
+          "t": "say",
+          "emoji": "🐷",
+          "text": "Grown-ups call this spreading out. You can try it in your Piggy Bank."
+        },
+        {
+          "t": "check",
+          "q": "Why split your eggs into many baskets?",
+          "options": [
+            "So one trip doesn't break them all",
+            "Baskets are pretty",
+            "Eggs like company"
+          ],
+          "answer": 0,
+          "why": "If one basket falls, the others are still safe."
+        },
+        {
+          "t": "check",
+          "q": "Which is safer?",
+          "options": [
+            "A little of many companies",
+            "All your money in one company"
+          ],
+          "answer": 0,
+          "why": "Spreading out means one bad day hurts less."
+        }
+      ]
+    },
+    {
+      "id": "patience",
+      "unit": "smart",
+      "title": "Be patient like the moon",
+      "emoji": "🌙",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🌙",
+          "text": "The moon takes about a month to go from new moon to full moon. It does not rush."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "Good companies can grow over many years. Some days their price goes down. Some days it goes up."
+        },
+        {
+          "t": "say",
+          "emoji": "🐢",
+          "text": "People who wait a long time often do better than people who buy and sell every day."
+        },
+        {
+          "t": "check",
+          "q": "Good investing is usually…",
+          "options": [
+            "Slow and patient",
+            "Fast and wild",
+            "Done every minute"
+          ],
+          "answer": 0,
+          "why": "Waiting a long time usually works best."
+        },
+        {
+          "t": "check",
+          "q": "If a price goes down for one day, should you panic?",
+          "options": [
+            "No, small drops are normal",
+            "Yes, always"
+          ],
+          "answer": 0,
+          "why": "Prices go up and down. One bad day is normal."
+        }
+      ]
+    },
+    {
+      "id": "hype",
+      "unit": "smart",
+      "title": "Hype vs facts",
+      "emoji": "📣",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "📣",
+          "text": "Sometimes a video says a stock will go to the moon. That is called hype."
+        },
+        {
+          "t": "say",
+          "emoji": "🎭",
+          "text": "Hype is exciting. But the person in the video might be trying to sell, or might just be wrong."
+        },
+        {
+          "t": "say",
+          "emoji": "🔍",
+          "text": "Facts are things you can check, like how much profit a company made."
+        },
+        {
+          "t": "say",
+          "emoji": "❓",
+          "text": "Before you believe a video, ask: What are the facts? Who is telling me this? Why?"
+        },
+        {
+          "t": "check",
+          "q": "A video says \"this stock will go to the moon!\" That is…",
+          "options": [
+            "Hype",
+            "A fact",
+            "A school rule"
+          ],
+          "answer": 0,
+          "why": "It's an exciting guess, not a fact you can check."
+        },
+        {
+          "t": "check",
+          "q": "What should you do before believing a video?",
+          "options": [
+            "Check the facts",
+            "Tell everyone right away",
+            "Buy right now"
+          ],
+          "answer": 0,
+          "why": "Always check the facts, and ask a grown-up."
+        }
+      ]
+    },
+    {
+      "id": "too-good",
+      "unit": "smart",
+      "title": "Too good to be true",
+      "emoji": "🚩",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🚩",
+          "text": "If someone promises lots of money, fast and for sure, that is a red flag."
+        },
+        {
+          "t": "say",
+          "emoji": "🕵️",
+          "text": "Real investing has ups and downs. Nobody can promise it only goes up."
+        },
+        {
+          "t": "say",
+          "emoji": "🙋",
+          "text": "If it feels too good to be true, stop and ask a grown-up."
+        },
+        {
+          "t": "check",
+          "q": "Someone says \"Double your money by Friday, for sure!\" What do you do?",
+          "options": [
+            "Stop and ask a grown-up",
+            "Send them your money",
+            "Tell them your password"
+          ],
+          "answer": 0,
+          "why": "Big promises that are for sure are a red flag. Ask a grown-up."
+        }
+      ]
+    }
+  ],
+  "badges": [
+    {
+      "id": "lemonade",
+      "name": "Lemonade Boss",
+      "why": "You ran Luna's lemonade stand and learned the big words.",
+      "phase": 2
+    },
+    {
+      "id": "smart-saver",
+      "name": "Smart Saver",
+      "why": "You learned when to save in a jar and when to grow a money tree.",
+      "phase": 3
+    },
+    {
+      "id": "dividend-detective",
+      "name": "Dividend Detective",
+      "why": "You learned how a company's profit can pay its owners.",
+      "phase": 3
+    },
+    {
+      "id": "first-guess",
+      "name": "First Guess",
+      "why": "You made your first report card guess.",
+      "phase": 0
+    },
+    {
+      "id": "good-guess",
+      "name": "Sharp Eye",
+      "why": "One of your guesses was right!",
+      "phase": 1
+    },
+    {
+      "id": "streak-3",
+      "name": "Hot Streak",
+      "why": "Three right guesses in a row.",
+      "phase": 3
+    },
+    {
+      "id": "piggy",
+      "name": "Piggy Banker",
+      "why": "You started a pretend piggy bank.",
+      "phase": 1
+    },
+    {
+      "id": "five-baskets",
+      "name": "Egg Spreader",
+      "why": "You spread your coins across 5 companies.",
+      "phase": 2
+    },
+    {
+      "id": "first-lesson",
+      "name": "Moon Student",
+      "why": "You finished your first Moon School lesson.",
+      "phase": 1
+    },
+    {
+      "id": "half-school",
+      "name": "Half-Moon Scholar",
+      "why": "You finished half of Moon School.",
+      "phase": 2
+    },
+    {
+      "id": "all-school",
+      "name": "Full-Moon Scholar",
+      "why": "You finished every Moon School lesson!",
+      "phase": 4
+    }
+  ],
+  "levels": [
+    {
+      "min": 0,
+      "name": "New Moon"
+    },
+    {
+      "min": 20,
+      "name": "Crescent Moon"
+    },
+    {
+      "min": 50,
+      "name": "Half Moon"
+    },
+    {
+      "min": 90,
+      "name": "Gibbous Moon"
+    },
+    {
+      "min": 140,
+      "name": "Full Moon"
+    }
+  ],
+  "startCoins": 1000,
+  "maxPicks": 5,
+  "players": [
+    "🌙",
+    "🚀",
+    "🦊",
+    "🐢",
+    "🦄",
+    "🐼",
+    "⭐",
+    "🐙"
+  ],
+  "playerNames": [
+    "Moon",
+    "Rocket",
+    "Fox",
+    "Turtle",
+    "Unicorn",
+    "Panda",
+    "Star",
+    "Octopus"
+  ],
+  "maxCodeGuesses": 20,
+  "vectors": {
+    "weatherFor": [
+      {
+        "score": 0,
+        "out": {
+          "icon": "storm",
+          "emoji": "⛈️",
+          "title": "Stormy",
+          "line": "People feel scared. Lots of them are selling, so prices can bounce around a lot."
+        }
+      },
+      {
+        "score": 10,
+        "out": {
+          "icon": "storm",
+          "emoji": "⛈️",
+          "title": "Stormy",
+          "line": "People feel scared. Lots of them are selling, so prices can bounce around a lot."
+        }
+      },
+      {
+        "score": 24,
+        "out": {
+          "icon": "storm",
+          "emoji": "⛈️",
+          "title": "Stormy",
+          "line": "People feel scared. Lots of them are selling, so prices can bounce around a lot."
+        }
+      },
+      {
+        "score": 25,
+        "out": {
+          "icon": "cloud",
+          "emoji": "☁️",
+          "title": "Cloudy",
+          "line": "People are a bit worried. They are being careful with their money."
+        }
+      },
+      {
+        "score": 40,
+        "out": {
+          "icon": "cloud",
+          "emoji": "☁️",
+          "title": "Cloudy",
+          "line": "People are a bit worried. They are being careful with their money."
+        }
+      },
+      {
+        "score": 44,
+        "out": {
+          "icon": "cloud",
+          "emoji": "☁️",
+          "title": "Cloudy",
+          "line": "People are a bit worried. They are being careful with their money."
+        }
+      },
+      {
+        "score": 45,
+        "out": {
+          "icon": "partly",
+          "emoji": "⛅",
+          "title": "Partly sunny",
+          "line": "People feel calm. Not scared, not too excited."
+        }
+      },
+      {
+        "score": 50,
+        "out": {
+          "icon": "partly",
+          "emoji": "⛅",
+          "title": "Partly sunny",
+          "line": "People feel calm. Not scared, not too excited."
+        }
+      },
+      {
+        "score": 55,
+        "out": {
+          "icon": "partly",
+          "emoji": "⛅",
+          "title": "Partly sunny",
+          "line": "People feel calm. Not scared, not too excited."
+        }
+      },
+      {
+        "score": 56,
+        "out": {
+          "icon": "sun",
+          "emoji": "☀️",
+          "title": "Sunny",
+          "line": "People feel brave. Lots of them want to buy shares."
+        }
+      },
+      {
+        "score": 70,
+        "out": {
+          "icon": "sun",
+          "emoji": "☀️",
+          "title": "Sunny",
+          "line": "People feel brave. Lots of them want to buy shares."
+        }
+      },
+      {
+        "score": 75,
+        "out": {
+          "icon": "sun",
+          "emoji": "☀️",
+          "title": "Sunny",
+          "line": "People feel brave. Lots of them want to buy shares."
+        }
+      },
+      {
+        "score": 76,
+        "out": {
+          "icon": "bright",
+          "emoji": "🌞",
+          "title": "Super sunny",
+          "line": "Everyone feels very brave. Maybe a little too brave!"
+        }
+      },
+      {
+        "score": 100,
+        "out": {
+          "icon": "bright",
+          "emoji": "🌞",
+          "title": "Super sunny",
+          "line": "Everyone feels very brave. Maybe a little too brave!"
+        }
+      }
+    ],
+    "kidWhen": [
+      {
+        "date": "2026-10-31",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "today before school starts"
+      },
+      {
+        "date": "2026-10-31",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "today during the school day"
+      },
+      {
+        "date": "2026-10-31",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "today after school"
+      },
+      {
+        "date": "2026-10-31",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "today (the time isn't set yet)"
+      },
+      {
+        "date": "2026-11-01",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "tomorrow before school starts"
+      },
+      {
+        "date": "2026-11-01",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "tomorrow during the school day"
+      },
+      {
+        "date": "2026-11-01",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "tomorrow after school"
+      },
+      {
+        "date": "2026-11-01",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "tomorrow (the time isn't set yet)"
+      },
+      {
+        "date": "2026-10-30",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "yesterday before school starts"
+      },
+      {
+        "date": "2026-10-30",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "yesterday during the school day"
+      },
+      {
+        "date": "2026-10-30",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "yesterday after school"
+      },
+      {
+        "date": "2026-10-30",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "yesterday (the time isn't set yet)"
+      },
+      {
+        "date": "2026-11-03",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "Tuesday before school starts"
+      },
+      {
+        "date": "2026-11-03",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "Tuesday during the school day"
+      },
+      {
+        "date": "2026-11-03",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "Tuesday after school"
+      },
+      {
+        "date": "2026-11-03",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "Tuesday (the time isn't set yet)"
+      },
+      {
+        "date": "2026-11-06",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "Friday before school starts"
+      },
+      {
+        "date": "2026-11-06",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "Friday during the school day"
+      },
+      {
+        "date": "2026-11-06",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "Friday after school"
+      },
+      {
+        "date": "2026-11-06",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "Friday (the time isn't set yet)"
+      },
+      {
+        "date": "2026-11-07",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "on Nov 7 before school starts"
+      },
+      {
+        "date": "2026-11-07",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "on Nov 7 during the school day"
+      },
+      {
+        "date": "2026-11-07",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "on Nov 7 after school"
+      },
+      {
+        "date": "2026-11-07",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "on Nov 7 (the time isn't set yet)"
+      },
+      {
+        "date": "2026-11-17",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "on Nov 17 before school starts"
+      },
+      {
+        "date": "2026-11-17",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "on Nov 17 during the school day"
+      },
+      {
+        "date": "2026-11-17",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "on Nov 17 after school"
+      },
+      {
+        "date": "2026-11-17",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "on Nov 17 (the time isn't set yet)"
+      },
+      {
+        "date": "2026-12-25",
+        "session": "bmo",
+        "today": "2026-10-31",
+        "out": "on Dec 25 before school starts"
+      },
+      {
+        "date": "2026-12-25",
+        "session": "dmh",
+        "today": "2026-10-31",
+        "out": "on Dec 25 during the school day"
+      },
+      {
+        "date": "2026-12-25",
+        "session": "amc",
+        "today": "2026-10-31",
+        "out": "on Dec 25 after school"
+      },
+      {
+        "date": "2026-12-25",
+        "session": "",
+        "today": "2026-10-31",
+        "out": "on Dec 25 (the time isn't set yet)"
+      }
+    ],
+    "expectLine": [
+      {
+        "epsE": null,
+        "out": "Grown-ups haven't guessed a number yet."
+      },
+      {
+        "epsE": -0.42,
+        "out": "Grown-ups expect it to lose about $0.42 for every share. Some companies spend more than they make while they grow."
+      },
+      {
+        "epsE": 0,
+        "out": "Grown-ups expect it to make about $0.00 of profit for every share."
+      },
+      {
+        "epsE": 2.02,
+        "out": "Grown-ups expect it to make about $2.02 of profit for every share."
+      },
+      {
+        "epsE": 10.5,
+        "out": "Grown-ups expect it to make about $10.50 of profit for every share."
+      }
+    ],
+    "lastTimeLine": [
+      {
+        "move": null,
+        "out": "We don't know yet how the price moved last time."
+      },
+      {
+        "move": 4.8,
+        "out": "Last time it got its report card, the price went up 4.8%. That's like $10 of pocket money turning into $10.48!"
+      },
+      {
+        "move": -3.25,
+        "out": "Last time it got its report card, the price went down 3.3%. That's like $10 of pocket money shrinking to $9.68."
+      },
+      {
+        "move": 0,
+        "out": "Last time it got its report card, the price went up 0.0%. That's like $10 of pocket money turning into $10.00!"
+      }
+    ],
+    "whyLine": [
+      {
+        "nick": "Apple",
+        "e": {
+          "eA": 2.1,
+          "eE": 2.02
+        },
+        "out": "Grown-ups expected $2.02 a share. Apple made $2.10. That's more than expected, so it BEAT!"
+      },
+      {
+        "nick": "Apple",
+        "e": {
+          "eA": 1,
+          "eE": 2
+        },
+        "out": "Grown-ups expected $2.00 a share. Apple made $1.00. That's less than expected, so it MISSED!"
+      },
+      {
+        "nick": "Apple",
+        "e": {
+          "eA": null,
+          "eE": 2
+        },
+        "out": "Apple hasn't shared its report card yet."
+      },
+      {
+        "nick": "Apple",
+        "e": {
+          "eA": 2,
+          "eE": 2
+        },
+        "out": "Grown-ups expected $2.00 a share. Apple made $2.00. That's more than expected, so it BEAT!"
+      }
+    ],
+    "resolveGuess": [
+      {
+        "pick": "beat",
+        "e": null,
+        "out": "pending"
+      },
+      {
+        "pick": "beat",
+        "e": {
+          "eA": null,
+          "eE": 1
+        },
+        "out": "pending"
+      },
+      {
+        "pick": "beat",
+        "e": {
+          "eA": 1,
+          "eE": null
+        },
+        "out": "unknown"
+      },
+      {
+        "pick": "beat",
+        "e": {
+          "eA": 2,
+          "eE": 1
+        },
+        "out": "right"
+      },
+      {
+        "pick": "beat",
+        "e": {
+          "eA": 1,
+          "eE": 2
+        },
+        "out": "wrong"
+      },
+      {
+        "pick": "beat",
+        "e": {
+          "eA": 1,
+          "eE": 1
+        },
+        "out": "right"
+      },
+      {
+        "pick": "miss",
+        "e": null,
+        "out": "pending"
+      },
+      {
+        "pick": "miss",
+        "e": {
+          "eA": null,
+          "eE": 1
+        },
+        "out": "pending"
+      },
+      {
+        "pick": "miss",
+        "e": {
+          "eA": 1,
+          "eE": null
+        },
+        "out": "unknown"
+      },
+      {
+        "pick": "miss",
+        "e": {
+          "eA": 2,
+          "eE": 1
+        },
+        "out": "wrong"
+      },
+      {
+        "pick": "miss",
+        "e": {
+          "eA": 1,
+          "eE": 2
+        },
+        "out": "right"
+      },
+      {
+        "pick": "miss",
+        "e": {
+          "eA": 1,
+          "eE": 1
+        },
+        "out": "wrong"
+      }
+    ],
+    "resolvePrice": [
+      {
+        "pick": null,
+        "move": null,
+        "out": "unknown"
+      },
+      {
+        "pick": null,
+        "move": 2.5,
+        "out": "unknown"
+      },
+      {
+        "pick": null,
+        "move": -1,
+        "out": "unknown"
+      },
+      {
+        "pick": null,
+        "move": 0,
+        "out": "unknown"
+      },
+      {
+        "pick": "up",
+        "move": null,
+        "out": "pending"
+      },
+      {
+        "pick": "up",
+        "move": 2.5,
+        "out": "right"
+      },
+      {
+        "pick": "up",
+        "move": -1,
+        "out": "wrong"
+      },
+      {
+        "pick": "up",
+        "move": 0,
+        "out": "right"
+      },
+      {
+        "pick": "down",
+        "move": null,
+        "out": "pending"
+      },
+      {
+        "pick": "down",
+        "move": 2.5,
+        "out": "wrong"
+      },
+      {
+        "pick": "down",
+        "move": -1,
+        "out": "right"
+      },
+      {
+        "pick": "down",
+        "move": 0,
+        "out": "wrong"
+      }
+    ],
+    "evenSplit": [
+      {
+        "syms": [],
+        "out": {}
+      },
+      {
+        "syms": [
+          "DIS"
+        ],
+        "out": {
+          "DIS": 1000
+        }
+      },
+      {
+        "syms": [
+          "DIS",
+          "RBLX"
+        ],
+        "out": {
+          "DIS": 500,
+          "RBLX": 500
+        }
+      },
+      {
+        "syms": [
+          "DIS",
+          "RBLX",
+          "HSY"
+        ],
+        "out": {
+          "DIS": 340,
+          "RBLX": 330,
+          "HSY": 330
+        }
+      },
+      {
+        "syms": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "out": {
+          "A": 200,
+          "B": 200,
+          "C": 200,
+          "D": 200,
+          "E": 200
+        }
+      },
+      {
+        "syms": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+          "G"
+        ],
+        "out": {
+          "A": 160,
+          "B": 140,
+          "C": 140,
+          "D": 140,
+          "E": 140,
+          "F": 140,
+          "G": 140
+        }
+      }
+    ],
+    "buyPretend": [
+      {
+        "coins": {
+          "DIS": 400,
+          "RBLX": 300,
+          "KO": 300,
+          "HSY": 0
+        },
+        "prices": {
+          "DIS": 100,
+          "RBLX": 40,
+          "KO": 60
+        },
+        "out": [
+          {
+            "s": "DIS",
+            "coins": 400,
+            "start": 100,
+            "shares": 4
+          },
+          {
+            "s": "RBLX",
+            "coins": 300,
+            "start": 40,
+            "shares": 7.5
+          },
+          {
+            "s": "KO",
+            "coins": 300,
+            "start": 60,
+            "shares": 5
+          }
+        ]
+      }
+    ],
+    "piggyValue": [
+      {
+        "holdings": [
+          {
+            "s": "DIS",
+            "coins": 400,
+            "start": 100,
+            "shares": 4
+          },
+          {
+            "s": "RBLX",
+            "coins": 300,
+            "start": 40,
+            "shares": 7.5
+          },
+          {
+            "s": "KO",
+            "coins": 300,
+            "start": 60,
+            "shares": 5
+          }
+        ],
+        "prices": {
+          "DIS": 110,
+          "RBLX": 50,
+          "HSY": null,
+          "KO": 61.5
+        },
+        "out": 1122.5
+      }
+    ],
+    "holdingChange": [
+      {
+        "holding": {
+          "s": "DIS",
+          "coins": 400,
+          "start": 100,
+          "shares": 4
+        },
+        "price": 110,
+        "out": 10.000000000000009
+      },
+      {
+        "holding": {
+          "s": "RBLX",
+          "coins": 300,
+          "start": 40,
+          "shares": 7.5
+        },
+        "price": 50,
+        "out": 25
+      },
+      {
+        "holding": {
+          "s": "KO",
+          "coins": 300,
+          "start": 60,
+          "shares": 5
+        },
+        "price": 61.5,
+        "out": 2.499999999999991
+      }
+    ],
+    "biggestMover": [
+      {
+        "holdings": [
+          {
+            "s": "DIS",
+            "coins": 400,
+            "start": 100,
+            "shares": 4
+          },
+          {
+            "s": "RBLX",
+            "coins": 300,
+            "start": 40,
+            "shares": 7.5
+          },
+          {
+            "s": "KO",
+            "coins": 300,
+            "start": 60,
+            "shares": 5
+          }
+        ],
+        "prices": {
+          "DIS": 110,
+          "RBLX": 50,
+          "HSY": null,
+          "KO": 61.5
+        },
+        "out": {
+          "s": "RBLX",
+          "change": 25
+        }
+      }
+    ],
+    "basketTip": [
+      {
+        "n": 0,
+        "out": "All your eggs are in one basket! If that one company has a bad day, all your pretend money feels it."
+      },
+      {
+        "n": 1,
+        "out": "All your eggs are in one basket! If that one company has a bad day, all your pretend money feels it."
+      },
+      {
+        "n": 2,
+        "out": "Two baskets is safer than one. Adding more companies spreads out the bumps."
+      },
+      {
+        "n": 3,
+        "out": "3 baskets! If one company has a bad day, the others can help balance it out."
+      },
+      {
+        "n": 4,
+        "out": "4 baskets! If one company has a bad day, the others can help balance it out."
+      },
+      {
+        "n": 5,
+        "out": "5 baskets: nicely spread out! One bad day won't spoil the whole bunch."
+      }
+    ],
+    "levelFor": [
+      {
+        "points": 0,
+        "out": {
+          "index": 0,
+          "name": "New Moon",
+          "next": 20,
+          "progress": 0
+        }
+      },
+      {
+        "points": 5,
+        "out": {
+          "index": 0,
+          "name": "New Moon",
+          "next": 20,
+          "progress": 0.25
+        }
+      },
+      {
+        "points": 19,
+        "out": {
+          "index": 0,
+          "name": "New Moon",
+          "next": 20,
+          "progress": 0.95
+        }
+      },
+      {
+        "points": 20,
+        "out": {
+          "index": 1,
+          "name": "Crescent Moon",
+          "next": 50,
+          "progress": 0
+        }
+      },
+      {
+        "points": 49,
+        "out": {
+          "index": 1,
+          "name": "Crescent Moon",
+          "next": 50,
+          "progress": 0.9666666666666667
+        }
+      },
+      {
+        "points": 50,
+        "out": {
+          "index": 2,
+          "name": "Half Moon",
+          "next": 90,
+          "progress": 0
+        }
+      },
+      {
+        "points": 89,
+        "out": {
+          "index": 2,
+          "name": "Half Moon",
+          "next": 90,
+          "progress": 0.975
+        }
+      },
+      {
+        "points": 90,
+        "out": {
+          "index": 3,
+          "name": "Gibbous Moon",
+          "next": 140,
+          "progress": 0
+        }
+      },
+      {
+        "points": 139,
+        "out": {
+          "index": 3,
+          "name": "Gibbous Moon",
+          "next": 140,
+          "progress": 0.98
+        }
+      },
+      {
+        "points": 140,
+        "out": {
+          "index": 4,
+          "name": "Full Moon",
+          "next": null,
+          "progress": 1
+        }
+      },
+      {
+        "points": 500,
+        "out": {
+          "index": 4,
+          "name": "Full Moon",
+          "next": null,
+          "progress": 1
+        }
+      }
+    ],
+    "pointsFor": [
+      {
+        "progress": {
+          "guesses": [],
+          "lessons": [],
+          "piggy": false,
+          "piggyCount": 0
+        },
+        "out": 0
+      },
+      {
+        "progress": {
+          "guesses": [],
+          "lessons": [],
+          "piggy": false,
+          "piggyCount": 0,
+          "quest": true
+        },
+        "out": 15
+      },
+      {
+        "progress": {
+          "guesses": [
+            {
+              "s": "A",
+              "d": "2026-01-01",
+              "pick": "beat",
+              "at": "x",
+              "result": "right",
+              "priceResult": "right"
+            },
+            {
+              "s": "B",
+              "d": "2026-01-02",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            },
+            {
+              "s": "C",
+              "d": "2026-01-03",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            }
+          ],
+          "lessons": [
+            "company",
+            "share"
+          ],
+          "piggy": true,
+          "piggyCount": 5
+        },
+        "out": 66
+      },
+      {
+        "progress": {
+          "guesses": [
+            {
+              "s": "A",
+              "d": "2026-01-01",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            },
+            {
+              "s": "B",
+              "d": "2026-01-02",
+              "pick": "beat",
+              "at": "x",
+              "result": "wrong"
+            },
+            {
+              "s": "C",
+              "d": "2026-01-03",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            }
+          ],
+          "lessons": [
+            "money",
+            "earn",
+            "needs",
+            "budget",
+            "company",
+            "profit",
+            "grow",
+            "share",
+            "owner",
+            "market",
+            "prices",
+            "ticker",
+            "report-card",
+            "guess",
+            "beat",
+            "after",
+            "saving",
+            "interest",
+            "snowball",
+            "risk",
+            "which",
+            "dividend",
+            "no-dividend",
+            "replant",
+            "baskets",
+            "patience",
+            "hype",
+            "too-good"
+          ],
+          "piggy": false,
+          "piggyCount": 0
+        },
+        "out": 306
+      }
+    ],
+    "badgesFor": [
+      {
+        "progress": {
+          "guesses": [],
+          "lessons": [],
+          "piggy": false,
+          "piggyCount": 0
+        },
+        "totalLessons": 28,
+        "out": []
+      },
+      {
+        "progress": {
+          "guesses": [],
+          "lessons": [],
+          "piggy": false,
+          "piggyCount": 0,
+          "quest": true
+        },
+        "totalLessons": 28,
+        "out": [
+          "lemonade"
+        ]
+      },
+      {
+        "progress": {
+          "guesses": [
+            {
+              "s": "A",
+              "d": "2026-01-01",
+              "pick": "beat",
+              "at": "x",
+              "result": "right",
+              "priceResult": "right"
+            },
+            {
+              "s": "B",
+              "d": "2026-01-02",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            },
+            {
+              "s": "C",
+              "d": "2026-01-03",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            }
+          ],
+          "lessons": [
+            "company",
+            "share"
+          ],
+          "piggy": true,
+          "piggyCount": 5
+        },
+        "totalLessons": 28,
+        "out": [
+          "first-guess",
+          "good-guess",
+          "streak-3",
+          "piggy",
+          "five-baskets",
+          "first-lesson"
+        ]
+      },
+      {
+        "progress": {
+          "guesses": [
+            {
+              "s": "A",
+              "d": "2026-01-01",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            },
+            {
+              "s": "B",
+              "d": "2026-01-02",
+              "pick": "beat",
+              "at": "x",
+              "result": "wrong"
+            },
+            {
+              "s": "C",
+              "d": "2026-01-03",
+              "pick": "beat",
+              "at": "x",
+              "result": "right"
+            }
+          ],
+          "lessons": [
+            "money",
+            "earn",
+            "needs",
+            "budget",
+            "company",
+            "profit",
+            "grow",
+            "share",
+            "owner",
+            "market",
+            "prices",
+            "ticker",
+            "report-card",
+            "guess",
+            "beat",
+            "after",
+            "saving",
+            "interest",
+            "snowball",
+            "risk",
+            "which",
+            "dividend",
+            "no-dividend",
+            "replant",
+            "baskets",
+            "patience",
+            "hype",
+            "too-good"
+          ],
+          "piggy": false,
+          "piggyCount": 0
+        },
+        "totalLessons": 28,
+        "out": [
+          "first-guess",
+          "good-guess",
+          "first-lesson",
+          "half-school",
+          "all-school"
+        ]
+      }
+    ],
+    "fkGrade": [
+      {
+        "text": "A share is a tiny piece of a company.",
+        "out": 3.653333333333336
+      },
+      {
+        "text": "Consensus estimates incorporate analysts' expectations regarding quarterly profitability and operational efficiency.",
+        "out": 30.536363636363635
+      },
+      {
+        "text": "Long ago, people traded things. A cow for some bread!",
+        "out": -0.6599999999999966
+      },
+      {
+        "text": "That was hard. What if the baker did not want a cow?",
+        "out": -0.4666666666666668
+      },
+      {
+        "text": "So people made money. Everyone agrees it is worth something.",
+        "out": 6.420000000000002
+      },
+      {
+        "text": "Grown-ups earn money by doing work. A cook cooks. A nurse helps sick people.",
+        "out": 0.5585714285714296
+      },
+      {
+        "text": "Kids can earn too! You can sell lemonade or help a neighbor.",
+        "out": 1.5
+      },
+      {
+        "text": "Earning takes time and work. That is why money matters.",
+        "out": 1.7000000000000028
+      },
+      {
+        "text": "A need is something you must have. Like food, a home and clothes.",
+        "out": 0.560384615384617
+      },
+      {
+        "text": "A want is something nice to have. Like a new game or candy.",
+        "out": 1.468076923076925
+      },
+      {
+        "text": "A budget is a plan for your money. You plan before you spend.",
+        "out": 1.468076923076925
+      },
+      {
+        "text": "Try three jars: Spend, Save and Share. Put some money in each one.",
+        "out": -0.347307692307691
+      },
+      {
+        "text": "When you see something fun, check your Spend jar first.",
+        "out": 2.4700000000000024
+      },
+      {
+        "text": "A company is a team of people. They work together to sell something.",
+        "out": 5.098846153846157
+      },
+      {
+        "text": "Some sell things you can hold, like shoes or toys. Some sell things you use, like games or videos.",
+        "out": 0.5360526315789471
+      },
+      {
+        "text": "When people buy what it sells, the company gets money. If it gets more than it spends, the extra is profit.",
+        "out": 3.6764285714285734
+      },
+      {
+        "text": "Money in is all the money a company gets from selling things.",
+        "out": 5.806666666666668
+      },
+      {
+        "text": "Money out is what it pays for. Workers, rent and supplies.",
+        "out": 1.5731818181818191
+      },
+      {
+        "text": "Money in minus money out is profit. If money out is bigger, that is a loss.",
+        "out": 3.7550000000000026
+      }
+    ],
+    "syllables": [
+      {
+        "word": "share",
+        "out": 1
+      },
+      {
+        "word": "company",
+        "out": 3
+      },
+      {
+        "word": "the",
+        "out": 1
+      },
+      {
+        "word": "profit",
+        "out": 2
+      },
+      {
+        "word": "money",
+        "out": 2
+      },
+      {
+        "word": "dividend",
+        "out": 3
+      },
+      {
+        "word": "beautiful",
+        "out": 4
+      },
+      {
+        "word": "rhythm",
+        "out": 1
+      },
+      {
+        "word": "make",
+        "out": 1
+      },
+      {
+        "word": "played",
+        "out": 1
+      },
+      {
+        "word": "Apple's",
+        "out": 2
+      }
+    ],
+    "ofTheDay": [
+      {
+        "today": "2026-10-31",
+        "salt": 0,
+        "n": 12,
+        "index": 9
+      },
+      {
+        "today": "2026-10-31",
+        "salt": 3,
+        "n": 12,
+        "index": 0
+      },
+      {
+        "today": "2026-11-01",
+        "salt": 0,
+        "n": 12,
+        "index": 10
+      },
+      {
+        "today": "2026-11-01",
+        "salt": 3,
+        "n": 12,
+        "index": 1
+      },
+      {
+        "today": "2027-03-15",
+        "salt": 0,
+        "n": 12,
+        "index": 0
+      },
+      {
+        "today": "2027-03-15",
+        "salt": 3,
+        "n": 12,
+        "index": 3
+      }
+    ],
+    "recap": [
+      {
+        "input": {
+          "guesses": [
+            {
+              "s": "AAPL",
+              "d": "2026-10-29",
+              "pick": "beat",
+              "at": "2026-10-27",
+              "result": "right"
+            },
+            {
+              "s": "DIS",
+              "d": "2026-11-05",
+              "pick": "beat",
+              "at": "2026-10-30"
+            },
+            {
+              "s": "KO",
+              "d": "2026-10-21",
+              "pick": "beat",
+              "at": "2026-10-20",
+              "result": "right"
+            }
+          ],
+          "lessonDates": {
+            "share": "2026-10-28",
+            "company": "2026-10-10"
+          },
+          "piggy": {
+            "started": "2026-10-20",
+            "history": {
+              "2026-10-20": 1000,
+              "2026-10-26": 1010,
+              "2026-10-30": 1024.14
+            }
+          },
+          "points": 42,
+          "level": 1
+        },
+        "today": "2026-10-31",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-10-31",
+          "label": "This week",
+          "guesses": 2,
+          "right": 1,
+          "waiting": 1,
+          "lessons": 1,
+          "piggyPct": 1.4,
+          "level": 1,
+          "points": 42,
+          "active": true
+        },
+        "lines": [
+          "You made 2 guesses.",
+          "You got 1 right! 🎉",
+          "You finished 1 lesson at Moon School.",
+          "Your pretend piggy bank went up 1.4%.",
+          "You are a Crescent Moon now, with 42 points."
+        ],
+        "query": "g=2&r=1&l=1&lv=1&p=1.4"
+      },
+      {
+        "input": {
+          "guesses": [
+            {
+              "s": "NKE",
+              "d": "2026-10-30",
+              "pick": "beat",
+              "at": "2026-10-28",
+              "result": "wrong"
+            }
+          ],
+          "lessonDates": {},
+          "piggy": null,
+          "points": 12,
+          "level": 0
+        },
+        "today": "2026-11-02",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-11-01",
+          "label": "Last week",
+          "guesses": 1,
+          "right": 0,
+          "waiting": 0,
+          "lessons": 0,
+          "piggyPct": null,
+          "level": 0,
+          "points": 12,
+          "active": true
+        },
+        "lines": [
+          "You made 1 guess.",
+          "None were right yet. Even experts miss a lot!",
+          "You are a New Moon now, with 12 points."
+        ],
+        "query": "g=1&r=0&l=0&lv=0"
+      },
+      {
+        "input": {
+          "guesses": [],
+          "lessonDates": {},
+          "piggy": null,
+          "points": 0,
+          "level": 0
+        },
+        "today": "2026-11-04",
+        "out": null,
+        "lines": null,
+        "query": null
+      },
+      {
+        "input": {
+          "guesses": [],
+          "lessonDates": {},
+          "piggy": {
+            "started": "2026-10-31",
+            "history": {
+              "2026-10-31": 1000
+            }
+          },
+          "points": 5,
+          "level": 0
+        },
+        "today": "2026-10-31",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-10-31",
+          "label": "This week",
+          "guesses": 0,
+          "right": 0,
+          "waiting": 0,
+          "lessons": 0,
+          "piggyPct": null,
+          "level": 0,
+          "points": 5,
+          "active": false
+        },
+        "lines": [
+          "You are a New Moon now, with 5 points."
+        ],
+        "query": "g=0&r=0&l=0&lv=0"
+      }
+    ],
+    "recapWeek": [
+      {
+        "today": "2026-10-26",
+        "out": {
+          "from": "2026-10-19",
+          "to": "2026-10-25",
+          "label": "Last week"
+        }
+      },
+      {
+        "today": "2026-10-29",
+        "out": null
+      },
+      {
+        "today": "2026-10-30",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-10-30",
+          "label": "This week"
+        }
+      },
+      {
+        "today": "2026-10-31",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-10-31",
+          "label": "This week"
+        }
+      },
+      {
+        "today": "2026-11-01",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-11-01",
+          "label": "This week"
+        }
+      },
+      {
+        "today": "2026-11-02",
+        "out": {
+          "from": "2026-10-26",
+          "to": "2026-11-01",
+          "label": "Last week"
+        }
+      },
+      {
+        "today": "2026-11-04",
+        "out": null
+      }
+    ],
+    "leagueEncode": [
+      {
+        "player": {
+          "emoji": 0,
+          "guesses": []
+        },
+        "code": "MOON-107"
+      },
+      {
+        "player": {
+          "emoji": 3,
+          "guesses": [
+            {
+              "s": "AAPL",
+              "d": "2026-10-29",
+              "pick": "beat",
+              "price": "up"
+            },
+            {
+              "s": "DIS",
+              "d": "2026-11-12",
+              "pick": "miss"
+            },
+            {
+              "s": "TSLA",
+              "d": "2026-10-21",
+              "pick": "beat",
+              "price": "down"
+            }
+          ]
+        },
+        "code": "MOON-1302-EW32-B9M2-9AC"
+      },
+      {
+        "player": {
+          "emoji": 7,
+          "guesses": [
+            {
+              "s": "DIS",
+              "d": "2026-01-01",
+              "pick": "beat"
+            },
+            {
+              "s": "MCD",
+              "d": "2026-02-02",
+              "pick": "miss"
+            },
+            {
+              "s": "NKE",
+              "d": "2026-03-03",
+              "pick": "beat"
+            },
+            {
+              "s": "AAPL",
+              "d": "2026-04-04",
+              "pick": "miss"
+            },
+            {
+              "s": "MSFT",
+              "d": "2026-05-05",
+              "pick": "beat"
+            },
+            {
+              "s": "RBLX",
+              "d": "2026-06-06",
+              "pick": "miss"
+            },
+            {
+              "s": "SONY",
+              "d": "2026-07-07",
+              "pick": "beat"
+            },
+            {
+              "s": "HAS",
+              "d": "2026-08-08",
+              "pick": "miss"
+            },
+            {
+              "s": "KO",
+              "d": "2026-09-09",
+              "pick": "beat"
+            },
+            {
+              "s": "PEP",
+              "d": "2026-10-10",
+              "pick": "miss"
+            },
+            {
+              "s": "NFLX",
+              "d": "2026-11-11",
+              "pick": "beat"
+            },
+            {
+              "s": "GOOGL",
+              "d": "2026-12-12",
+              "pick": "miss"
+            },
+            {
+              "s": "AMZN",
+              "d": "2026-01-13",
+              "pick": "beat"
+            },
+            {
+              "s": "WMT",
+              "d": "2026-02-14",
+              "pick": "miss"
+            },
+            {
+              "s": "TGT",
+              "d": "2026-03-15",
+              "pick": "beat"
+            },
+            {
+              "s": "SBUX",
+              "d": "2026-04-16",
+              "pick": "miss"
+            },
+            {
+              "s": "CMG",
+              "d": "2026-05-17",
+              "pick": "beat"
+            },
+            {
+              "s": "HSY",
+              "d": "2026-06-18",
+              "pick": "miss"
+            },
+            {
+              "s": "TTWO",
+              "d": "2026-07-19",
+              "pick": "beat"
+            },
+            {
+              "s": "SPOT",
+              "d": "2026-08-20",
+              "pick": "miss"
+            },
+            {
+              "s": "TSLA",
+              "d": "2026-09-21",
+              "pick": "beat"
+            }
+          ]
+        },
+        "code": "MOON-17B2-PCA2-EG92-6MM2-1R81-YRK1-SW71-PWJ1-HR61-ERH1-A451-74G1-2040-Z0F0-TC30-QCE0-J820-F8D0-B410-84C0-303"
+      }
+    ],
+    "leagueDecode": [
+      {
+        "code": "MOON-107",
+        "out": {
+          "ok": true,
+          "player": {
+            "emoji": 0,
+            "guesses": []
+          }
+        }
+      },
+      {
+        "code": "MOON-1302-EW32-B9M2-9AC",
+        "out": {
+          "ok": true,
+          "player": {
+            "emoji": 3,
+            "guesses": [
+              {
+                "s": "DIS",
+                "d": "2026-11-12",
+                "pick": "miss"
+              },
+              {
+                "s": "AAPL",
+                "d": "2026-10-29",
+                "pick": "beat",
+                "price": "up"
+              },
+              {
+                "s": "TSLA",
+                "d": "2026-10-21",
+                "pick": "beat",
+                "price": "down"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "code": "MOON-17B2-PCA2-EG92-6MM2-1R81-YRK1-SW71-PWJ1-HR61-ERH1-A451-74G1-2040-Z0F0-TC30-QCE0-J820-F8D0-B410-84C0-303",
+        "out": {
+          "ok": true,
+          "player": {
+            "emoji": 7,
+            "guesses": [
+              {
+                "s": "GOOGL",
+                "d": "2026-12-12",
+                "pick": "miss"
+              },
+              {
+                "s": "NFLX",
+                "d": "2026-11-11",
+                "pick": "beat"
+              },
+              {
+                "s": "PEP",
+                "d": "2026-10-10",
+                "pick": "miss"
+              },
+              {
+                "s": "TSLA",
+                "d": "2026-09-21",
+                "pick": "beat"
+              },
+              {
+                "s": "KO",
+                "d": "2026-09-09",
+                "pick": "beat"
+              },
+              {
+                "s": "SPOT",
+                "d": "2026-08-20",
+                "pick": "miss"
+              },
+              {
+                "s": "HAS",
+                "d": "2026-08-08",
+                "pick": "miss"
+              },
+              {
+                "s": "TTWO",
+                "d": "2026-07-19",
+                "pick": "beat"
+              },
+              {
+                "s": "SONY",
+                "d": "2026-07-07",
+                "pick": "beat"
+              },
+              {
+                "s": "HSY",
+                "d": "2026-06-18",
+                "pick": "miss"
+              },
+              {
+                "s": "RBLX",
+                "d": "2026-06-06",
+                "pick": "miss"
+              },
+              {
+                "s": "CMG",
+                "d": "2026-05-17",
+                "pick": "beat"
+              },
+              {
+                "s": "MSFT",
+                "d": "2026-05-05",
+                "pick": "beat"
+              },
+              {
+                "s": "SBUX",
+                "d": "2026-04-16",
+                "pick": "miss"
+              },
+              {
+                "s": "AAPL",
+                "d": "2026-04-04",
+                "pick": "miss"
+              },
+              {
+                "s": "TGT",
+                "d": "2026-03-15",
+                "pick": "beat"
+              },
+              {
+                "s": "NKE",
+                "d": "2026-03-03",
+                "pick": "beat"
+              },
+              {
+                "s": "WMT",
+                "d": "2026-02-14",
+                "pick": "miss"
+              },
+              {
+                "s": "MCD",
+                "d": "2026-02-02",
+                "pick": "miss"
+              },
+              {
+                "s": "AMZN",
+                "d": "2026-01-13",
+                "pick": "beat"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "code": "moon 1302 ew32 b9m2 9ac",
+        "out": {
+          "ok": true,
+          "player": {
+            "emoji": 3,
+            "guesses": [
+              {
+                "s": "DIS",
+                "d": "2026-11-12",
+                "pick": "miss"
+              },
+              {
+                "s": "AAPL",
+                "d": "2026-10-29",
+                "pick": "beat",
+                "price": "up"
+              },
+              {
+                "s": "TSLA",
+                "d": "2026-10-21",
+                "pick": "beat",
+                "price": "down"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "code": "",
+        "out": {
+          "ok": false,
+          "why": "That doesn't look like a Moon Club code. It starts with MOON."
+        }
+      },
+      {
+        "code": "hello",
+        "out": {
+          "ok": false,
+          "why": "That doesn't look like a Moon Club code. It starts with MOON."
+        }
+      },
+      {
+        "code": "MOON-",
+        "out": {
+          "ok": false,
+          "why": "That code is too short or too long. Check every letter."
+        }
+      },
+      {
+        "code": "MOON-2X00",
+        "out": {
+          "ok": false,
+          "why": "That code is too short or too long. Check every letter."
+        }
+      },
+      {
+        "code": "MOON-1302-EW32-B9M2-9ACZ",
+        "out": {
+          "ok": false,
+          "why": "That code is too short or too long. Check every letter."
+        }
+      },
+      {
+        "code": "MOON-1A-ZZZZ-0",
+        "out": {
+          "ok": false,
+          "why": "One letter looks wrong. Check the code again."
+        }
+      },
+      {
+        "code": "MOON-1302-EW32-B9M2-9BC",
+        "out": {
+          "ok": false,
+          "why": "One letter looks wrong. Check the code again."
+        }
+      }
+    ],
+    "leagueRows": [
+      {
+        "players": [
+          {
+            "emoji": 3,
+            "guesses": [
+              {
+                "s": "AAPL",
+                "d": "2026-10-29",
+                "pick": "beat",
+                "price": "up"
+              },
+              {
+                "s": "DIS",
+                "d": "2026-11-12",
+                "pick": "miss"
+              },
+              {
+                "s": "TSLA",
+                "d": "2026-10-21",
+                "pick": "beat",
+                "price": "down"
+              }
+            ]
+          },
+          {
+            "emoji": 7,
+            "guesses": [
+              {
+                "s": "DIS",
+                "d": "2026-01-01",
+                "pick": "beat"
+              },
+              {
+                "s": "MCD",
+                "d": "2026-02-02",
+                "pick": "miss"
+              },
+              {
+                "s": "NKE",
+                "d": "2026-03-03",
+                "pick": "beat"
+              },
+              {
+                "s": "AAPL",
+                "d": "2026-04-04",
+                "pick": "miss"
+              },
+              {
+                "s": "MSFT",
+                "d": "2026-05-05",
+                "pick": "beat"
+              },
+              {
+                "s": "RBLX",
+                "d": "2026-06-06",
+                "pick": "miss"
+              },
+              {
+                "s": "SONY",
+                "d": "2026-07-07",
+                "pick": "beat"
+              },
+              {
+                "s": "HAS",
+                "d": "2026-08-08",
+                "pick": "miss"
+              },
+              {
+                "s": "KO",
+                "d": "2026-09-09",
+                "pick": "beat"
+              },
+              {
+                "s": "PEP",
+                "d": "2026-10-10",
+                "pick": "miss"
+              },
+              {
+                "s": "NFLX",
+                "d": "2026-11-11",
+                "pick": "beat"
+              },
+              {
+                "s": "GOOGL",
+                "d": "2026-12-12",
+                "pick": "miss"
+              },
+              {
+                "s": "AMZN",
+                "d": "2026-01-13",
+                "pick": "beat"
+              },
+              {
+                "s": "WMT",
+                "d": "2026-02-14",
+                "pick": "miss"
+              },
+              {
+                "s": "TGT",
+                "d": "2026-03-15",
+                "pick": "beat"
+              },
+              {
+                "s": "SBUX",
+                "d": "2026-04-16",
+                "pick": "miss"
+              },
+              {
+                "s": "CMG",
+                "d": "2026-05-17",
+                "pick": "beat"
+              },
+              {
+                "s": "HSY",
+                "d": "2026-06-18",
+                "pick": "miss"
+              },
+              {
+                "s": "TTWO",
+                "d": "2026-07-19",
+                "pick": "beat"
+              },
+              {
+                "s": "SPOT",
+                "d": "2026-08-20",
+                "pick": "miss"
+              },
+              {
+                "s": "TSLA",
+                "d": "2026-09-21",
+                "pick": "beat"
+              }
+            ]
+          }
+        ],
+        "limit": 10,
+        "out": [
+          {
+            "key": "GOOGL:2026-12-12",
+            "s": "GOOGL",
+            "d": "2026-12-12",
+            "picks": [
+              null,
+              {
+                "s": "GOOGL",
+                "d": "2026-12-12",
+                "pick": "miss"
+              }
+            ]
+          },
+          {
+            "key": "DIS:2026-11-12",
+            "s": "DIS",
+            "d": "2026-11-12",
+            "picks": [
+              {
+                "s": "DIS",
+                "d": "2026-11-12",
+                "pick": "miss"
+              },
+              null
+            ]
+          },
+          {
+            "key": "NFLX:2026-11-11",
+            "s": "NFLX",
+            "d": "2026-11-11",
+            "picks": [
+              null,
+              {
+                "s": "NFLX",
+                "d": "2026-11-11",
+                "pick": "beat"
+              }
+            ]
+          },
+          {
+            "key": "AAPL:2026-10-29",
+            "s": "AAPL",
+            "d": "2026-10-29",
+            "picks": [
+              {
+                "s": "AAPL",
+                "d": "2026-10-29",
+                "pick": "beat",
+                "price": "up"
+              },
+              null
+            ]
+          },
+          {
+            "key": "TSLA:2026-10-21",
+            "s": "TSLA",
+            "d": "2026-10-21",
+            "picks": [
+              {
+                "s": "TSLA",
+                "d": "2026-10-21",
+                "pick": "beat",
+                "price": "down"
+              },
+              null
+            ]
+          },
+          {
+            "key": "PEP:2026-10-10",
+            "s": "PEP",
+            "d": "2026-10-10",
+            "picks": [
+              null,
+              {
+                "s": "PEP",
+                "d": "2026-10-10",
+                "pick": "miss"
+              }
+            ]
+          },
+          {
+            "key": "TSLA:2026-09-21",
+            "s": "TSLA",
+            "d": "2026-09-21",
+            "picks": [
+              null,
+              {
+                "s": "TSLA",
+                "d": "2026-09-21",
+                "pick": "beat"
+              }
+            ]
+          },
+          {
+            "key": "KO:2026-09-09",
+            "s": "KO",
+            "d": "2026-09-09",
+            "picks": [
+              null,
+              {
+                "s": "KO",
+                "d": "2026-09-09",
+                "pick": "beat"
+              }
+            ]
+          },
+          {
+            "key": "SPOT:2026-08-20",
+            "s": "SPOT",
+            "d": "2026-08-20",
+            "picks": [
+              null,
+              {
+                "s": "SPOT",
+                "d": "2026-08-20",
+                "pick": "miss"
+              }
+            ]
+          },
+          {
+            "key": "HAS:2026-08-08",
+            "s": "HAS",
+            "d": "2026-08-08",
+            "picks": [
+              null,
+              {
+                "s": "HAS",
+                "d": "2026-08-08",
+                "pick": "miss"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "evenSplitDefault": {
+      "DIS": 340,
+      "RBLX": 330,
+      "HSY": 330
+    }
+  }
+}
