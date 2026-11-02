@@ -256,7 +256,7 @@ struct StoryWidgetView: View {
               .font(.system(.subheadline, design: .rounded).weight(.bold))
               .frame(maxWidth: .infinity, minHeight: 40)
               .foregroundStyle(.white)
-              .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Palette.wAccent))
+              .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Palette.accent))
           }
           .buttonStyle(.plain)
           .invalidatableContent()
@@ -396,7 +396,7 @@ struct SchoolWidgetView: View {
               .font(.system(.subheadline, design: .rounded).weight(.bold))
               .frame(maxWidth: .infinity, minHeight: 40)
               .foregroundStyle(.white)
-              .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Palette.wAccent))
+              .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Palette.accent))
           }
         }
       }

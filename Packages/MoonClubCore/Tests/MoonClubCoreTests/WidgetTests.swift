@@ -71,6 +71,14 @@ final class WidgetTests: XCTestCase {
     XCTAssertFalse(WidgetSnapshots.build(state: s, content: content, events: [], mood: nil, today: "2026-11-01").storyRead)
   }
 
+  func testStoryReadSurvivesSyncMerge() {
+    var a = KidsState(); a.readStory(today: "2026-10-31")
+    var b = KidsState(); b.readStory(today: "2026-11-01")
+    XCTAssertEqual(a.merged(with: b).storyRead, "2026-11-01")
+    XCTAssertEqual(b.merged(with: a).storyRead, "2026-11-01")
+    XCTAssertEqual(a.merged(with: KidsState()).storyRead, "2026-10-31")
+  }
+
   func testOldProgressFilesStillDecode() throws {
     let old = #"{"schema":1,"guesses":[],"lessons":[],"lessonDates":{},"seenBadges":[],"league":[],"quest":[],"questDone":false}"#
     XCTAssertNil(try JSONDecoder().decode(KidsState.self, from: Data(old.utf8)).storyRead)
