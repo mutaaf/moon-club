@@ -10,6 +10,6 @@ let package = Package(
   products: [.library(name: "MoonClubCore", targets: ["MoonClubCore"])],
   targets: [
     .target(name: "MoonClubCore", swiftSettings: [.swiftLanguageMode(.v5)]),
-    .testTarget(name: "MoonClubCoreTests", dependencies: ["MoonClubCore"], resources: [.copy("Resources/kids-content.json")], swiftSettings: [.swiftLanguageMode(.v5)]),
+    .testTarget(name: "MoonClubCoreTests", dependencies: ["MoonClubCore"], resources: [.copy("Resources/kids-content.json"), .copy("Resources/candles.json")], swiftSettings: [.swiftLanguageMode(.v5)]),
   ]
 )

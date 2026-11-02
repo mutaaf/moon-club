@@ -53,7 +53,15 @@ public enum Sync {
     r.recapSeen = maxOpt(a.recapSeen, o.recapSeen)
     r.storyRead = maxOpt(a.storyRead, o.storyRead) // latest day the Story was marked read (app or widget)
     r.league = mergeLeague(a.league, o.league)  // "me" is filtered where the league is shown (filtering here would break associativity)
+    r.stars = mergeStars(a.stars, o.stars)     // Market World: best stars per node (max is a semilattice)
     return r
+  }
+
+  static func mergeStars(_ a: [String: Int]?, _ b: [String: Int]?) -> [String: Int]? {
+    guard a != nil || b != nil else { return nil }
+    var m = a ?? [:]
+    for (k, v) in b ?? [:] { m[k] = max(m[k] ?? 0, v) }
+    return m
   }
 
   static func maxOpt<T: Comparable>(_ a: T?, _ b: T?) -> T? {

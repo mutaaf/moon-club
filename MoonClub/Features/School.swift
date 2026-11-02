@@ -17,7 +17,7 @@ struct SchoolView: View {
         if let next {
           NavigationLink(value: next) {
             HStack(spacing: 14) {
-              Text(next.emoji).font(.system(size: 34)).frame(width: 60, height: 60).background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 18))
+              Glyph(next.emoji, size: 56)
               VStack(alignment: .leading, spacing: 2) {
                 Text("UP NEXT · \(app.content.unit(of: next)?.title.uppercased() ?? "")").font(.kEyebrow).opacity(0.8)
                 Text(next.title).font(.kTitle)
@@ -36,15 +36,15 @@ struct SchoolView: View {
           let n = ls.filter { done.contains($0.id) }.count
           VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-              Text(u.emoji).font(.system(size: 30))
+              Glyph(u.emoji, size: 40)
               VStack(alignment: .leading) { Text(u.title).font(.kTitle); Text(u.blurb).font(.caption).foregroundStyle(.secondary) }
               Spacer()
-              Text(n == ls.count ? "🌕" : "\(n)/\(ls.count)").font(n == ls.count ? .title2 : .caption.monospaced()).padding(.horizontal, 10).padding(.vertical, 4).background(.thinMaterial, in: Capsule())
+              Text(n == ls.count ? "Done" : "\(n)/\(ls.count)").font(.caption.monospaced().weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 4).background(.thinMaterial, in: Capsule())
             }
             ForEach(ls) { l in
               NavigationLink(value: l) {
                 HStack(spacing: 12) {
-                  Text(l.emoji).font(.system(size: 26)).frame(width: 44)
+                  Glyph(l.emoji, size: 40).frame(width: 44)
                   VStack(alignment: .leading, spacing: 2) { Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink); Text("\(l.steps.count) steps · 1 min").font(.caption).foregroundStyle(.secondary) }
                   Spacer()
                   MoonPhase(phase: done.contains(l.id) ? 4 : 0, size: 24)
@@ -139,39 +139,53 @@ struct LessonPlayer: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
   /// iPhone Duo: closing the phone on a finished lesson tucks Luna in for the night.
   @State private var tucked = false
+  /// The card fills the screen at least (measured), and grows past it only for very large text.
+  @State private var cardMin: CGFloat = 420
 
   var body: some View {
-    VStack(spacing: 18) {
-      HStack(spacing: 5) {
-        ForEach(lesson.steps.indices, id: \.self) { i in
-          Capsule().fill(i < step ? (isQuiz(i) ? Palette.good : Palette.accent) : i == step ? Palette.accent.opacity(0.4) : Palette.line).frame(height: 6)
+    // No card ever scrolls inside itself: the card grows to its content (and at least fills the screen),
+    // and only the page scrolls if the reader's text size needs it. The buttons stay pinned at the bottom.
+    GeometryReader { geo in
+      ScrollView {
+        VStack(spacing: 18) {
+          HStack(spacing: 5) {
+            ForEach(lesson.steps.indices, id: \.self) { i in
+              Capsule().fill(i < step ? (isQuiz(i) ? Palette.good : Palette.accent) : i == step ? Palette.accent.opacity(0.4) : Palette.line).frame(height: 6)
+            }
+          }
+          .animation(Motion.safe(Motion.card, rm), value: step)
+          .accessibilityLabel(done ? "Finished" : "Step \(step + 1) of \(lesson.steps.count)")
+
+          // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread — the story on the
+          // left page, the play on the right, never across the fold.
+          Storybook(minPage: 280, fill: false) {
+            card(art: true)
+          } first: {
+            storyPage
+          } second: {
+            card(art: false)
+          }
         }
+        .padding(.horizontal, 20).padding(.top, 12)
+        .readable(720)
       }
-      .animation(.snappy, value: step)
-      .accessibilityLabel(done ? "Finished" : "Step \(step + 1) of \(lesson.steps.count)")
-
-      // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread — the story on the
-      // left page, the play on the right, never across the fold.
-      Storybook(minPage: 280, fill: true) {
-        card(art: true)
-      } first: {
-        storyPage
-      } second: {
-        card(art: false)
-      }
-
+      .scrollBounceBehavior(.basedOnSize)
+      .onChange(of: geo.size.height, initial: true) { _, h in cardMin = max(260, h - 50) }
+    }
+    .safeAreaInset(edge: .bottom) {
       HStack(spacing: 12) {
         if done {
-          Button("All lessons") { dismiss() }.buttonStyle(SoftButtonStyle())
-          if let next = nextLesson { NavigationLink("Next lesson →", value: next).buttonStyle(PrimaryButtonStyle()) }
+          Button("Back") { dismiss() }.buttonStyle(SoftButtonStyle())
+          if let next = nextLesson { NavigationLink("Next lesson", value: next).buttonStyle(PrimaryButtonStyle()) }
         } else {
-          Button("← Back") { go(-1) }.buttonStyle(SoftButtonStyle()).disabled(step == 0)
-          Button(step == lesson.steps.count - 1 ? "Finish 🌕" : "Next →") { go(1) }.buttonStyle(PrimaryButtonStyle()).disabled(!ready)
+          Button { go(-1) } label: { Image(systemName: "chevron.left").font(.headline) }.buttonStyle(SoftButtonStyle()).disabled(step == 0).accessibilityLabel("Back")
+          Button(step == lesson.steps.count - 1 ? "Finish" : "Next") { go(1) }.buttonStyle(PrimaryButtonStyle()).disabled(!ready)
         }
       }
+      .padding(.horizontal, 20).padding(.vertical, 10)
+      .readable(720)
+      .background(.bar)
     }
-    .padding(20)
-    .readable(720)
     .background(AuroraField(surface: .school))
     .navigationTitle(lesson.title)
     .onAppear { LiveActivities.lesson(lesson, step: step) }
@@ -190,7 +204,7 @@ struct LessonPlayer: View {
       if done {
         VStack(spacing: 14) {
           if art { doneArt }
-          Text(tucked ? "Goodnight, Luna! 💤" : "Lesson done! 🎉").font(.kHero).multilineTextAlignment(.center)
+          Text(tucked ? "Goodnight, Luna!" : "Lesson done!").font(.kHero).multilineTextAlignment(.center)
           Text(tucked ? "Luna is tucked in. See you tomorrow for the next one!" : "You filled a moon and earned 10 points.").font(.kRead).multilineTextAlignment(.center)
         }
         .transition(.scale.combined(with: .opacity))
@@ -199,8 +213,9 @@ struct LessonPlayer: View {
           .transition(rm ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
       }
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .frame(maxWidth: .infinity)
     .padding(24)
+    .frame(minHeight: cardMin)
     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
     .overlay(Celebrate(trigger: burst))
   }
@@ -217,12 +232,11 @@ struct LessonPlayer: View {
       if done {
         doneArt
       } else if case let .say(emoji, _) = lesson.steps[step] {
-        Text(emoji).font(.system(size: 132)).accessibilityHidden(true)
-          .phaseAnimator([0.92, 1.0]) { v, p in v.scaleEffect(rm ? 1 : p) } animation: { _ in .spring(response: 0.6, dampingFraction: 0.55) }
+        Glyph(emoji, size: 156, style: .halo).enterOnce("say-\(lesson.id)-\(step)")
         Luna(size: 64, wave: true)
       } else if let said = lastSay {
         Eyebrow(text: "Luna said")
-        Text(said.emoji).font(.system(size: 72)).accessibilityHidden(true)
+        Glyph(said.emoji, size: 84, style: .halo)
         Text(said.text).font(.kRead).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
       } else {
         Luna(size: 96, wave: true)
@@ -231,8 +245,9 @@ struct LessonPlayer: View {
       Text(done ? lesson.title : "Page \(step + 1) of \(lesson.steps.count)").font(.kEyebrow).foregroundStyle(.secondary)
     }
     .id(done ? -1 : step)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .frame(maxWidth: .infinity)
     .padding(24)
+    .frame(minHeight: cardMin)
     .background(Palette.moon.opacity(0.35), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
     .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Palette.line.opacity(0.6), lineWidth: 0.5))
     .transition(.opacity)
@@ -258,16 +273,15 @@ struct LessonPlayer: View {
     case let .say(emoji, text):
       VStack(spacing: 22) {
         if art {
-          Text(emoji).font(.system(size: 96)).accessibilityHidden(true)
-            .phaseAnimator([0.9, 1.0]) { v, p in v.scaleEffect(rm ? 1 : p) } animation: { _ in .spring(response: 0.5, dampingFraction: 0.55) }
+          Glyph(emoji, size: 112, style: .halo)
         }
         Text(text).font(.system(.title2, design: .rounded).weight(.semibold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }
     case let .check(c):
-      ScrollView { CheckView(check: c, seed: step + lesson.id.count, picked: Binding(get: { answers[step] }, set: { answers[step] = $0 })) }
+      CheckView(check: c, seed: step + lesson.id.count, picked: Binding(get: { answers[step] }, set: { answers[step] = $0 }))
     case let .sort(q, buckets, items, why):
-      ScrollView { SortView(q: q, buckets: buckets, items: items, why: why, picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 })) }
+      SortView(q: q, buckets: buckets, items: items, why: why, picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }))
     }
   }
 }
@@ -317,7 +331,7 @@ struct SortView: View {
       ForEach(items.indices, id: \.self) { i in
         let it = items[i], p = picks[i]
         VStack(alignment: .leading, spacing: 8) {
-          HStack { Text(it.emoji); Text(it.text).font(.kHeadline); Spacer(); if let p { Text(p == it.b ? "✅" : "↩︎ \(buckets[it.b])").font(.subheadline.weight(.semibold)) } }
+          HStack { Glyph(it.emoji, size: 30); Text(it.text).font(.kHeadline); Spacer(); if let p { Text(p == it.b ? "✅" : "↩︎ \(buckets[it.b])").font(.subheadline.weight(.semibold)) } }
           HStack(spacing: 8) {
             ForEach(buckets.indices, id: \.self) { b in
               Button(buckets[b]) { withAnimation(.spring(response: 0.3)) { picks[i] = b } }.buttonStyle(SoftButtonStyle(selected: p == b))

@@ -320,7 +320,7 @@ struct SleepyLuna: View {
         // Closed, smiling eyes over Luna's open ones.
         HStack(spacing: size * 0.2) { lid; lid }.offset(y: -size * 0.045)
       }
-      Text("💤").font(.system(size: size * 0.32)).offset(x: size * 0.18, y: -size * 0.12)
+      Image(systemName: "moon.zzz.fill").font(.system(size: size * 0.26, weight: .bold)).foregroundStyle(Hue.grape.color).offset(x: size * 0.18, y: -size * 0.12)
     }
     .accessibilityHidden(true)
   }

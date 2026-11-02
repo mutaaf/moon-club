@@ -97,7 +97,7 @@ struct GameNightView: View {
           .accessibilityLabel("\(g.scores[p]) points")
       }
       HStack(spacing: 10) {
-        Text(co?.emoji ?? "").font(.system(size: 34)).accessibilityHidden(true)
+        Glyph(co?.emoji ?? "", size: 44)
         VStack(alignment: .leading, spacing: 2) {
           Text(co?.nick ?? round.s).font(.kTitle)
           Text(expectLine(round.report.eE)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
@@ -208,7 +208,7 @@ struct TVBoard: View {
           player(0, g)
           VStack(spacing: 10) {
             Text("ROUND \(g.index + 1) OF \(g.rounds.count)").font(.kEyebrow).foregroundStyle(.white.opacity(0.7))
-            Text(co?.emoji ?? "").font(.system(size: 120))
+            Glyph(co?.emoji ?? "", size: 132, style: .halo)
             Text(co?.nick ?? r.s).font(.system(size: 44, weight: .heavy, design: .rounded)).foregroundStyle(.white)
             if g.revealed, let a = g.answer {
               Text(a == .beat ? "BEAT! ⬆️" : "MISS! ⬇️").font(.system(size: 56, weight: .black, design: .rounded))

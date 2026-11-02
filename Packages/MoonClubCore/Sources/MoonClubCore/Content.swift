@@ -35,7 +35,8 @@ public enum Step: Codable, Hashable, Sendable {
     }
   }
 }
-public struct Check: Codable, Hashable, Sendable { public let q: String; public let options: [String]; public let answer: Int; public let why: String }
+public struct Check: Codable, Hashable, Sendable { public let q: String; public let options: [String]; public let answer: Int; public let why: String
+  public init(q: String, options: [String], answer: Int, why: String) { self.q = q; self.options = options; self.answer = answer; self.why = why } }
 public struct Lesson: Codable, Hashable, Sendable, Identifiable { public let id: String; public let unit: String; public let title: String; public let emoji: String; public let steps: [Step] }
 
 /// Any quest copy block: every field optional, so chapters can carry different words per stage.

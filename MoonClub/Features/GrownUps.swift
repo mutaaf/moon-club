@@ -167,7 +167,7 @@ struct LeagueSettings: View {
       if let msg { Text(msg.text).font(.callout).foregroundStyle(msg.ok ? Palette.good : Palette.bad) }
     }
     ForEach(app.state.leaguePlayers) { p in
-      HStack { Text("\(app.content.players[p.emoji]) \(app.content.playerNames[p.emoji]) · \(p.guesses.count) guesses"); Spacer(); Button("Remove", role: .destructive) { app.mutate { $0.removePlayer(p.emoji) } }.font(.caption) }
+      HStack { Glyph(app.content.players[p.emoji], size: 28); Text("\(app.content.playerNames[p.emoji]) · \(p.guesses.count) guesses"); Spacer(); Button("Remove", role: .destructive) { app.mutate { $0.removePlayer(p.emoji) } }.font(.caption) }
     }
   }
 }

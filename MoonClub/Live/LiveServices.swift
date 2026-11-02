@@ -27,6 +27,13 @@ private func get(_ path: String, _ query: [String: String] = [:]) async throws -
 
 // MARK: Market data — memory → disk → network, stale-while-revalidate, one in-flight per key.
 final class LiveMarketData: MarketDataSource, @unchecked Sendable {
+  /// Market World candles (kid-known companies, read-only public prices). Nil when offline: the bundled
+  /// year of candles keeps every game working.
+  static func kidsCandles(_ symbols: [String]) async -> CandleBundle? {
+    guard let d = try? await get("api/kids/candles", ["s": symbols.sorted().joined(separator: ",")]) else { return nil }
+    return try? JSONDecoder().decode(CandleBundle.self, from: d)
+  }
+
   private let cache = LayeredCache(disk: DiskLRU(dir: cacheDir("market"), capacity: 6 << 20))
   private let dec = JSONDecoder()
 

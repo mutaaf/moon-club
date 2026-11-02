@@ -22,7 +22,7 @@ struct MoonLiveActivity: Widget {
       return DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
           HStack(spacing: 8) {
-            Text(a.emoji).font(.system(size: 30))
+            Glyph(a.emoji, size: 38)
             VStack(alignment: .leading, spacing: 0) {
               Text(a.kind == .report ? "Report card" : "Moon School").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
               Text(a.title).font(.system(.headline, design: .rounded)).lineLimit(1).minimumScaleFactor(0.8)
@@ -38,12 +38,12 @@ struct MoonLiveActivity: Widget {
           LiveStatus(a: a, st: st, stale: context.isStale, big: true).padding(.horizontal, 4).padding(.top, 4)
         }
       } compactLeading: {
-        Text(a.emoji).font(.system(size: 16)).padding(.leading, 2)
+        Image(systemName: Art.spec(a.emoji).symbol).font(.system(size: 14, weight: .semibold)).foregroundStyle(Art.spec(a.emoji).hue.light).padding(.leading, 2)
       } compactTrailing: {
         CompactStatus(a: a, st: st, stale: context.isStale)
       } minimal: {
         if a.kind == .lesson { StepRing(step: st.step, steps: st.steps, done: st.done).padding(2) }
-        else { Text(context.isStale ? "✨" : a.emoji).font(.system(size: 14)) }
+        else { Image(systemName: context.isStale ? "sparkles" : Art.spec(a.emoji).symbol).font(.system(size: 13, weight: .semibold)).foregroundStyle(Art.spec(a.emoji).hue.light) }
       }
       .widgetURL(link(a))
       .keylineTint(Palette.accent)
@@ -62,7 +62,7 @@ struct LiveLockScreen: View {
     HStack(spacing: 14) {
       ZStack {
         Circle().fill(a.kind == .report ? Palette.mint : Palette.sky)
-        Text(a.emoji).font(.system(size: 28))
+        Glyph(a.emoji, size: 34)
       }
       .frame(width: 52, height: 52)
       VStack(alignment: .leading, spacing: 3) {
@@ -91,7 +91,7 @@ struct LiveStatus: View {
     switch a.kind {
     case .report:
       if stale || (st.reportAt.map { $0 <= .now } ?? false) {
-        Text("Results are in! Open Moon Club to see if you were right ✨").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.good).lineLimit(2)
+        Text("Results are in! Open Moon Club to see if you were right.").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.goodInk).lineLimit(2)
       } else if let t = st.reportAt {
         HStack(spacing: 6) {
           Image(systemName: "timer")
@@ -101,7 +101,7 @@ struct LiveStatus: View {
         .foregroundStyle(Palette.wAccent)
       }
     case .lesson:
-      if st.done { Text("Lesson done! 🌕 Nice work.").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.good) }
+      if st.done { Text("Lesson done! Nice work.").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.goodInk) }
       else { Text("Step \(min(st.step + 1, st.steps)) of \(st.steps) · tap to keep going").font(.subheadline).foregroundStyle(Palette.ink2) }
     }
   }

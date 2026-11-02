@@ -8,6 +8,7 @@ struct GuessView: View {
   @State private var bonus: [String: Direction] = [:]
   @State private var word: String?
   @State private var gameNight = false
+  @State private var showWords = false
 
   var body: some View {
     ScrollView {
@@ -25,7 +26,7 @@ struct GuessView: View {
         let guessed = Set(app.state.guesses.map { "\($0.s):\($0.d)" })
         let open = app.upcoming.filter { !guessed.contains($0.id) }.prefix(8)
         if app.loadingMarket && app.events.isEmpty { ProgressView().frame(maxWidth: .infinity, minHeight: 120) }
-        else if open.isEmpty { Card { Text("No new report cards from companies you know in the next three weeks. Try Moon School while you wait! 🎓").font(.kRead) } }
+        else if open.isEmpty { Card { Text("No new report cards from companies you know in the next three weeks. Explore Market World while you wait!").font(.kRead) } }
         else {
           ForEach(Array(open)) { e in upcomingCard(e).matchedGeometryEffect(id: e.id, in: ns) }
         }
@@ -46,7 +47,7 @@ struct GuessView: View {
   private var gameNightCard: some View {
     Button { gameNight = true } label: {
       HStack(spacing: 14) {
-        Text("🌙🚀").font(.system(size: 30)).accessibilityHidden(true)
+        Glyph("🚀", size: 48)
         VStack(alignment: .leading, spacing: 2) {
           Text("GAME NIGHT · 2 PLAYERS").font(.kEyebrow).opacity(0.8)
           Text("Play head to head").font(.kTitle)
@@ -63,19 +64,42 @@ struct GuessView: View {
     .accessibilityLabel("Game Night: play head to head with two players")
   }
 
+  /// How it works in three pictures (not a paragraph). The words live behind one button.
   private var intro: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text("Before a **company** shares its **report card**, grown-ups guess its **profit**. Will it **beat** that guess (do better) or **miss** (do worse)? Make your guess, then come back to see!").font(.kRead)
-      HStack { ReadAloud(source: .appCopy("Before a company shares its report card, grown-ups guess its profit. Will the company beat that guess, or miss? Make your guess, then come back to see.")); Spacer() }
-      WordChips(keys: ["company", "report", "profit", "beat", "miss"])
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .top, spacing: 10) {
+        step("🔮", "Grown-ups guess the profit")
+        step("🎯", "You pick beat or miss")
+        step("📝", "Come back for the result")
+      }
+      HStack(spacing: 10) {
+        ReadAloud(source: .appCopy("Before a company shares its report card, grown-ups guess its profit. Will the company beat that guess, or miss? Make your guess, then come back to see."))
+        Button { withAnimation(Motion.card) { showWords.toggle() } } label: {
+          Label(showWords ? "Hide words" : "Words", systemImage: "character.book.closed.fill").font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 14).frame(minHeight: 44).background(.thinMaterial, in: Capsule())
+        }
+        .buttonStyle(PressStyle())
+        Spacer(minLength: 0)
+      }
+      if showWords { WordChips(keys: ["company", "report", "profit", "beat", "miss"]).transition(.opacity.combined(with: .move(edge: .top))) }
     }
+  }
+  private func step(_ art: String, _ text: String) -> some View {
+    VStack(spacing: 8) {
+      Glyph(art, size: 46)
+      Text(text).font(.footnote.weight(.semibold)).multilineTextAlignment(.center).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 12).padding(.horizontal, 6)
+    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .accessibilityElement(children: .combine)
   }
 
   private func upcomingCard(_ e: EarningsEvent) -> some View {
     let co = app.companies[e.s]!
     return Card {
       HStack(spacing: 14) {
-        Text(co.emoji).font(.system(size: 44)).accessibilityHidden(true)
+        Glyph(co.emoji, size: 52)
         VStack(alignment: .leading, spacing: 2) { Text(co.nick).font(.kTitle); Text("\(co.hook) · report card \(kidWhen(e.d, e.h, today: app.today))").font(.caption).foregroundStyle(.secondary) }
       }
       Text(expectLine(e.eE)).font(.callout)
@@ -118,7 +142,7 @@ struct RevealRow: View {
     let res = resolveGuess(guess.pick, e?.report)
     Card(padding: 16) {
       HStack(alignment: .top, spacing: 12) {
-        Text(co?.emoji ?? "🏢").font(.system(size: 34))
+        Glyph(co?.emoji ?? "🏪", size: 44)
         VStack(alignment: .leading, spacing: 6) {
           Text(co?.nick ?? guess.s).font(.kHeadline)
           Text("You guessed **\(guess.pick == .beat ? "BEAT 👍" : "MISS 👎")**\(guess.price.map { " and price \($0 == .up ? "UP ⬆️" : "DOWN ⬇️")" } ?? "").").font(.subheadline)
@@ -178,13 +202,13 @@ struct LeagueBoard: View {
           GridRow {
             Text("Report card").font(.caption.weight(.semibold)).foregroundStyle(.secondary).gridColumnAlignment(.leading)
             ForEach(players.indices, id: \.self) { i in
-              VStack(spacing: 0) { Text(app.content.players[players[i].emoji]).font(.title2); if i == 0 { Text("YOU").font(.kEyebrow).foregroundStyle(.secondary) } }
+              VStack(spacing: 0) { Glyph(app.content.players[players[i].emoji], size: 32); if i == 0 { Text("YOU").font(.kEyebrow).foregroundStyle(.secondary) } }
                 .accessibilityLabel(i == 0 ? "You" : app.content.playerNames[players[i].emoji])
             }
           }
           ForEach(rows) { r in
             GridRow {
-              HStack(spacing: 6) { Text(app.companies[r.s]?.emoji ?? ""); VStack(alignment: .leading, spacing: 0) { Text(app.companies[r.s]?.nick ?? r.s).font(.subheadline.weight(.semibold)); Text(Day.en("MMM d", r.d)).font(.caption2.monospaced()).foregroundStyle(.secondary) } }
+              HStack(spacing: 6) { Glyph(app.companies[r.s]?.emoji ?? "", size: 28); VStack(alignment: .leading, spacing: 0) { Text(app.companies[r.s]?.nick ?? r.s).font(.subheadline.weight(.semibold)); Text(Day.en("MMM d", r.d)).font(.caption2.monospaced()).foregroundStyle(.secondary) } }
               ForEach(r.picks.indices, id: \.self) { i in
                 if let g = r.picks[i] {
                   let x = res(g)

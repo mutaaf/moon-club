@@ -27,13 +27,13 @@ struct PiggySetup: View {
   let cols = [GridItem(.adaptive(minimum: 104), spacing: 10)]
 
   var body: some View {
-    Text("You have **🌙 $1,000 pretend coins**. Pick up to 5 companies you know. Your coins buy pretend **shares** that follow their **real prices**, but it's all pretend. Nothing is bought for real.").font(.kRead)
+    Text("You have **$1,000 pretend coins**. Pick up to 5 companies you know. Your coins buy pretend **shares** that follow their **real prices**, but it's all pretend. Nothing is bought for real.").font(.kRead)
     HStack { ReadAloud(source: .appCopy("You have one thousand pretend coins. Pick up to five companies you know. Your coins will follow their real prices, but it's all pretend. Nothing is bought for real.")); Spacer() }
     LazyVGrid(columns: cols, spacing: 10) {
       ForEach(app.content.companies, id: \.s) { c in
         let on = picks.contains(c.s)
         Button { toggle(c.s) } label: {
-          VStack(spacing: 6) { Text(c.emoji).font(.system(size: 34)); Text(c.nick).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8) }
+          VStack(spacing: 6) { Glyph(c.emoji, size: 44); Text(c.nick).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8) }
             .frame(maxWidth: .infinity, minHeight: 92)
             .background(on ? Palette.lavender : Color.clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -53,7 +53,7 @@ struct PiggySetup: View {
         HStack { Text("Split your coins").font(.kTitle); Spacer(); PretendPill() }
         ForEach(picks, id: \.self) { s in
           HStack {
-            Text(app.companies[s]!.emoji); Text(app.companies[s]!.nick).font(.kHeadline)
+            Glyph(app.companies[s]!.emoji, size: 30); Text(app.companies[s]!.nick).font(.kHeadline)
             Spacer()
             Button { bump(s, -100) } label: { Image(systemName: "minus.circle.fill").font(.title) }.accessibilityLabel("100 fewer coins for \(app.companies[s]!.nick)")
             Ticker(value: Double(split[s] ?? 0), format: { coins($0) }, font: .kHeadline).frame(minWidth: 70)
@@ -116,7 +116,7 @@ struct PiggyBank: View {
       ReadAloud(source: .appCopy("Your pretend money today is \(Int(value)) coins. You started with one thousand."))
     }
     if loaded, let m = biggestMover(p.holdings, prices: prices), abs(m.change) >= 0.05, let co = app.companies[m.s] {
-      Text("\(co.emoji) **\(co.nick)** moved the most: \(m.change >= 0 ? "up" : "down") \(toFixed(abs(m.change), 1))% since you started. \(m.change >= 0 ? "Lots of people wanted its shares, so the price went up." : "More people were selling its shares, so the price went down. That's normal!")")
+      Text("**\(co.nick)** moved the most: \(m.change >= 0 ? "up" : "down") \(toFixed(abs(m.change), 1))% since you started. \(m.change >= 0 ? "Lots of people wanted its shares, so the price went up." : "More people were selling its shares, so the price went down. That's normal!")")
         .font(.callout).padding(14).background(Palette.moon.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
     }
     } second: {
@@ -124,7 +124,7 @@ struct PiggyBank: View {
       ForEach(p.holdings, id: \.s) { h in
         let c = holdingChange(h, price: prices[h.s])
         HStack(spacing: 12) {
-          Text(app.companies[h.s]?.emoji ?? "").font(.system(size: 30))
+          Glyph(app.companies[h.s]?.emoji ?? "", size: 40)
           VStack(alignment: .leading) { Text(app.companies[h.s]?.nick ?? h.s).font(.kHeadline); Text("You put in \(coins(h.coins))").font(.caption).foregroundStyle(.secondary) }
           Spacer()
           if !loaded || abs(c) < 0.05 { Text("New! 🌱").font(.subheadline).foregroundStyle(.secondary) }
@@ -134,7 +134,7 @@ struct PiggyBank: View {
       }
     }
     Card {
-      HStack(spacing: 6) { ForEach(p.holdings, id: \.s) { h in ZStack { Text("🧺").font(.system(size: 40)); Text(app.companies[h.s]?.emoji ?? "").offset(y: -6) } } }
+      HStack(spacing: 6) { ForEach(p.holdings, id: \.s) { h in Glyph(app.companies[h.s]?.emoji ?? "", size: 36) } }
       Text(basketTip(p.holdings.count)).font(.callout)
     }
     Button(confirm ? "Yes, empty it and start over" : "Start over with new pretend coins") {

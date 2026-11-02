@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-11-02T18:35:05.360Z",
+  "generated": "2026-11-02T19:32:06.547Z",
   "source": "github.com/mutaaf/metaphases shared/kids*.ts",
   "companies": [
     {
@@ -289,6 +289,60 @@
       "means": "A little of a company's profit, shared with each owner.",
       "example": "Own one slice. Get $1 when the company shares.",
       "play": "dividends:payout"
+    },
+    "candle": {
+      "word": "Candle",
+      "emoji": "🕯️",
+      "means": "A tiny picture of one day of a price.",
+      "example": "A green candle means the price ended higher that day."
+    },
+    "wick": {
+      "word": "Wick",
+      "emoji": "📊",
+      "means": "The thin line on a candle. It shows the highest and lowest price that day.",
+      "example": "A long wick means the price went far, then came back."
+    },
+    "trend": {
+      "word": "Trend",
+      "emoji": "🛤️",
+      "means": "The way a price is going over many days: up, down or sideways.",
+      "example": "Most days end higher, so the trend is up."
+    },
+    "support": {
+      "word": "Support (floor)",
+      "emoji": "🪜",
+      "means": "A low spot a price keeps bouncing up from.",
+      "example": "The price fell to $20 three times and bounced each time."
+    },
+    "resistance": {
+      "word": "Resistance (ceiling)",
+      "emoji": "🏠",
+      "means": "A high spot a price keeps stopping at.",
+      "example": "The price hit $50 twice and turned back down."
+    },
+    "breakout": {
+      "word": "Breakout",
+      "emoji": "🚀",
+      "means": "When a price pushes up through its ceiling.",
+      "example": "The ceiling was $50. Now it is $55. Lots of breakouts fail, too."
+    },
+    "pattern": {
+      "word": "Pattern",
+      "emoji": "🕵️",
+      "means": "A shape on a chart. It is a clue, not a promise.",
+      "example": "Two hills in a row is a pattern. The next day can still surprise you."
+    },
+    "volume": {
+      "word": "Volume",
+      "emoji": "🔊",
+      "means": "How many shares people traded in a day.",
+      "example": "Report card days often have big volume."
+    },
+    "average": {
+      "word": "Moving average",
+      "emoji": "〰️",
+      "means": "A smooth line made from the middle of the last few prices.",
+      "example": "It hides the wiggles, so the trend is easier to see."
     }
   },
   "quest": {
@@ -593,6 +647,30 @@
       "title": "Money-smart",
       "emoji": "🧠",
       "blurb": "Spread out, be patient, check facts."
+    },
+    {
+      "id": "candles",
+      "title": "Candles",
+      "emoji": "🕯️",
+      "blurb": "A whole day of a price in one tiny picture."
+    },
+    {
+      "id": "trends",
+      "title": "Trends",
+      "emoji": "🛤️",
+      "blurb": "Up, down or sideways over many days."
+    },
+    {
+      "id": "patterns",
+      "title": "Floors and ceilings",
+      "emoji": "⛰️",
+      "blurb": "Spots a price keeps bouncing off."
+    },
+    {
+      "id": "signals",
+      "title": "Busy days and smooth lines",
+      "emoji": "🌊",
+      "blurb": "Volume, averages and report-day jumps."
     }
   ],
   "lessons": [
@@ -1721,6 +1799,470 @@
           "why": "Big promises that are for sure are a red flag. Ask a grown-up."
         }
       ]
+    },
+    {
+      "id": "candle",
+      "unit": "candles",
+      "title": "What's a candle?",
+      "emoji": "🕯️",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🕯️",
+          "text": "A candle is a tiny picture of one day of a price."
+        },
+        {
+          "t": "say",
+          "emoji": "📊",
+          "text": "The fat part is the body. It shows where the price started and where it ended."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "Green means the price ended higher than it started. Red means it ended lower."
+        },
+        {
+          "t": "check",
+          "q": "A candle is green. What happened that day?",
+          "options": [
+            "The price ended higher",
+            "The price ended lower",
+            "Nothing at all"
+          ],
+          "answer": 0,
+          "why": "Green means it ended higher than it started."
+        }
+      ]
+    },
+    {
+      "id": "wicks",
+      "unit": "candles",
+      "title": "Wicks and colors",
+      "emoji": "📊",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🕯️",
+          "text": "The thin lines on the top and bottom are called wicks."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "The top of the wick is the highest price that day. The bottom is the lowest."
+        },
+        {
+          "t": "say",
+          "emoji": "🎢",
+          "text": "A long wick means the price went far, then came back."
+        },
+        {
+          "t": "check",
+          "q": "What does the top of the wick show?",
+          "options": [
+            "The highest price that day",
+            "The price next year",
+            "How many people own it"
+          ],
+          "answer": 0,
+          "why": "The top of the wick is the highest the price got that day."
+        },
+        {
+          "t": "sort",
+          "q": "Green or red candle?",
+          "buckets": [
+            "Green",
+            "Red"
+          ],
+          "items": [
+            {
+              "emoji": "👍",
+              "text": "Starts at $5, ends at $8",
+              "b": 0
+            },
+            {
+              "emoji": "👎",
+              "text": "Starts at $9, ends at $6",
+              "b": 1
+            },
+            {
+              "emoji": "👍",
+              "text": "Starts at $2, ends at $3",
+              "b": 0
+            },
+            {
+              "emoji": "👎",
+              "text": "Starts at $7, ends at $4",
+              "b": 1
+            }
+          ],
+          "why": "Ended higher is green. Ended lower is red."
+        }
+      ]
+    },
+    {
+      "id": "tug-of-war",
+      "unit": "candles",
+      "title": "Tug-of-war days",
+      "emoji": "🤝",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🤝",
+          "text": "Some days, buyers and sellers pull hard both ways, like a game of tug-of-war."
+        },
+        {
+          "t": "say",
+          "emoji": "🕯️",
+          "text": "The price goes way up and way down, but ends near where it started."
+        },
+        {
+          "t": "say",
+          "emoji": "📊",
+          "text": "That candle has a tiny body and long wicks on top and bottom."
+        },
+        {
+          "t": "check",
+          "q": "A candle has a tiny body and long wicks. What kind of day was it?",
+          "options": [
+            "A tug-of-war day",
+            "A calm day",
+            "A day with no trading"
+          ],
+          "answer": 0,
+          "why": "Long wicks and a tiny body mean the price swung both ways."
+        }
+      ]
+    },
+    {
+      "id": "trend",
+      "unit": "trends",
+      "title": "What's a trend?",
+      "emoji": "📈",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🛤️",
+          "text": "A trend is the way a price is going over many days."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "If most days end higher, the trend goes up."
+        },
+        {
+          "t": "say",
+          "emoji": "🎢",
+          "text": "If most days end lower, the trend goes down."
+        },
+        {
+          "t": "say",
+          "emoji": "〰️",
+          "text": "Prices wiggle every day. Look at the big picture, not one day."
+        },
+        {
+          "t": "check",
+          "q": "A price wiggles but keeps climbing for a month. The trend is…",
+          "options": [
+            "Up",
+            "Down",
+            "Sideways"
+          ],
+          "answer": 0,
+          "why": "It keeps climbing, so the trend is up, even with wiggles."
+        }
+      ]
+    },
+    {
+      "id": "sideways",
+      "unit": "trends",
+      "title": "Sideways days",
+      "emoji": "〰️",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "〰️",
+          "text": "Sometimes a price goes up, then down, then up again, but stays in the same place."
+        },
+        {
+          "t": "say",
+          "emoji": "🛤️",
+          "text": "That is a sideways trend. It is like walking on flat ground."
+        },
+        {
+          "t": "check",
+          "q": "A price starts at $10. After a month of wiggles it is still $10. The trend is…",
+          "options": [
+            "Sideways",
+            "Up",
+            "Down"
+          ],
+          "answer": 0,
+          "why": "It ended where it started, so it went sideways."
+        },
+        {
+          "t": "say",
+          "emoji": "🤞",
+          "text": "A trend shows what already happened. It does not promise what comes next."
+        },
+        {
+          "t": "check",
+          "q": "Does an up trend promise the price will keep going up?",
+          "options": [
+            "No, it can change",
+            "Yes, always"
+          ],
+          "answer": 0,
+          "why": "A trend can change any day. It is a clue, not a promise."
+        }
+      ]
+    },
+    {
+      "id": "zoom-out",
+      "unit": "trends",
+      "title": "Zoom out",
+      "emoji": "🔭",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🔭",
+          "text": "One day can look scary. Ten days can tell a calmer story."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "Zoom out to see more days. The trend is easier to spot."
+        },
+        {
+          "t": "say",
+          "emoji": "🐢",
+          "text": "People who invest for years look at years, not days."
+        },
+        {
+          "t": "check",
+          "q": "One red day in a month of green days. What is the trend?",
+          "options": [
+            "Still up",
+            "Now down",
+            "Sideways"
+          ],
+          "answer": 0,
+          "why": "One red day does not change a month of going up."
+        }
+      ]
+    },
+    {
+      "id": "floor-ceiling",
+      "unit": "patterns",
+      "title": "Floors and ceilings",
+      "emoji": "🪜",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🪜",
+          "text": "Sometimes a price keeps falling to the same low spot, then bounces. That spot is the floor."
+        },
+        {
+          "t": "say",
+          "emoji": "🏠",
+          "text": "Sometimes a price keeps stopping at the same high spot. That spot is the ceiling."
+        },
+        {
+          "t": "say",
+          "emoji": "🔤",
+          "text": "Grown-ups call the floor support. They call the ceiling resistance."
+        },
+        {
+          "t": "check",
+          "q": "A price keeps bouncing up from $20. What is $20?",
+          "options": [
+            "The floor",
+            "The ceiling",
+            "The wick"
+          ],
+          "answer": 0,
+          "why": "A spot it keeps bouncing up from is the floor."
+        }
+      ]
+    },
+    {
+      "id": "breakout",
+      "unit": "patterns",
+      "title": "Breakouts",
+      "emoji": "🚀",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🚀",
+          "text": "When a price pushes up through its ceiling, that is a breakout."
+        },
+        {
+          "t": "say",
+          "emoji": "🎢",
+          "text": "When a price falls through its floor, that is a breakdown."
+        },
+        {
+          "t": "say",
+          "emoji": "🤔",
+          "text": "Lots of breakouts fail. The price can fall right back. That is normal!"
+        },
+        {
+          "t": "check",
+          "q": "The ceiling was $50. Now the price is $55. What happened?",
+          "options": [
+            "A breakout",
+            "A breakdown",
+            "Nothing"
+          ],
+          "answer": 0,
+          "why": "It pushed up through the ceiling. That is a breakout."
+        }
+      ]
+    },
+    {
+      "id": "clues",
+      "unit": "patterns",
+      "title": "Clues, not promises",
+      "emoji": "🤞",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🕵️",
+          "text": "Shapes on a chart are clues. They show what happened before."
+        },
+        {
+          "t": "say",
+          "emoji": "🤞",
+          "text": "A clue is not a promise. News and surprises can change the price fast."
+        },
+        {
+          "t": "say",
+          "emoji": "🙋",
+          "text": "People who know a lot still guess wrong. That is normal."
+        },
+        {
+          "t": "check",
+          "q": "A chart shows a shape you know. What does it mean?",
+          "options": [
+            "It is a clue, not a promise",
+            "The price must go up",
+            "Buy right now"
+          ],
+          "answer": 0,
+          "why": "A shape is only a clue. Nobody knows for sure what comes next."
+        },
+        {
+          "t": "check",
+          "q": "Who knows for sure what a price will do next?",
+          "options": [
+            "Nobody",
+            "A video",
+            "My friend"
+          ],
+          "answer": 0,
+          "why": "Nobody can know for sure. Not even experts."
+        }
+      ]
+    },
+    {
+      "id": "volume",
+      "unit": "signals",
+      "title": "Volume",
+      "emoji": "🔊",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "🔊",
+          "text": "Volume means how many shares people traded in a day."
+        },
+        {
+          "t": "say",
+          "emoji": "📣",
+          "text": "A busy day has lots of trading. A quiet day has a little."
+        },
+        {
+          "t": "say",
+          "emoji": "📝",
+          "text": "Report card days are often busy. Lots of people react to the news."
+        },
+        {
+          "t": "check",
+          "q": "What does volume tell you?",
+          "options": [
+            "How many shares were traded",
+            "How loud the market is",
+            "The price next week"
+          ],
+          "answer": 0,
+          "why": "Volume counts how many shares changed hands."
+        }
+      ]
+    },
+    {
+      "id": "moving-average",
+      "unit": "signals",
+      "title": "The smooth line",
+      "emoji": "〰️",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "〰️",
+          "text": "Prices zig and zag. That can make the trend hard to see."
+        },
+        {
+          "t": "say",
+          "emoji": "➕",
+          "text": "A moving average takes the last few prices and finds the middle."
+        },
+        {
+          "t": "say",
+          "emoji": "📈",
+          "text": "That makes a smooth line. It helps you see the trend."
+        },
+        {
+          "t": "check",
+          "q": "Why do people use a moving average?",
+          "options": [
+            "To see the trend more easily",
+            "To make the price go up",
+            "To count shares"
+          ],
+          "answer": 0,
+          "why": "The smooth line hides the wiggles, so the trend is easier to see."
+        }
+      ]
+    },
+    {
+      "id": "report-jump",
+      "unit": "signals",
+      "title": "Report-day jumps",
+      "emoji": "🎢",
+      "steps": [
+        {
+          "t": "say",
+          "emoji": "📝",
+          "text": "On report card day, a price can jump up or drop down fast."
+        },
+        {
+          "t": "say",
+          "emoji": "👍",
+          "text": "A beat can make a price jump. But not always!"
+        },
+        {
+          "t": "say",
+          "emoji": "😮",
+          "text": "Sometimes a company beats and the price still drops. People wanted even more."
+        },
+        {
+          "t": "check",
+          "q": "A company beat the guess. Will the price always go up?",
+          "options": [
+            "No, not always",
+            "Yes, always"
+          ],
+          "answer": 0,
+          "why": "Not always. People may have wanted even more."
+        }
+      ]
     }
   ],
   "badges": [
@@ -2826,12 +3368,24 @@
             "baskets",
             "patience",
             "hype",
-            "too-good"
+            "too-good",
+            "candle",
+            "wicks",
+            "tug-of-war",
+            "trend",
+            "sideways",
+            "zoom-out",
+            "floor-ceiling",
+            "breakout",
+            "clues",
+            "volume",
+            "moving-average",
+            "report-jump"
           ],
           "piggy": false,
           "piggyCount": 0
         },
-        "out": 306
+        "out": 426
       }
     ],
     "badgesFor": [
@@ -2842,7 +3396,7 @@
           "piggy": false,
           "piggyCount": 0
         },
-        "totalLessons": 28,
+        "totalLessons": 40,
         "out": []
       },
       {
@@ -2853,7 +3407,7 @@
           "piggyCount": 0,
           "quest": true
         },
-        "totalLessons": 28,
+        "totalLessons": 40,
         "out": [
           "lemonade"
         ]
@@ -2891,7 +3445,7 @@
           "piggy": true,
           "piggyCount": 5
         },
-        "totalLessons": 28,
+        "totalLessons": 40,
         "out": [
           "first-guess",
           "good-guess",
@@ -2954,12 +3508,24 @@
             "baskets",
             "patience",
             "hype",
-            "too-good"
+            "too-good",
+            "candle",
+            "wicks",
+            "tug-of-war",
+            "trend",
+            "sideways",
+            "zoom-out",
+            "floor-ceiling",
+            "breakout",
+            "clues",
+            "volume",
+            "moving-average",
+            "report-jump"
           ],
           "piggy": false,
           "piggyCount": 0
         },
-        "totalLessons": 28,
+        "totalLessons": 40,
         "out": [
           "first-guess",
           "good-guess",

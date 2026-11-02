@@ -13,6 +13,9 @@ enum Palette {
   static let sky = Color(hex: 0xDFE8FF)
   static let good = Color(hex: 0x1F7A4D)
   static let bad = Color(hex: 0xB4472F)
+  /// Text / line versions that keep AA contrast on dark backgrounds too.
+  static let goodInk = Color(light: 0x1F7A4D, dark: 0x6BDCA6)
+  static let badInk = Color(light: 0xB4472F, dark: 0xFF9480)
   static let blush = Color(hex: 0xFF9FB0)
   static let paper = Color(light: 0xFBFAF7, dark: 0x0F0E22)
   static let card = Color(light: 0xFFFFFF, dark: 0x1D1C3D)

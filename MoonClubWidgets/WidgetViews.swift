@@ -38,7 +38,7 @@ struct ReportWidgetView: View {
   func small(_ r: WidgetSnapshot.Report, chip: Bool = true) -> some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .top) {
-        Text(r.emoji).font(.system(size: 34))
+        Glyph(r.emoji, size: 40)
         Spacer(minLength: 4)
         if chip, let p = r.pick { PickChip(pick: p) }
       }
@@ -51,9 +51,18 @@ struct ReportWidgetView: View {
     .accessibilityElement(children: .combine)
   }
 
+  /// Balanced halves: who and when on the left (art, name, time, centered), the question and buttons
+  /// on the right. (The small layout's spacer left the left half mostly empty here.)
   func medium(_ r: WidgetSnapshot.Report) -> some View {
-    HStack(spacing: 14) {
-      small(r, chip: false) // the filled button already shows the pick
+    HStack(alignment: .center, spacing: 14) {
+      VStack(alignment: .leading, spacing: 4) {
+        Glyph(r.emoji, size: 44)
+        WEyebrow(text: "Report card").padding(.top, 4)
+        Text(r.nick).font(.kTitle).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+        WhenLine(report: r, entry: entry, compact: true)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+      .accessibilityElement(children: .combine)
       VStack(alignment: .leading, spacing: 8) {
         Text(question(r)).font(.system(.subheadline, design: .rounded).weight(.semibold)).foregroundStyle(Palette.ink)
           .lineLimit(2).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
@@ -75,7 +84,7 @@ struct ReportWidgetView: View {
       }
       ForEach(entry.snap.reports.prefix(4)) { r in
         HStack(spacing: 10) {
-          Text(r.emoji).font(.system(size: 26)).frame(width: 34)
+          Glyph(r.emoji, size: 32).frame(width: 34)
           VStack(alignment: .leading, spacing: 1) {
             Text(r.nick).font(.kHeadline).foregroundStyle(Palette.ink).lineLimit(1)
             WhenLine(report: r, entry: entry, compact: true)
@@ -93,7 +102,7 @@ struct ReportWidgetView: View {
 
   func rect(_ r: WidgetSnapshot.Report) -> some View {
     VStack(alignment: .leading, spacing: 1) {
-      HStack(spacing: 4) { Text(r.emoji); Text(r.nick).font(.headline).lineLimit(1).widgetAccentable() }
+      HStack(spacing: 4) { Image(systemName: Art.spec(r.emoji).symbol); Text(r.nick).font(.headline).lineLimit(1).widgetAccentable() }
       WhenLine(report: r, entry: entry, compact: true)
       Text(r.pick.map { "You said \($0 == .beat ? "beat" : "miss")" } ?? "Tap to guess").font(.caption).foregroundStyle(.secondary)
     }
@@ -104,7 +113,7 @@ struct ReportWidgetView: View {
     ZStack {
       AccessoryWidgetBackground()
       VStack(spacing: 0) {
-        Text(r.emoji).font(.system(size: 20))
+        Image(systemName: Art.spec(r.emoji).symbol).font(.system(size: 17, weight: .semibold))
         switch ReportClock.phase(r, today: entry.today, now: entry.date) {
         case .later(let d): Text(d == 1 ? "1 day" : "\(d) days").font(.system(.caption2, design: .rounded).weight(.bold))
         case .resultsIn: Text("In!").font(.system(.caption2, design: .rounded).weight(.bold))
@@ -117,7 +126,7 @@ struct ReportWidgetView: View {
   }
 
   func inline(_ r: WidgetSnapshot.Report) -> some View {
-    Text("\(r.emoji) \(r.nick) · \(kidWhen(r.d, r.h, today: entry.today))")
+    Text("\(Image(systemName: Art.spec(r.emoji).symbol)) \(r.nick) · \(kidWhen(r.d, r.h, today: entry.today))")
   }
 
   func question(_ r: WidgetSnapshot.Report) -> String {
@@ -140,7 +149,7 @@ struct PickButtons: View {
       ForEach(Pick.allCases, id: \.self) { p in
         let on = report.pick == p
         Button(intent: GuessReportIntent(symbol: report.s, day: report.d, pick: p)) {
-          Text(compact ? (p == .beat ? "👍 Beat" : "👎 Miss") : (p == .beat ? "Beat 👍" : "Miss 👎"))
+          Label(p == .beat ? "Beat" : "Miss", systemImage: p == .beat ? "hand.thumbsup.fill" : "hand.thumbsdown.fill")
             .font(.system(compact ? .caption : .subheadline, design: .rounded).weight(.bold))
             .lineLimit(1).minimumScaleFactor(0.8)
             .frame(maxWidth: .infinity, minHeight: height)
@@ -205,11 +214,11 @@ struct StoryWidgetView: View {
           }
           .gaugeStyle(.accessoryCircular).widgetAccentable()
           .accessibilityLabel("Market weather: \(w.title)")
-        default: Text("\(w.emoji) Market weather: \(w.title)")
+        default: Text("\(Image(systemName: WFormat.weatherSymbol(w.icon))) Market weather: \(w.title)")
         }
       } else {
         switch family {
-        case .accessoryInline: Text("🌙 Check today's market weather")
+        case .accessoryInline: Text("\(Image(systemName: "moon.fill")) Check today's market weather")
         case .accessoryCircular: ZStack { AccessoryWidgetBackground(); Image(systemName: "cloud.sun").widgetAccentable() }
         case .accessoryRectangular: VStack(alignment: .leading) { Text("Market weather").font(.headline); Text("Open Moon Club to check").font(.caption) }.frame(maxWidth: .infinity, alignment: .leading)
         default:
@@ -230,7 +239,7 @@ struct StoryWidgetView: View {
       HStack(alignment: .top) {
         Image(systemName: WFormat.weatherSymbol(w.icon)).symbolRenderingMode(.multicolor).font(.system(size: 34))
         Spacer()
-        if entry.snap.storyRead { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.good).font(.title3).accessibilityLabel("Read today") }
+        if entry.snap.storyRead { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.goodInk).font(.title3).accessibilityLabel("Read today") }
       }
       Spacer(minLength: 6)
       WEyebrow(text: "Market weather")
@@ -248,7 +257,7 @@ struct StoryWidgetView: View {
         Text(w.line).font(.subheadline).foregroundStyle(Palette.ink).lineLimit(4).minimumScaleFactor(0.85).fixedSize(horizontal: false, vertical: true)
         Spacer(minLength: 0)
         if entry.snap.storyRead {
-          Label("Read today. Nice!", systemImage: "checkmark.circle.fill").font(.system(.subheadline, design: .rounded).weight(.bold)).foregroundStyle(Palette.good)
+          Label("Read today. Nice!", systemImage: "checkmark.circle.fill").font(.system(.subheadline, design: .rounded).weight(.bold)).foregroundStyle(Palette.goodInk)
             .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
         } else {
           Button(intent: ReadStoryIntent()) {
@@ -312,7 +321,7 @@ struct PiggyWidgetView: View {
       WEyebrow(text: "Pretend coins")
       Text(WFormat.coins(p.value)).font(.system(.title, design: .rounded).weight(.heavy)).foregroundStyle(Palette.ink)
         .lineLimit(1).minimumScaleFactor(0.6).contentTransition(.numericText(value: p.value))
-      Text("\(WFormat.pct(p.change)) since you started").font(.caption.weight(.semibold)).foregroundStyle(p.change >= 0 ? Palette.good : Palette.bad).lineLimit(1).minimumScaleFactor(0.8)
+      Text("\(WFormat.pct(p.change)) since you started").font(.caption.weight(.semibold)).foregroundStyle(p.change >= 0 ? Palette.goodInk : Palette.badInk).lineLimit(1).minimumScaleFactor(0.8)
     }
     .accessibilityElement(children: .combine)
   }
@@ -375,7 +384,7 @@ struct SchoolWidgetView: View {
 
   var small: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack(alignment: .top) { streakLine; Spacer(); Text(s.nextLesson?.emoji ?? "🌕").font(.system(size: 26)) }
+      HStack(alignment: .top) { streakLine; Spacer(); Glyph(s.nextLesson?.emoji ?? "🌕", size: 34) }
       Spacer(minLength: 6)
       WEyebrow(text: s.nextLesson == nil ? "All done" : "Next lesson")
       Text(s.nextLesson?.title ?? "You finished Moon School!").font(.kHeadline).foregroundStyle(Palette.ink).lineLimit(2).minimumScaleFactor(0.85).padding(.top, 2)
@@ -433,7 +442,7 @@ struct LunaWidgetView: View {
       case .accessoryCircular:
         ZStack { AccessoryWidgetBackground(); LunaMark.tonight(entry.date, size: 40, face: false).widgetAccentable() }
           .accessibilityLabel("Tonight's moon: \(phase.name)")
-      default: Text("\(phase.emoji) \(phase.name)")
+      default: Text("\(Image(systemName: "moon.fill")) \(phase.name)")
       }
     }
     .widgetURL(MoonLink.tab("luna"))

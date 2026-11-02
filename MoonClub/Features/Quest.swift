@@ -45,7 +45,7 @@ struct QuestView: View {
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) { Button { dismiss() } label: { Label("Close", systemImage: "xmark.circle.fill").font(.title2).symbolRenderingMode(.hierarchical) } }
         ToolbarItem(placement: .topBarLeading) {
-          Menu { ForEach(chapters) { c in Button("\(c.emoji) \(c.title)") { go(c.id, "intro") } } } label: { Label("Chapters", systemImage: "books.vertical") }
+          Menu { ForEach(chapters) { c in Button(c.title) { go(c.id, "intro") } } } label: { Label("Chapters", systemImage: "books.vertical") }
         }
       }
     }
@@ -76,19 +76,30 @@ struct QuestView: View {
     else { if chapter == "lemonade" { app.mutate { $0.finishLemonade() } }; stage = "done"; burst += 1 }
   }
 
+  /// Numbered stops joined by a line (one row at any width), with the current stop's name underneath —
+  /// instead of four word-chips that wrapped to two lines on a phone.
   private var stepper: some View {
-    HStack(spacing: 6) {
-      ForEach(stages, id: \.self) { s in
-        let i = stages.firstIndex(of: s)!, cur = stages.firstIndex(of: stage) ?? (stage == "done" ? stages.count : -1)
-        let did = app.state.quest.contains(chapter == "lemonade" ? s : "\(chapter):\(s)")
-        Button { stage = s } label: {
-          Text(title(s)).font(.caption.weight(.semibold)).lineLimit(2).multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 4)
-            .background(i == cur ? Palette.lavender : Color.clear, in: RoundedRectangle(cornerRadius: 14))
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(i == cur ? Palette.accent : did ? Palette.good.opacity(0.5) : Palette.line, lineWidth: i == cur ? 2 : 1))
-            .foregroundStyle(did ? Palette.good : Palette.ink)
-        }.buttonStyle(.plain)
+    let cur = stages.firstIndex(of: stage) ?? (stage == "done" ? stages.count : -1)
+    return VStack(alignment: .leading, spacing: 8) {
+      HStack(spacing: 0) {
+        ForEach(Array(stages.enumerated()), id: \.element) { i, s in
+          let did = app.state.quest.contains(chapter == "lemonade" ? s : "\(chapter):\(s)")
+          if i > 0 { Capsule().fill(i <= cur || did ? Palette.accent : Palette.line).frame(height: 3) }
+          Button { withAnimation(Motion.card) { stage = s } } label: {
+            ZStack {
+              Circle().fill(i == cur ? Palette.accent : did ? Palette.good : Palette.card).frame(width: 34, height: 34)
+              Circle().strokeBorder(i == cur ? Palette.accent : did ? Palette.good : Palette.line, lineWidth: 2).frame(width: 34, height: 34)
+              if did && i != cur { Image(systemName: "checkmark").font(.caption.weight(.heavy)).foregroundStyle(.white) }
+              else { Text("\(i + 1)").font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(i == cur ? .white : Palette.ink) }
+            }
+            .frame(width: 44, height: 44).contentShape(Rectangle())
+          }
+          .buttonStyle(PressStyle())
+          .accessibilityLabel("Step \(i + 1): \(title(s))\(did ? ", done" : "")")
+        }
+      }
+      if cur >= 0 && cur < stages.count {
+        Text("Step \(cur + 1) of \(stages.count) · \(title(stages[cur]))").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink2).lineLimit(1).minimumScaleFactor(0.8)
       }
     }
   }
@@ -111,7 +122,7 @@ struct QuestView: View {
         Text(chapter == "lemonade" ? q.finish : text.finish).font(.kRead).multilineTextAlignment(.center)
         ReadAloud(source: .appCopy(chapter == "lemonade" ? q.finish : text.finish))
         if let next = chapters.first(where: { !app.chaptersDone.contains($0.id) && $0.id != chapter }) {
-          Button("Next: \(next.emoji) \(next.title)") { go(next.id, "intro") }.buttonStyle(PrimaryButtonStyle())
+          Button("Next: \(next.title)") { go(next.id, "intro") }.buttonStyle(PrimaryButtonStyle())
         }
         Button("Back to the club") { dismiss() }.buttonStyle(SoftButtonStyle())
       }.frame(maxWidth: .infinity)
@@ -179,7 +190,7 @@ struct CompanyStage: View {
       .disabled(done)
       .sensoryFeedback(.impact(flexibility: .soft), trigger: cups)
       .accessibilityLabel("Sell a cup of lemonade. \(cups) of 10 sold")
-      HStack(spacing: 3) { ForEach(0..<10, id: \.self) { i in Text("🍋").opacity(i < cups ? 1 : 0.2).scaleEffect(i < cups ? 1.1 : 0.9) } }.animation(.spring, value: cups)
+      HStack(spacing: 3) { ForEach(0..<10, id: \.self) { i in Glyph("🍋", size: 26, style: .plain).opacity(i < cups ? 1 : 0.2).scaleEffect(i < cups ? 1.1 : 0.9) } }.animation(.spring, value: cups)
     }.frame(maxWidth: .infinity)
     VStack(spacing: 6) {
       row("💵 Money in", Double(cups), Palette.lavender)
@@ -358,7 +369,7 @@ struct ChooseStage: View {
     ForEach(items) { it in
       let p = picks[it.id]
       VStack(alignment: .leading, spacing: 8) {
-        HStack { Text(it.emoji).font(.title); Text(it.text).font(.kHeadline); Spacer() }
+        HStack { Glyph(it.emoji, size: 36); Text(it.text).font(.kHeadline); Spacer() }
         HStack(spacing: 8) {
           Button("🫙 Save") { withAnimation(.spring) { picks[it.id] = "save" } }.buttonStyle(SoftButtonStyle(selected: p == "save"))
           Button("🌳 Invest") { withAnimation(.spring) { picks[it.id] = "invest" } }.buttonStyle(SoftButtonStyle(selected: p == "invest"))
@@ -444,7 +455,7 @@ struct RealStage: View {
         let co = app.companies[c.s]
         let isFlipped = flipped.contains(c.s)
         VStack(spacing: 8) {
-          Text(co?.emoji ?? "").font(.system(size: 34)); Text(co?.nick ?? c.s).font(.kHeadline)
+          Glyph(co?.emoji ?? "", size: 40); Text(co?.nick ?? c.s).font(.kHeadline)
           if isFlipped {
             Text(c.pays ? "💰 Pays dividends" : "🚀 Grows instead").font(.subheadline.weight(.bold))
             Text("\(co?.nick ?? c.s) \((c.pays ? t.yes : t.no) ?? "")").font(.caption).multilineTextAlignment(.center)

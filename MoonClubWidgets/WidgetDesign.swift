@@ -11,13 +11,21 @@ import MoonClubCore
 /// light and dark. In tinted and clear modes the system removes it, and the content still reads.
 struct WidgetBackdrop: View {
   let surface: Surface
+  @Environment(\.colorScheme) private var scheme
   var body: some View {
     let c = surface.aurora
+    // Light: the surface's soft aurora on paper. Dark: a clean midnight with one faint glow — warm
+    // aurora tints over a dark base turned muddy (brown-purple) and cost text contrast.
     ZStack {
-      Palette.paper
-      RadialGradient(colors: [c[0].opacity(0.55), .clear], center: .topLeading, startRadius: 0, endRadius: 220)
-      RadialGradient(colors: [c[1].opacity(0.45), .clear], center: .bottomTrailing, startRadius: 0, endRadius: 200)
-      RadialGradient(colors: [c[2].opacity(0.30), .clear], center: .topTrailing, startRadius: 0, endRadius: 160)
+      if scheme == .dark {
+        LinearGradient(colors: [Color(hex: 0x1A1940), Color(hex: 0x100F26)], startPoint: .top, endPoint: .bottom)
+        RadialGradient(colors: [c[2].opacity(0.16), .clear], center: .topTrailing, startRadius: 0, endRadius: 200)
+      } else {
+        Palette.paper
+        RadialGradient(colors: [c[0].opacity(0.5), .clear], center: .topLeading, startRadius: 0, endRadius: 220)
+        RadialGradient(colors: [c[1].opacity(0.4), .clear], center: .bottomTrailing, startRadius: 0, endRadius: 200)
+        RadialGradient(colors: [c[2].opacity(0.28), .clear], center: .topTrailing, startRadius: 0, endRadius: 160)
+      }
     }
   }
 }
@@ -79,10 +87,10 @@ struct Sparkline: View {
         }
         if values.count > 1 {
           Path { p in for (i, v) in values.enumerated() { i == 0 ? p.move(to: pt(i, v)) : p.addLine(to: pt(i, v)) } }
-            .stroke(up ? Palette.good : Palette.bad, style: .init(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+            .stroke(up ? Palette.goodInk : Palette.badInk, style: .init(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
             .widgetAccentable()
           let last = pt(values.count - 1, values.last!)
-          Circle().fill(up ? Palette.good : Palette.bad).frame(width: 6, height: 6).position(last).widgetAccentable()
+          Circle().fill(up ? Palette.goodInk : Palette.badInk).frame(width: 6, height: 6).position(last).widgetAccentable()
         }
       }
     }
@@ -135,11 +143,11 @@ enum WFormat {
   }
 }
 
-/// "Beat 👍" / "Miss 👎": the kid's pick as a calm chip.
+/// The kid's pick as a calm chip (thumb symbols, not emoji).
 struct PickChip: View {
   let pick: Pick
   var body: some View {
-    Text(pick == .beat ? "Beat 👍" : "Miss 👎")
+    Label(pick == .beat ? "Beat" : "Miss", systemImage: pick == .beat ? "hand.thumbsup.fill" : "hand.thumbsdown.fill")
       .font(.system(.caption, design: .rounded).weight(.bold))
       .padding(.horizontal, 8).padding(.vertical, 4)
       .background(Capsule().fill(pick == .beat ? Palette.mint : Palette.peach))
@@ -164,7 +172,7 @@ struct WhenLine: View {
       .foregroundStyle(Palette.wAccent)
       .accessibilityLabel("Report card comes out \(t.formatted(date: .omitted, time: .shortened))")
     case .resultsIn:
-      Text("Results are in! ✨").font(.system(compact ? .caption : .subheadline, design: .rounded).weight(.bold)).foregroundStyle(Palette.good)
+      Label("Results are in!", systemImage: "sparkles").font(.system(compact ? .caption : .subheadline, design: .rounded).weight(.bold)).foregroundStyle(Palette.goodInk)
     case .today, .later:
       Text(WFormat.shortWhen(report.d, report.h, today: entry.today))
         .font(compact ? .caption : .subheadline).foregroundStyle(Palette.ink2).lineLimit(1).minimumScaleFactor(0.8)

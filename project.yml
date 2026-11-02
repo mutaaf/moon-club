@@ -60,6 +60,7 @@ targets:
       - MoonClubWidgets
       - Shared
       - MoonClub/Design/Theme.swift
+      - MoonClub/Design/Art.swift
     dependencies: [{ package: MoonClubCore }]
     entitlements:
       path: MoonClubWidgets/MoonClubWidgets.entitlements
