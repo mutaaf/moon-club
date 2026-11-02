@@ -8,7 +8,7 @@ struct PiggyView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        Hero(eyebrow: "Practice with pretend coins", title: "Pretend", accent: "Piggy Bank", emoji: "🐷")
+        Hero(eyebrow: "Practice with pretend coins", title: "Pretend", accent: "Piggy Bank", piggy: true)
         if app.state.piggy == nil { PiggySetup() } else { PiggyBank() }
       }
       .padding(20).readable()
@@ -95,6 +95,8 @@ struct PiggyBank: View {
     let value = loaded ? piggyValue(p.holdings, prices: prices) : piggyValue(p.holdings, prices: [:])
     let change = value - app.content.startCoins
     let hist = p.history.sorted { $0.key < $1.key }
+    // Open wide (iPhone Duo, iPad): the money and its line on one page, what's inside on the other.
+    TwoPage {
     Card {
       HStack { Eyebrow(text: "Your pretend money today"); Spacer(); PretendPill() }
       Ticker(value: value, format: { "🌙 " + coins($0) }, font: .system(size: 48, weight: .heavy, design: .rounded))
@@ -117,6 +119,7 @@ struct PiggyBank: View {
       Text("\(co.emoji) **\(co.nick)** moved the most: \(m.change >= 0 ? "up" : "down") \(toFixed(abs(m.change), 1))% since you started. \(m.change >= 0 ? "Lots of people wanted its shares, so the price went up." : "More people were selling its shares, so the price went down. That's normal!")")
         .font(.callout).padding(14).background(Palette.moon.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
     }
+    } second: {
     VStack(spacing: 10) {
       ForEach(p.holdings, id: \.s) { h in
         let c = holdingChange(h, price: prices[h.s])
@@ -142,6 +145,7 @@ struct PiggyBank: View {
         prices = q; withAnimation(.snappy) { loaded = true }
         app.mutate { $0.recordValue(today: app.today, value: piggyValue(p.holdings, prices: q)) }
       }
+    }
     }
   }
 }

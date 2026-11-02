@@ -151,9 +151,15 @@ struct Hero: View {
   let title: String
   var accent: String? = nil
   var emoji: String? = nil
+  var piggy = false
   var body: some View {
     HStack(alignment: .center, spacing: 14) {
-      if let emoji { Text(emoji).font(.system(size: 44)).accessibilityHidden(true) } else { Luna(size: 56, wave: true) }
+      // iPhone Duo: while the phone is partly open, the art becomes a moon that waxes with the hinge
+      // (the piggy bank has its own hinge trick: its lid lifts).
+      HingeHeroArt(enabled: !piggy) {
+        if piggy { PiggyArt() }
+        else if let emoji { Text(emoji).font(.system(size: 44)).accessibilityHidden(true) } else { Luna(size: 56, wave: true) }
+      }
       VStack(alignment: .leading, spacing: 4) {
         Eyebrow(text: eyebrow)
         (Text(title) + Text(accent.map { " " + $0 } ?? "").foregroundColor(Palette.accent))

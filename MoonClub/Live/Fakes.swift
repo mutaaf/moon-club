@@ -7,7 +7,8 @@ struct FakeMarket: MarketDataSource {
   let today: String
   func calendar(from: String, to: String) async throws -> [EarningsEvent] {
     let plan: [(String, Int, Session, Double?, Double?)] = [
-      ("AAPL", -2, .amc, 2.02, 2.10), ("NKE", -3, .amc, 0.52, 0.48), ("DIS", 3, .bmo, 1.70, nil), ("MCD", 4, .bmo, 3.42, nil),
+      ("AAPL", -2, .amc, 2.02, 2.10), ("NKE", -3, .amc, 0.52, 0.48), ("KO", -8, .bmo, 0.78, 0.82), ("HAS", -11, .bmo, 1.65, 1.42),
+      ("NFLX", -14, .amc, 5.12, 5.87), ("DIS", 3, .bmo, 1.70, nil), ("MCD", 4, .bmo, 3.42, nil),
       ("TTWO", 6, .amc, 0.96, nil), ("TGT", 8, .bmo, 2.07, nil), ("WMT", 9, .bmo, 0.64, nil), ("RBLX", 11, .bmo, -0.42, nil),
     ]
     return plan.map { EarningsEvent(s: $0.0, d: Day.add(today, $0.1), h: $0.2, eE: $0.3, eA: $0.4) }.filter { $0.d >= from && $0.d <= to }

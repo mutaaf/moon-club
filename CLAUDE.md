@@ -8,6 +8,12 @@ Native SwiftUI (iOS 17+, iPhone + iPad) kids app; the native twin of mutaafaziz.
 ## Release notes
 Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`release-notes/README.md`): fun, at least 3 family-friendly pop-culture nods, never lyrics, no links, ≤ 4000 chars. It feeds TestFlight "What to Test", the GitHub release and the in-app What's new. `check-rules.sh` fails without it.
 
+## iPhone Duo
+Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → code.
+- The hinge drives effects only: Luna's moon, the piggy lid, tuck-in.
+- Layout comes from the fold's reserved region (`Storybook` / `TwoPage` / `FoldColumns` in `Design/Duo.swift`) and size classes. Never branch on device.
+- Pose logic is pure and tested in `MoonClubCore/Duo.swift`.
+
 ## Environment nuances (found the hard way)
 - **XcodeGen** generates `MoonClub.xcodeproj` (gitignored); edit `project.yml`, never the project.
 - **Xcode 27.1 ships without the Metal toolchain**: the first build fails with "cannot execute tool 'metal' due to missing Metal Toolchain". `xcodebuild -downloadComponent MetalToolchain` (≈840 MB, once). `make gen` does it. **Every Xcode update needs its own toolchain build** (Xcode 27A9275 → 27B52 mid-session flipped `xcodebuild -showComponent MetalToolchain` back to "uninstalled"): rerun the download.
@@ -32,3 +38,10 @@ Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`
 - **Web transfer codes** (`MOONP1-`) come from metaphases `shared/kidsTransfer.ts`; the app's `Transfer.swift` is checked against the `transfer` vectors. Change both together and re-run `make content`.
 - Debug screenshot args: `-demo -grownups -syncOn -scrollSync` shows the "Your devices" section.
 
+- **iPhone Duo simulator**: device type `com.apple.CoreSimulator.SimDeviceType.iPhone-Duo`, iOS 27.1 runtime only. `scripts/shots.sh` creates "Moon Club Duo".
+  - Displays: outer is `--display=primary` (1398×2034), inner is `--display=primary-1` (2007×2853).
+  - It boots **closed**, and `onHingeChange` really reports `.closed`.
+  - **`simctl` has no hinge control.** Folding happens in Device Hub's window. UI scripting and screen capture of Device Hub aren't permitted on this Mac (Accessibility / Screen Recording off), so automation can't fold it, and powering off a display with `simctl io screenConfig` doesn't open it.
+  - Debug builds take `-pose closed|book|tabletop|flat [-hinge deg]` (pins a reading and synthesizes a center fold on wide sims) and `-gamenight`.
+  - The TV output (`external-0`) times out on screenshot until a display is attached in Device Hub.
+- Layout that measures itself (the fold probe) must lay out at the **proposed** width (`PageSplit` Layout), never at fixed measured widths. Fixed widths fed back into the measured frame and cut the right page off when the iPad sidebar appeared.

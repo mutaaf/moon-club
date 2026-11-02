@@ -20,4 +20,21 @@ final class AppTests: XCTestCase {
     XCTAssertGreaterThan(m.points, 0)
     XCTAssertEqual(m.recap?.label, "This week")
   }
+  func testDemoHasGameNightRoundsAndNoHingeByDefault() async throws {
+    let url = try XCTUnwrap(Bundle(for: AppModel.self).url(forResource: "kids-content", withExtension: "json"))
+    let c = try KidsContent.load(try Data(contentsOf: url))
+    let today = "2026-10-31"
+    let m = AppModel(content: c, services: Services(market: FakeMarket(today: today), luna: LunaRouter(brains: [FakeBrain(kind: .free)], resolve: { .free }), voice: FakeVoice(), store: MemoryStore(), clock: FixedClock(today)))
+    await m.loadMarket()
+    let g = GameNight(events: m.kidEvents.map { (s: $0.s, d: $0.d, report: $0.report) }, today: today)
+    XCTAssertEqual(g.rounds.count, 5, "demo mode has a full Game Night")
+    XCTAssertTrue(m.upcoming.allSatisfy { $0.d >= today }, "past report cards never show as 'coming up'")
+    let duo = DuoModel()
+    XCTAssertNil(duo.reading, "no hinge until the system reports one")
+    XCTAssertEqual(duo.phase, 4, "Luna stays a full moon on devices without a hinge")
+    duo.update(.init(.partiallyOpen, degrees: 90))
+    XCTAssertEqual(duo.phase, 2); XCTAssertGreaterThan(duo.lid, 0)
+    duo.update(.init(.closed, degrees: 0))
+    XCTAssertEqual(duo.closedTick, 1, "closing is a moment (tucks Luna in)")
+  }
 }
