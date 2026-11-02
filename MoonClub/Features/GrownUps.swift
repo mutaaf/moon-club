@@ -42,6 +42,7 @@ struct GrownUpsView: View {
   @Environment(\.dismiss) private var dismiss
   var body: some View {
     NavigationStack {
+      ScrollViewReader { proxy in
       List {
         Section {
           HStack(spacing: 14) { Luna(size: 54); VStack(alignment: .leading) { Text("Moon Club").font(.kTitle); Text("Metaphases Kids · prototype").font(.caption).foregroundStyle(.secondary) } }
@@ -58,8 +59,11 @@ struct GrownUpsView: View {
           bullet("**Pretend money only.** Nothing can be bought, sold or paid for. No broker, no buy button.")
           bullet("**No data collected.** No accounts, no sign-up, no analytics, no ads. Progress lives only on this device.")
           bullet("**Read-only market data** (prices, report dates, market mood) comes from mutaafaziz.com/metaphases. Nothing about your child is sent.")
-          bullet("**Luna** uses a free model with a kid-safe prompt: simple words, money topics only, never advice. She never asks for personal details. Stay nearby — she can make mistakes.")
+          bullet("**Luna** thinks on this device with Apple Intelligence when it's available, or uses our free kid-safe model. Only if you add your own key and say OK are questions sent to that company. Same rules everywhere: simple words, money topics only, never advice, never asks for personal details. Stay nearby — she can make mistakes.")
           bullet("Nothing here is investment advice.")
+        }
+        Section { BrainPicker().id("brain") } header: { Text("Luna's brain") } footer: {
+          Text("Every brain gets the same kid-safe rules, and every answer is checked on this device before your child sees it.")
         }
         Section { VoiceSettingsView() } header: { Text("Luna's voice") } footer: {
           Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
@@ -78,6 +82,10 @@ struct GrownUpsView: View {
           Link(destination: URL(string: "https://mutaafaziz.com/metaphases/kids/grownups")!) { Label("Printable worksheets", systemImage: "printer") }
           Button(role: .destructive) { app.mutate { $0 = KidsState() } } label: { Label("Reset all progress on this device", systemImage: "trash") }
         }
+      }
+      #if DEBUG
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
+      #endif
       }
       .navigationTitle("For grown-ups")
       .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }

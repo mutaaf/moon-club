@@ -79,7 +79,7 @@ struct WeatherCard: View {
     Text("\(w.title) \(w.emoji)").font(.kHero)
     Text(w.line).font(.kRead)
     Text("Grown-ups check a “mood meter” for the market. Today it says \(Int(score)) out of 100. 0 is very scared, 100 is very brave.").font(.callout).foregroundStyle(.secondary)
-    ReadAloud(source: .appCopy("Market weather: \(w.title). \(w.line)"))
+    HStack { ReadAloud(source: .appCopy("Market weather: \(w.title). \(w.line)")); ExplainMore(question: LunaPrompts.explain(weather: w.title)) }
     WordChips(keys: ["mood", "stock", "share"])
   }
 }
@@ -126,7 +126,7 @@ struct ReportCard: View {
     Group {
       if let lastMove { Text(lastTimeLine(lastMove)) } else { Text("Checking last time…").redacted(reason: .placeholder) }
     }.font(.body).foregroundStyle(Palette.ink2)
-    HStack { ReadAloud(source: .appCopy("\(co.nick) \(co.hook). It shares its report card \(when). \(expectLine(event.eE))")); Spacer() }
+    HStack { ReadAloud(source: .appCopy("\(co.nick) \(co.hook). It shares its report card \(when). \(expectLine(event.eE))")); ExplainMore(question: LunaPrompts.explain(reportFor: co.nick, when: when)); Spacer() }
     WordChips(keys: ["company", "report", "guess", "profit"])
     .task { lastMove = .some((try? await app.market.lastMove(event.s))?.history.first { $0.move != nil }?.move) }
   }
@@ -140,7 +140,7 @@ struct WordOfDay: View {
     Text(w.word).font(.system(size: 54, weight: .heavy, design: .rounded)).foregroundStyle(Palette.accent)
     Text(w.means).font(.kRead)
     Text("Example: \(w.example)").font(.system(.title3, design: .serif).italic()).foregroundStyle(Palette.ink2)
-    ReadAloud(source: .appCopy("\(w.word). \(w.means) For example: \(w.example)"))
+    FlowLayout(spacing: 8) { ReadAloud(source: .appCopy("\(w.word). \(w.means) For example: \(w.example)")); ExplainMore(question: LunaPrompts.explain(word: w.word)) }
   }
 }
 

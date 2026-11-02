@@ -3,8 +3,8 @@ import Foundation
 import MoonClubCore
 import Security
 
-// Live implementations of the MoonClubCore boundaries. Network is read-only market data + Luna
-// (free kid-safe brain, no key) + an optional grown-up voice key. Nothing about the kid is sent.
+// Live implementations of the MoonClubCore boundaries. Network is read-only market data + Luna (Brains.swift:
+// on-device, free, or a grown-up's own key after consent) + an optional grown-up voice key.
 
 private func cacheDir(_ name: String) -> URL {
   FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("MoonClub/\(name)")
@@ -61,42 +61,7 @@ final class LiveMarketData: MarketDataSource, @unchecked Sendable {
   }
 }
 
-// MARK: Luna — free kid-safe brain only; answers cached on disk (normalized question + content version, 7 days).
-final class LiveLuna: LunaService, @unchecked Sendable {
-  private let disk = DiskLRU(dir: cacheDir("luna"), capacity: 1 << 20)
-  private let version: String
-  init(contentVersion: String) { version = contentVersion }
-
-  func ask(_ question: String, context: LunaContext) -> AsyncThrowingStream<String, Error> {
-    let key = lunaCacheKey(question, contentVersion: version)
-    return AsyncThrowingStream { cont in
-      let task = Task {
-        if let (d, age) = disk.get(key), age < CachePolicy.luna.ttl, let s = String(data: d, encoding: .utf8) {
-          for word in s.split(separator: " ", omittingEmptySubsequences: false) { cont.yield(word + " "); try? await Task.sleep(for: .milliseconds(18)) }
-          cont.finish(); return
-        }
-        do {
-          let (bytes, resp) = try await session.bytes(for: Requests.luna(question: question, context: context))
-          guard (resp as? HTTPURLResponse)?.statusCode ?? 500 < 400 else { throw KidError.resting }
-          var full = ""
-          // Each SSE event from the worker is one `data:` line; parse line by line.
-          for try await line in bytes.lines where line.hasPrefix("data:") {
-            for e in SSE.parse(line + "\n\n").0 {
-              switch e {
-              case let .text(t): full += t; cont.yield(t)
-              case .error: throw KidError.resting
-              case .done: break
-              }
-            }
-          }
-          if !full.isEmpty { disk.set(key, Data(full.utf8)) }
-          cont.finish()
-        } catch { cont.finish(throwing: (error as? KidError) ?? .resting) }
-      }
-      cont.onTermination = { _ in task.cancel() }
-    }
-  }
-}
+// MARK: Luna — see Brains.swift (free / on-device / your own key, chosen in the grown-up corner).
 
 // MARK: Voice — iOS's best installed voice, or a grown-up's own OpenAI/Gemini key (clips cached on disk).
 struct VoiceSettings: Codable, Equatable {
@@ -110,14 +75,15 @@ struct VoiceSettings: Codable, Equatable {
 
 enum Keychain {
   static let service = "com.mutaafaziz.moonclub.voicekey"
-  static func set(_ v: String?) {
+  static let lunaService = "com.mutaafaziz.moonclub.lunakey"
+  static func set(_ v: String?, service: String = Keychain.service) {
     let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
     SecItemDelete(q as CFDictionary)
     guard let v, !v.isEmpty else { return }
     var add = q; add[kSecValueData as String] = Data(v.utf8); add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
     SecItemAdd(add as CFDictionary, nil)
   }
-  static func get() -> String? {
+  static func get(service: String = Keychain.service) -> String? {
     let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
     var out: AnyObject?
     guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
@@ -149,7 +115,7 @@ final class LiveVoice: NSObject, VoiceService, @unchecked Sendable, AVSpeechSynt
     try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
     try? AVAudioSession.sharedInstance().setActive(true)
     let s = VoiceSettings.load()
-    if s.mode != .device, let key = Keychain.get(), let provider = Requests.VoiceProvider(rawValue: s.mode.rawValue),
+    if s.mode != .device, let provider = Requests.VoiceProvider(rawValue: s.mode.rawValue), let key = Self.voiceKey(provider),
        let req = Requests.speak(source, provider: provider, voice: s.voice, key: key) {
       let cacheKey = "tts:\(provider.rawValue):\(s.voice):\(source.text)"
       var audio = clips.get(cacheKey)?.data
@@ -167,6 +133,12 @@ final class LiveVoice: NSObject, VoiceService, @unchecked Sendable, AVSpeechSynt
     u.voice = Self.bestVoice; u.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92; u.pitchMultiplier = 1.05
     synth.speak(u)
     await withCheckedContinuation { waiter = $0 }
+  }
+  /// The voice key, or Luna's own key when it's for the same provider (one key unlocks both).
+  static func voiceKey(_ p: Requests.VoiceProvider) -> String? {
+    if let k = Keychain.get(), !k.isEmpty { return k }
+    let b = BrainStore.load()
+    return b.provider.voice == p ? BrainStore.lunaKey : nil
   }
   func stop() async { stopNow() }
   private func stopNow() { synth.stopSpeaking(at: .immediate); player?.stop(); player = nil; resume() }

@@ -27,12 +27,18 @@ final class AppModel {
   var mood: Double?
   var marketError: KidError?
   var loadingMarket = false
+  /// Which Luna brain answers right now (the grown-up corner can change it; refreshed on the way out).
+  private(set) var brain: BrainKind = .free
+  var brainCaps: BrainCapabilities { .of(brain) }
 
   init(content: KidsContent, services s: Services) {
     self.content = content
     market = s.market; luna = s.luna; voice = s.voice; store = s.store; clock = s.clock
     state = s.store.load()
+    brain = s.luna.activeBrain()
   }
+
+  func refreshBrain() { let b = luna.activeBrain(); if b != brain { brain = b } }
 
   var today: String { clock.today() }
   var companies: [String: KidCo] { content.companyBySymbol }

@@ -1,7 +1,8 @@
 // Every boundary to the outside world is a protocol, with live implementations in the app and fakes
 // for previews/tests. The request builders are pure and live here, so the kids-safety rules are
 // unit-tested where they're enforced:
-//  • Luna (chat) ALWAYS uses the free kid-safe brain and NEVER carries a key.
+//  • The free Luna brain NEVER carries a key. A grown-up's own key is used only by the BYOK brain, only after
+//    consent for that provider (Requests.byok, Brain.swift).
 //  • A voice key is only ever attached to app copy or Luna's answer — never to text a kid typed.
 import Foundation
 
@@ -46,8 +47,10 @@ public protocol MarketDataSource: Sendable {
   func quotes(_ symbols: [String]) async throws -> [String: Double]
   func lastMove(_ symbol: String) async throws -> TickerPayload
 }
+/// The app-facing Luna: yields guarded, CUMULATIVE snapshots of the answer (see LunaRouter in Brain.swift).
 public protocol LunaService: Sendable {
-  func ask(_ question: String, context: LunaContext) -> AsyncThrowingStream<String, Error>
+  func ask(_ question: String, context: LunaContext, history: [LunaTurn]) -> AsyncThrowingStream<String, Error>
+  func activeBrain() -> BrainKind
 }
 public enum SpeakSource: Sendable, Equatable {
   /// Text that ships in the app (lessons, cards) — may use a grown-up's voice key.
@@ -89,7 +92,7 @@ public enum Requests {
     r.setValue("text/event-stream", forHTTPHeaderField: "accept")
     struct Body: Encodable { let task = "kids"; let provider = "edge"; let context: LunaContext; let question: String }
     r.httpBody = try? JSONEncoder().encode(Body(context: context, question: String(question.prefix(200))))
-    return r // deliberately NO x-mp-key: kids chat is the free kid-safe brain only
+    return r // deliberately NO x-mp-key: the free brain never carries a key (BYOK goes direct: Requests.byok)
   }
   public enum VoiceProvider: String, Codable, Sendable, CaseIterable { case openai, gemini }
   public static let voices: [VoiceProvider: [String]] = [.openai: ["coral", "nova", "fable", "shimmer", "sage"], .gemini: ["Leda", "Puck", "Aoede", "Zephyr", "Kore"]]

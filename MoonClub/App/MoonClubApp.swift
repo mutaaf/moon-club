@@ -2,10 +2,11 @@ import SwiftUI
 import MoonClubCore
 
 /// Composition root: the only place that chooses live vs fake implementations.
-///   default        → live services (read-only market data, free Luna, device voice / grown-up key)
+///   default        → live services (read-only market data, Luna router: on-device / free / grown-up key, voice)
 ///   -demo          → offline fakes + a seeded week (screenshots, App Review demo)
 ///   -fresh         → with -demo, start from an empty progress file
 ///   -tab <name>    → open on a tab (story, guess, piggy, school, luna) for screenshots
+///   -grownups      → (debug, with -demo) open the grown-up corner; -brain <kind> presets Luna's brain
 @main
 struct MoonClubApp: App {
   @State private var app: AppModel?
@@ -34,9 +35,13 @@ struct MoonClubApp: App {
       if args.contains("-demo") {
         let clock = FixedClock(args.firstIndex(of: "-today").map { args[$0 + 1] } ?? "2026-10-31")
         let seeded = args.contains("-fresh") ? KidsState() : Demo.seeded(today: clock.today())
-        services = Services(market: FakeMarket(today: clock.today()), luna: FakeLuna(), voice: FakeVoice(), store: MemoryStore(seeded), clock: clock)
+        #if DEBUG
+        // Screenshots: -brain onDevice|free|byok presets Luna's brain choice (demo only).
+        if let i = args.firstIndex(of: "-brain"), let k = BrainKind(rawValue: args[i + 1]) { var b = BrainStore.load(); b.choice = k; BrainStore.save(b) }
+        #endif
+        services = Services(market: FakeMarket(today: clock.today()), luna: LunaRouter(brains: BrainKind.allCases.map(FakeBrain.init), resolve: { BrainStore.resolve() }), voice: FakeVoice(), store: MemoryStore(seeded), clock: clock)
       } else {
-        services = Services(market: LiveMarketData(), luna: LiveLuna(contentVersion: content.generated), voice: LiveVoice(), store: FileProgressStore(), clock: SystemClock())
+        services = Services(market: LiveMarketData(), luna: LunaRouter(brains: [OnDeviceBrain(), FreeBrain(contentVersion: content.generated), ByokBrain()], resolve: { BrainStore.resolve() }), voice: LiveVoice(), store: FileProgressStore(), clock: SystemClock())
       }
       app = AppModel(content: content, services: services)
     } catch {

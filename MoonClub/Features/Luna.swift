@@ -1,8 +1,9 @@
 import SwiftUI
 import MoonClubCore
 
-/// Ask Luna: the free, kid-safe AI helper. Never sends a key, never asks for personal details,
-/// answers cached on device. The kid's typed words are never sent to a voice provider.
+/// Ask Luna: the kid-safe AI helper. Which brain answers (on-device Apple Intelligence, free Luna, or a
+/// grown-up's own key after consent) is chosen in the grown-up corner; every answer passes LunaGuard.
+/// The kid's typed words are never sent to a voice provider.
 struct AskLunaView: View {
   @Environment(AppModel.self) private var app
   @State private var q = ""
@@ -11,6 +12,8 @@ struct AskLunaView: View {
   @State private var busy = false
   @State private var err: String?
   @State private var task: Task<Void, Never>?
+  /// Earlier turns of this chat (only kept and sent when the brain has memory).
+  @State private var turns: [LunaTurn] = []
   @FocusState private var focus: Bool
 
   static let chips = ["What is a share?", "Why do prices go up and down?", "What is a company's report card?", "What does Disney sell?", "Is the market sunny today?", "Why shouldn't I put all my eggs in one basket?"]
@@ -19,7 +22,10 @@ struct AskLunaView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         Hero(eyebrow: "Your money helper", title: "Ask", accent: "Luna")
-        Text("Luna knows about money, companies and the market. Tap a question!").font(.kRead)
+        HStack { BrainBadge(); Spacer()
+          if !turns.isEmpty { Button { turns = []; asked = ""; answer = "" } label: { Label("New chat", systemImage: "sparkles") }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("new-chat") }
+        }
+        Text(app.brainCaps.memoryTurns > 0 ? "Luna knows about money, companies and the market, and she remembers this chat. Ask a follow-up!" : "Luna knows about money, companies and the market. Tap a question!").font(.kRead)
         FlowLayout(spacing: 8) {
           ForEach(Self.chips, id: \.self) { c in
             Button(c) { ask(c, typed: false) }.buttonStyle(SoftButtonStyle()).disabled(busy)
@@ -36,6 +42,13 @@ struct AskLunaView: View {
             Button("Ask") { ask(q, typed: true) }.buttonStyle(PrimaryButtonStyle()).frame(width: 90).disabled(busy || q.trimmingCharacters(in: .whitespaces).isEmpty)
           }
           Text("Please don't type your name, school or where you live.").font(.caption).foregroundStyle(.secondary)
+        }
+        if app.brainCaps.memoryTurns > 0, turns.count > 2 {
+          VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(turns.dropLast(2).suffix(6).enumerated()), id: \.offset) { _, t in
+              Text(t.role == .kid ? "You: \(t.text)" : "Luna: \(t.text)").font(.callout).foregroundStyle(t.role == .kid ? Palette.ink2 : .primary).lineLimit(3)
+            }
+          }.padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
         }
         if !asked.isEmpty {
           Card {
@@ -77,9 +90,70 @@ struct AskLunaView: View {
       LunaContext.Co(s: k.s, nick: k.nick, hook: k.hook, when: next[k.s].map { kidWhen($0.d, $0.h, today: app.today) })
     })
     task = Task {
-      do { for try await t in app.luna.ask(text, context: ctx) { answer += t } }
+      app.refreshBrain()
+      let history = app.brainCaps.memoryTurns > 0 ? turns : []
+      do {
+        for try await snap in app.luna.ask(text, context: ctx, history: history) { answer = snap }
+        if app.brainCaps.memoryTurns > 0 { turns += [LunaTurn(.kid, text), LunaTurn(.luna, answer)] }
+      }
       catch { err = (error as? KidError)?.message ?? KidError.resting.message }
       busy = false
+    }
+  }
+}
+
+/// Which brain is answering: a moon with sparkles (on this device), a key (a grown-up's key), or the moon (free).
+struct BrainBadge: View {
+  @Environment(AppModel.self) private var app
+  var body: some View {
+    Label(app.brain.badge, systemImage: app.brain.symbol)
+      .font(.caption.weight(.semibold))
+      .padding(.horizontal, 10).padding(.vertical, 5)
+      .background(Palette.lavender.opacity(0.8), in: Capsule())
+      .foregroundStyle(Palette.midnight)
+      .accessibilityIdentifier("brain-badge")
+      .accessibilityLabel("Luna's brain: \(app.brain.badge)")
+  }
+}
+
+/// "Explain more" on story and report cards: a tap-generated question (never kid-typed), answered by an
+/// on-device or grown-up-key brain. Hidden for the free brain.
+struct ExplainMore: View {
+  let question: String
+  @Environment(AppModel.self) private var app
+  @State private var open = false
+  var body: some View {
+    if app.brainCaps.deepExplain {
+      Button { open = true } label: {
+        Label("Explain more", systemImage: app.brain.symbol).font(.subheadline.weight(.semibold))
+          .padding(.horizontal, 14).frame(minHeight: 44)
+          .background(.thinMaterial, in: Capsule())
+      }
+      .buttonStyle(.plain)
+      .sheet(isPresented: $open) { ExplainSheet(question: question).presentationDetents([.medium, .large]) }
+    }
+  }
+}
+
+struct ExplainSheet: View {
+  let question: String
+  @Environment(AppModel.self) private var app
+  @State private var answer = ""
+  @State private var err: String?
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 14) {
+        HStack { Luna(size: 44); BrainBadge(); Spacer() }
+        if !answer.isEmpty { Text(LocalizedStringKey(answer)).font(.kRead).animation(.easeOut(duration: 0.15), value: answer) }
+        else if err == nil { HStack(spacing: 6) { Text("Luna is thinking"); ProgressView() }.foregroundStyle(.secondary) }
+        if let err { Text(err).foregroundStyle(Palette.bad) }
+        if !answer.isEmpty { ReadAloud(source: .luna(answer: answer, kidTyped: nil), label: "Read it to me") }
+      }.padding(24)
+    }
+    .task {
+      let ctx = LunaContext(weather: app.mood.map { let w = weatherFor($0); return "\(w.title): \(w.line)" }, companies: app.content.companies.map { LunaContext.Co(s: $0.s, nick: $0.nick, hook: $0.hook, when: nil) })
+      do { for try await s in app.luna.ask(question, context: ctx, history: []) { answer = s } }
+      catch { err = (error as? KidError)?.message ?? KidError.resting.message }
     }
   }
 }
