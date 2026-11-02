@@ -77,7 +77,6 @@ enum Demo {
         }
       }
     }
-    s.seeBadges(s.badges(c)) // screenshots: no badge toast over the map
     return s
   }
 }
