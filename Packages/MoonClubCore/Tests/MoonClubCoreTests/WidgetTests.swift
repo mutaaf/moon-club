@@ -45,6 +45,7 @@ final class WidgetTests: XCTestCase {
     XCTAssertEqual(WidgetSnapshot.decode(data), snap)
     XCTAssertLessThan(data.count, 2048, "widgets decode this on every timeline; keep it small")
     XCTAssertNil(WidgetSnapshot.decode(Data("garbage".utf8)))
+    for _ in 0..<20 { XCTAssertEqual(snap.encoded(), data, "same snapshot, same bytes (no spurious timeline reloads)") }
   }
 
   /// Privacy: only known keys; nothing from free text (league names, Luna questions) can sneak in.

@@ -45,3 +45,17 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
   - Debug builds take `-pose closed|book|tabletop|flat [-hinge deg]` (pins a reading and synthesizes a center fold on wide sims) and `-gamenight`.
   - The TV output (`external-0`) times out on screenshot until a display is attached in Device Hub.
 - Layout that measures itself (the fold probe) must lay out at the **proposed** width (`PageSplit` Layout), never at fixed measured widths. Fixed widths fed back into the measured frame and cut the right page off when the iPad sidebar appeared.
+- **Widgets / Live Activities**: the `MoonClubWidgets` extension (bundle `com.mutaafaziz.moonclub.widgets`) shares `Shared/` + `MoonClub/Design/Theme.swift` with the app. App ↔ widget data goes through a **shared keychain group** (`$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared`, Info.plist key `MoonKeychainGroup`), NOT an App Group. Reasons:
+  - the App Store Connect API has no App Groups endpoint (`/v1/appGroups` → 404);
+  - Xcode's automatic provisioning with our App Manager API key fails ("Authentication failed … bearer token");
+  - the wildcard "iOS Team Provisioning Profile: *" has no App Groups;
+  - but every team profile, wildcard and App Store, already grants `Z73865R687.*` keychain groups.
+  Keychain items survive app deletion (still on-device only; "Reset all progress" clears them).
+- `asc.mjs signing` makes one App Store profile per bundle id (`TARGETS`: app + widgets) and deletes stale local copies of each profile name; `testflight.sh` maps both in the export plist. `asc.mjs call <METHOD> <path> [json]` is a debug passthrough.
+- `scripts/provision.sh` (Xcode automatic provisioning via the API key) currently fails with "Authentication failed" for the App Manager key. Kept for an Admin key.
+- **Widget design review**: `make widgets` (`scripts/widget-shots.sh`) renders every widget family and Live Activity view with `ImageRenderer` to `build/widget-shots/` (light + dark).
+  - The widget view files also compile into `MoonClubTests` with the `WIDGET_RENDER_TESTS` condition, which adds `@testable import MoonClub`.
+  - Views take a `forced:` family so they render outside WidgetKit.
+  - `ProgressView` renders as a placeholder in ImageRenderer, hence the drawn `MoonBar`.
+  - `Text(timerInterval:)` counts against the real clock even in ImageRenderer, so render fixtures use `Date()`.
+- **The first `xcodebuild` after `xcodegen generate` sometimes fails** with "the following command failed with exit code 0 but produced no further output". Rerunning it succeeds.

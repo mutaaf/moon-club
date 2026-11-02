@@ -19,7 +19,7 @@ struct GuessReportIntent: AppIntent {
     guard let p = Pick(rawValue: pick) else { return .result() }
     let today = Day.today()
     guard day >= today else { return .result() } // the report is already out: too late to guess
-    if let snap = MoonGroup.readSnapshot() { MoonGroup.writeSnapshot(WidgetSnapshots.applyingGuess(snap, s: symbol, d: day, pick: p)) }
+    if let snap = MoonShare.readSnapshot() { MoonShare.writeSnapshot(WidgetSnapshots.applyingGuess(snap, s: symbol, d: day, pick: p)) }
     SharedProgressStore().update { $0.guess(Guess(s: symbol, d: day, pick: p, at: today)) }
     return .result()
   }
@@ -32,7 +32,7 @@ struct ReadStoryIntent: AppIntent {
 
   func perform() async throws -> some IntentResult {
     let today = Day.today()
-    if var snap = MoonGroup.readSnapshot() { snap.storyRead = true; MoonGroup.writeSnapshot(snap) }
+    if var snap = MoonShare.readSnapshot() { snap.storyRead = true; MoonShare.writeSnapshot(snap) }
     SharedProgressStore().update { $0.readStory(today: today) }
     return .result()
   }

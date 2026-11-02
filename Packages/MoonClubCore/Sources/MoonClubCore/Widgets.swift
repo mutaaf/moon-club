@@ -49,7 +49,8 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
   /// The report card the widget leads with: the soonest one you guessed, else the soonest one.
   public var headline: Report? { reports.first { $0.pick != nil } ?? reports.first }
 
-  public func encoded() -> Data { (try? JSONEncoder().encode(self)) ?? Data() }
+  /// Deterministic bytes (sorted keys), so "did it change?" is a byte compare and unchanged state never reloads timelines.
+  public func encoded() -> Data { let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]; return (try? e.encode(self)) ?? Data() }
   public static func decode(_ d: Data) -> WidgetSnapshot? { try? JSONDecoder().decode(WidgetSnapshot.self, from: d) }
 
   /// What a widget shows before the app has ever run (and in the gallery).

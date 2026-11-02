@@ -1,4 +1,4 @@
-// App → widgets and Live Activities. Everything here is local: a small file in the App Group, a
+// App → widgets and Live Activities. Everything here is local: a tiny item in the shared keychain group, a
 // timeline reload, and ActivityKit calls with no push token (nothing about the child leaves the device).
 import ActivityKit
 import Foundation
@@ -10,7 +10,7 @@ enum WidgetPublisher {
   /// Rebuild the snapshot; write and reload only when it actually changed (reloads are budgeted by iOS).
   static func publish(_ app: AppModel) {
     let snap = WidgetSnapshots.build(state: app.state, content: app.content, events: app.events, mood: app.mood, today: app.today)
-    if MoonGroup.writeSnapshot(snap) { WidgetCenter.shared.reloadAllTimelines() }
+    if MoonShare.writeSnapshot(snap) { WidgetCenter.shared.reloadAllTimelines() }
     LiveActivities.syncReport(snap)
   }
 }
@@ -24,7 +24,7 @@ enum LiveActivities {
   /// Keep exactly one "Report Card Day" activity: for today's report card you guessed. End the rest.
   static func syncReport(_ snap: WidgetSnapshot, now: Date = .now) {
     let want = LiveReport.candidate(snap, now: now)
-    for a in all where a.attributes.kind == .report && a.attributes.key != want?.id {
+    for a in all where a.attributes.kind == .report && a.attributes.key != want?.id && !a.attributes.key.hasSuffix(":demo") {
       Task { await a.end(nil, dismissalPolicy: .immediate) }
     }
     guard let r = want, enabled, !all.contains(where: { $0.attributes.key == r.id }), let at = ReportClock.time(r.d, r.h) else { return }
@@ -53,4 +53,14 @@ enum LiveActivities {
   static func lessonLeft(_ l: Lesson) {
     for a in all where a.attributes.kind == .lesson && a.attributes.key == l.id { Task { await a.end(nil, dismissalPolicy: .immediate) } }
   }
+
+  #if DEBUG
+  /// `-demo -liveactivity`: a real Report Card Day activity counting down 2h13m (simulator checks only).
+  static func demo() {
+    for a in all { Task { await a.end(nil, dismissalPolicy: .immediate) } }
+    let at = Date.now.addingTimeInterval(2 * 3600 + 13 * 60)
+    _ = try? Activity.request(attributes: A(kind: .report, key: "AAPL:demo", emoji: "🍎", title: "Apple", pick: "beat"),
+                              content: .init(state: .init(reportAt: at), staleDate: at, relevanceScore: 80), pushType: nil)
+  }
+  #endif
 }

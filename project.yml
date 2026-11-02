@@ -28,10 +28,11 @@ targets:
       properties:
         # iCloud key-value storage: opt-in progress sync on the family's own devices (MoonClub/Live/CloudSync.swift)
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
-        com.apple.security.application-groups: [group.com.mutaafaziz.moonclub]
+        keychain-access-groups: ["$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"]
     info:
       path: MoonClub/Info.plist
       properties:
+        MoonKeychainGroup: "$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"
         CFBundleURLTypes:
           - { CFBundleURLName: com.mutaafaziz.moonclub, CFBundleURLSchemes: [moonclub] }
     settings:
@@ -51,7 +52,7 @@ targets:
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
         ENABLE_PREVIEWS: YES
-  # Widgets + Live Activities. Reads the App Group snapshot only (no network); shares Theme + Shared/ with the app.
+  # Widgets + Live Activities. Reads the shared-keychain snapshot only (no network); shares Theme + Shared/ with the app.
   MoonClubWidgets:
     type: app-extension
     platform: iOS
@@ -63,10 +64,11 @@ targets:
     entitlements:
       path: MoonClubWidgets/MoonClubWidgets.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.mutaafaziz.moonclub]
+        keychain-access-groups: ["$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"]
     info:
       path: MoonClubWidgets/Info.plist
       properties:
+        MoonKeychainGroup: "$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"
         NSExtension: { NSExtensionPointIdentifier: com.apple.widgetkit-extension }
     settings:
       base:

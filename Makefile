@@ -3,7 +3,7 @@ SIM_PHONE ?= iPhone 17
 SIM_PAD ?= iPad Pro 11-inch (M5)
 DD := build/dd
 
-.PHONY: up gen build test core rules sim shots device testflight content clean
+.PHONY: up gen build test core rules sim shots widgets device testflight content clean
 up: gen test sim
 gen:
 	@command -v xcodegen >/dev/null || brew install xcodegen
@@ -22,6 +22,8 @@ sim: build
 	  id=$$(xcrun simctl list devices available | grep -F "    $$n (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/'); \
 	  xcrun simctl boot $$id 2>/dev/null || true; xcrun simctl install $$id $(DD)/Build/Products/Debug-iphonesimulator/MoonClub.app; \
 	  xcrun simctl launch $$id com.mutaafaziz.moonclub >/dev/null; done; open -a Simulator
+widgets: gen
+	scripts/widget-shots.sh
 shots: build
 	scripts/shots.sh
 device:
