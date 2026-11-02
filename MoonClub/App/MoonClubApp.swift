@@ -7,6 +7,7 @@ import MoonClubCore
 ///   -fresh         → with -demo, start from an empty progress file
 ///   -tab <name>    → open on a tab (story, guess, piggy, school, luna) for screenshots
 ///   -grownups      → (debug, with -demo) open the grown-up corner; -brain <kind> presets Luna's brain
+///   -syncOn        → (with -demo) iCloud sync shown as on; -scrollSync scrolls the grown-up corner to it
 @main
 struct MoonClubApp: App {
   @State private var app: AppModel?
@@ -39,9 +40,9 @@ struct MoonClubApp: App {
         // Screenshots: -brain onDevice|free|byok presets Luna's brain choice (demo only).
         if let i = args.firstIndex(of: "-brain"), let k = BrainKind(rawValue: args[i + 1]) { var b = BrainStore.load(); b.choice = k; BrainStore.save(b) }
         #endif
-        services = Services(market: FakeMarket(today: clock.today()), luna: LunaRouter(brains: BrainKind.allCases.map(FakeBrain.init), resolve: { BrainStore.resolve() }), voice: FakeVoice(), store: MemoryStore(seeded), clock: clock)
+        services = Services(market: FakeMarket(today: clock.today()), luna: LunaRouter(brains: BrainKind.allCases.map(FakeBrain.init), resolve: { BrainStore.resolve() }), voice: FakeVoice(), store: MemoryStore(seeded), clock: clock, sync: DemoSync(on: args.contains("-syncOn")))
       } else {
-        services = Services(market: LiveMarketData(), luna: LunaRouter(brains: [OnDeviceBrain(), FreeBrain(contentVersion: content.generated), ByokBrain()], resolve: { BrainStore.resolve() }), voice: LiveVoice(), store: FileProgressStore(), clock: SystemClock())
+        services = Services(market: LiveMarketData(), luna: LunaRouter(brains: [OnDeviceBrain(), FreeBrain(contentVersion: content.generated), ByokBrain()], resolve: { BrainStore.resolve() }), voice: LiveVoice(), store: FileProgressStore(), clock: SystemClock(), sync: ICloudSync())
       }
       app = AppModel(content: content, services: services)
     } catch {

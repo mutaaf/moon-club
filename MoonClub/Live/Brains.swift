@@ -23,8 +23,11 @@ private func cacheDir(_ name: String) -> URL {
 // MARK: Settings (UserDefaults) — the key itself only ever lives in the Keychain.
 enum BrainStore {
   static let key = "moonclub.brain.v1"
-  static func load() -> BrainSettings { UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(BrainSettings.self, from: $0) } ?? BrainSettings() }
-  static func save(_ s: BrainSettings) { UserDefaults.standard.set(try? JSONEncoder().encode(s), forKey: key) }
+  static func load() -> BrainSettings {
+    let local = UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(BrainSettings.self, from: $0) } ?? BrainSettings()
+    return KeyTravel.adopt(into: local) // a key the grown-up chose to use on their other devices
+  }
+  static func save(_ s: BrainSettings) { UserDefaults.standard.set(try? JSONEncoder().encode(s), forKey: key); KeyTravel.publish(s) }
   static var lunaKey: String? { Keychain.get(service: Keychain.lunaService) }
   /// What answers right now (read on every question, so a change in the grown-up corner applies at once).
   static func resolve() -> BrainKind {

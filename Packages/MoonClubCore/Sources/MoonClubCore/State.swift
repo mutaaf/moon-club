@@ -19,6 +19,8 @@ public struct KidsState: Codable, Hashable, Sendable {
   public var recapSeen: String?
   public var quest: [String] = []
   public var questDone = false
+  /// Bumped by "reset on all devices" (see Sync.swift). Optional so saves from before sync still decode.
+  public var resetEpoch: Int?
   public init() {}
 
   // MARK: Intents (pure reducers)
@@ -55,6 +57,9 @@ public struct KidsState: Codable, Hashable, Sendable {
   public mutating func finishLemonade() { questDone = true }
 
   // MARK: Derived
+  /// Family League players to show: everyone imported, minus this device's own player (after a sync merge,
+  /// "me" can also arrive as an imported player from another device).
+  public var leaguePlayers: [LeaguePlayer] { league.filter { $0.emoji != me } }
   public func chapters(_ c: KidsContent) -> [String] { Chapters.done(quest: quest, lemonadeDone: questDone, stages: c.questChapters?.CH_STAGES ?? [:]) }
   public func progress(_ c: KidsContent) -> KidsProgress {
     KidsProgress(guesses: guesses, lessons: lessons, piggy: piggy != nil, piggyCount: piggy?.holdings.count ?? 0, quest: questDone, chapters: chapters(c))

@@ -76,18 +76,64 @@ struct VoiceSettings: Codable, Equatable {
 enum Keychain {
   static let service = "com.mutaafaziz.moonclub.voicekey"
   static let lunaService = "com.mutaafaziz.moonclub.lunakey"
-  static func set(_ v: String?, service: String = Keychain.service) {
-    let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
-    SecItemDelete(q as CFDictionary)
+  static let lunaMetaService = "com.mutaafaziz.moonclub.lunakey.meta"
+  /// Saves (or with nil deletes) a secret. `synced` puts it in iCloud Keychain (end-to-end encrypted by
+  /// Apple, only on the family's own devices); otherwise it never leaves this device. Deleting removes
+  /// both kinds, so "Remove" on one device removes a synced key everywhere.
+  static func set(_ v: String?, service: String = Keychain.service, synced: Bool = false) {
+    let any: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
+    SecItemDelete(any as CFDictionary)
+    if v == nil, service == lunaService { set(nil, service: lunaMetaService) } // the key's settings go with it
     guard let v, !v.isEmpty else { return }
-    var add = q; add[kSecValueData as String] = Data(v.utf8); add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+    let add: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecValueData as String: Data(v.utf8),
+                              kSecAttrSynchronizable as String: synced,
+                              kSecAttrAccessible as String: synced ? kSecAttrAccessibleWhenUnlocked : kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
     SecItemAdd(add as CFDictionary, nil)
   }
   static func get(service: String = Keychain.service) -> String? {
-    let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+    let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
+                            kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
     var out: AnyObject?
     guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
     return String(data: d, encoding: .utf8)
+  }
+  /// Whether the stored secret is the iCloud Keychain (synced) kind.
+  static func isSynced(service: String) -> Bool {
+    let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrSynchronizable as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
+    return SecItemCopyMatching(q as CFDictionary, nil) == errSecSuccess
+  }
+}
+
+/// "Use on my other devices" for Luna's own-key brain. Off by default. When on, the key AND its settings
+/// (provider, the grown-up's consent for that provider, model) travel through iCloud Keychain, never
+/// through iCloud key-value sync and never to us. Consent stays tied to one provider: changing provider
+/// deletes the key (everywhere) and the consent with it.
+enum KeyTravel {
+  struct Meta: Codable, Equatable { var provider: KeyProvider; var consentFor: KeyProvider?; var model: String? }
+  static var isOn: Bool { Keychain.isSynced(service: Keychain.lunaService) }
+
+  static func setOn(_ on: Bool, settings s: BrainSettings) {
+    guard let key = Keychain.get(service: Keychain.lunaService) else { return }
+    Keychain.set(key, service: Keychain.lunaService, synced: on)
+    if on { publish(s) } // (set() above already removed the meta when turning off? no: only on delete)
+    else { Keychain.set(nil, service: Keychain.lunaMetaService) }
+  }
+  /// Keep the travelling settings in step with this device's (called whenever they're saved).
+  static func publish(_ s: BrainSettings) {
+    guard isOn else { return }
+    let m = Meta(provider: s.provider, consentFor: s.consentFor, model: s.model)
+    if let d = try? JSONEncoder().encode(m), let str = String(data: d, encoding: .utf8) { Keychain.set(str, service: Keychain.lunaMetaService, synced: true) }
+  }
+  /// On a device that got a travelling key: take its provider + consent, unless a grown-up here already
+  /// picked a different provider (then the key isn't for this setup and stays unused until they choose).
+  static func adopt(into s: BrainSettings) -> BrainSettings {
+    guard let str = Keychain.get(service: Keychain.lunaMetaService), let m = try? JSONDecoder().decode(Meta.self, from: Data(str.utf8)) else { return s }
+    var r = s
+    if s.choice == nil || s.provider == m.provider {
+      r.provider = m.provider; r.consentFor = m.consentFor == m.provider ? m.consentFor : nil; r.model = r.model ?? m.model
+      if s.choice == nil, r.consentFor != nil { r.choice = .byok }
+    }
+    return r
   }
 }
 
