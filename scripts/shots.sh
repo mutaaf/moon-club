@@ -8,7 +8,7 @@ APP=build/dd/Build/Products/Debug-iphonesimulator/MoonClub.app
 PHONE="${PHONE:-iPhone 17}"; PAD="${PAD:-iPad Pro 11-inch (M5)}"
 id_of() { xcrun simctl list devices available | grep -F "    $1 (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/'; }
 # Some freshly-installed simulator runtimes hang on `simctl launch`; every call gets a timeout.
-t() { "$@" & p=$!; ( sleep "${T:-60}"; kill $p 2>/dev/null ) & w=$!; wait $p 2>/dev/null; kill $w 2>/dev/null; }
+t() { "$@" & p=$!; ( sleep "${T:-60}"; kill $p 2>/dev/null ) 2>/dev/null & w=$!; wait $p 2>/dev/null || true; kill $w 2>/dev/null || true; }
 for NAME in "$PHONE" "$PAD"; do
   ID=$( [ "$NAME" = "$PHONE" ] && echo "${PHONE_ID:-}" || echo "${PAD_ID:-}" ); [ -n "$ID" ] || ID=$(id_of "$NAME")
   [ -n "$ID" ] || { echo "no simulator named $NAME"; continue; }

@@ -433,10 +433,10 @@ struct RealStage: View {
             Text("\(co?.nick ?? c.s) \((c.pays ? t.yes : t.no) ?? "")").font(.caption).multilineTextAlignment(.center)
             if let g = guesses[c.s] { Text(g == c.pays ? "✅ You were right!" : "Now you know!").font(.caption.weight(.semibold)) }
           } else {
-            HStack(spacing: 6) {
-              Button("Pays") { flip(c.s, true) }.buttonStyle(SoftButtonStyle())
-              Button("Grows") { flip(c.s, false) }.buttonStyle(SoftButtonStyle())
-            }
+            VStack(spacing: 6) {
+              Button { flip(c.s, true) } label: { Text("💰 Pays").frame(maxWidth: .infinity) }.buttonStyle(SoftButtonStyle()).accessibilityLabel("\(co?.nick ?? c.s) pays dividends")
+              Button { flip(c.s, false) } label: { Text("🚀 Grows").frame(maxWidth: .infinity) }.buttonStyle(SoftButtonStyle()).accessibilityLabel("\(co?.nick ?? c.s) grows instead")
+            }.lineLimit(1)
           }
         }
         .padding(12).frame(maxWidth: .infinity, minHeight: 170).foregroundStyle(Palette.midnight)

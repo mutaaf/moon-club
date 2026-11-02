@@ -99,6 +99,8 @@ struct SoftButtonStyle: ButtonStyle {
     configuration.label
       .font(.kHeadline)
       .foregroundStyle(selected ? Color.white : Palette.ink)
+      .multilineTextAlignment(.leading)
+      .padding(.vertical, 6)
       .frame(minHeight: 48)
       .padding(.horizontal, 16)
       .background(selected ? AnyShapeStyle(Palette.midnight) : AnyShapeStyle(.thinMaterial), in: Capsule())

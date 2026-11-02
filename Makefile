@@ -7,7 +7,7 @@ DD := build/dd
 up: gen test sim
 gen:
 	@command -v xcodegen >/dev/null || brew install xcodegen
-	@xcrun --find metal >/dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
+	@xcodebuild -showComponent MetalToolchain 2>/dev/null | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
 	xcodegen generate
 build: gen
 	xcodebuild -project MoonClub.xcodeproj -scheme MoonClub -destination 'platform=iOS Simulator,name=$(SIM_PHONE)' -derivedDataPath $(DD) -quiet build
