@@ -134,9 +134,9 @@ struct RevealRow: View {
 struct LeagueBoard: View {
   @Environment(AppModel.self) private var app
   var body: some View {
-    if !app.state.league.isEmpty {
+    if !app.state.leaguePlayers.isEmpty {
       let me = LeaguePlayer(emoji: app.state.me ?? 0, guesses: app.state.guesses.map { LeagueGuess(s: $0.s, d: $0.d, pick: $0.pick, price: $0.price) })
-      let players = [me] + app.state.league
+      let players = [me] + app.state.leaguePlayers
       let rows = League.rows(players, limit: 8)
       let byKey = Dictionary(app.events.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
       let res: (LeagueGuess) -> Resolution = { g in

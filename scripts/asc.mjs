@@ -5,6 +5,7 @@
 //   node scripts/asc.mjs whoami            check the key works and list the apps it can see
 //   node scripts/asc.mjs bundle            register com.mutaafaziz.moonclub (idempotent)
 //   node scripts/asc.mjs ship <build>      wait for processing, set the release notes, hand the build to testers
+//   node scripts/asc.mjs capabilities      enable the bundle id's capabilities (iCloud key-value storage)
 //   node scripts/asc.mjs signing           create/install an Apple Distribution cert + App Store profile (no cloud signing)
 //   node scripts/asc.mjs notes [version]   print the TestFlight notes that would be sent (lint)
 //
@@ -175,6 +176,7 @@ async function signing() {
   execFileSync("sh", ["-c", `openssl x509 -inform der -in "${dir}/dist.cer" -out "${dir}/dist.pem" && openssl pkcs12 -export -legacy -inkey "${keyPath}" -in "${dir}/dist.pem" -out "${dir}/dist.p12" -passout pass:moonclub 2>/dev/null || openssl pkcs12 -export -inkey "${keyPath}" -in "${dir}/dist.pem" -out "${dir}/dist.p12" -passout pass:moonclub; security import "${dir}/dist.p12" -k ~/Library/Keychains/login.keychain-db -P moonclub -T /usr/bin/codesign >/dev/null 2>&1 || true`]);
   console.log("✓ distribution identity in the login keychain");
   const bid = (await api("GET", `/v1/bundleIds?filter[identifier]=${BUNDLE}`)).data.find((x) => x.attributes.identifier === BUNDLE);
+  await capabilities(bid.id); // before the profile, so the profile carries them
   const name = "Moon Club App Store";
   const profs = await api("GET", `/v1/profiles?filter[name]=${encodeURIComponent(name)}&limit=10`);
   for (const p of profs.data) await api("DELETE", `/v1/profiles/${p.id}`); // re-create so it always holds the current cert
@@ -205,7 +207,22 @@ async function crew() {
   console.log(`✓ “${INTERNAL}”: ${have.size + added} tester(s) (${added} added); each gets a TestFlight invite email`);
 }
 
+/** Capabilities the app's entitlements need, enabled on the bundle id (idempotent).
+ *  ICLOUD: key-value storage for opt-in progress sync (com.apple.developer.ubiquity-kvstore-identifier). */
+async function capabilities(bundleIdId) {
+  const id = bundleIdId ?? (await api("GET", `/v1/bundleIds?filter[identifier]=${BUNDLE}`)).data.find((x) => x.attributes.identifier === BUNDLE).id;
+  const have = new Set((await api("GET", `/v1/bundleIds/${id}/bundleIdCapabilities`)).data.map((c) => c.attributes.capabilityType));
+  for (const capabilityType of ["ICLOUD"]) {
+    if (have.has(capabilityType)) continue;
+    await api("POST", "/v1/bundleIdCapabilities", { data: { type: "bundleIdCapabilities",
+      attributes: { capabilityType, settings: [{ key: "ICLOUD_VERSION", options: [{ key: "XCODE_6" }] }] },
+      relationships: { bundleId: { data: { type: "bundleIds", id } } } } });
+    console.log(`✓ enabled ${capabilityType} on ${BUNDLE}`);
+  }
+  console.log(`✓ capabilities: ${[...new Set([...have, "ICLOUD"])].join(", ")}`);
+}
+
 const [cmd, arg] = process.argv.slice(2);
-const run = { whoami, bundle, signing, crew, ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
+const run = { whoami, bundle, signing, crew, capabilities: () => capabilities(), ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
 if (!run) { console.log("usage: asc.mjs whoami | bundle | ship <build> | notes [version]"); process.exit(2); }
 Promise.resolve().then(run).catch((e) => { console.error("✗ " + e.message); process.exit(1); });

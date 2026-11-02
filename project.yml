@@ -10,7 +10,7 @@ settings:
     DEVELOPMENT_TEAM: Z73865R687
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.0"
+    MARKETING_VERSION: "0.5.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   MoonClub:
@@ -20,6 +20,11 @@ targets:
       - MoonClub
       - { path: release-notes, type: folder, buildPhase: resources }
     dependencies: [{ package: MoonClubCore }]
+    entitlements:
+      path: MoonClub/MoonClub.entitlements
+      properties:
+        # iCloud key-value storage: opt-in progress sync on the family's own devices (MoonClub/Live/CloudSync.swift)
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mutaafaziz.moonclub

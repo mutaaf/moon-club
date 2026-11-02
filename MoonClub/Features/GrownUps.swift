@@ -71,6 +71,7 @@ struct GrownUpsView: View {
         Section { LeagueSettings() } header: { Text("Family league") } footer: {
           Text("Each player picks an emoji instead of a name. A code holds only the company, the date and the guess. Codes work with the website too.")
         }
+        SyncSections()
         Section("Conversation starters") {
           bullet("“Which companies do we buy things from every week?”")
           bullet("“If you had $10, would you save it or invest it? Why?”")
@@ -80,10 +81,12 @@ struct GrownUpsView: View {
         Section("More") {
           Link(destination: URL(string: "https://mutaafaziz.com/metaphases/kids")!) { Label("Metaphases Kids on the web", systemImage: "safari") }
           Link(destination: URL(string: "https://mutaafaziz.com/metaphases/kids/grownups")!) { Label("Printable worksheets", systemImage: "printer") }
-          Button(role: .destructive) { app.mutate { $0 = KidsState() } } label: { Label("Reset all progress on this device", systemImage: "trash") }
+          ResetProgressButton()
         }
       }
       #if DEBUG
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-askReset") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("reset", anchor: .bottom) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollSync") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("sync", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
       #endif
       }
@@ -163,7 +166,7 @@ struct LeagueSettings: View {
       }.disabled(paste.trimmingCharacters(in: .whitespaces).isEmpty)
       if let msg { Text(msg.text).font(.callout).foregroundStyle(msg.ok ? Palette.good : Palette.bad) }
     }
-    ForEach(app.state.league) { p in
+    ForEach(app.state.leaguePlayers) { p in
       HStack { Text("\(app.content.players[p.emoji]) \(app.content.playerNames[p.emoji]) · \(p.guesses.count) guesses"); Spacer(); Button("Remove", role: .destructive) { app.mutate { $0.removePlayer(p.emoji) } }.font(.caption) }
     }
   }

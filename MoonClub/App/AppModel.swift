@@ -8,6 +8,8 @@ struct Services {
   var voice: VoiceService
   var store: ProgressStore
   var clock: Clock
+  /// Cross-device progress (iCloud, opt-in). Defaults to none so tests and previews need no change.
+  var sync: SyncService = NoSync()
 }
 
 /// The single app-wide model (the composition root owns exactly one). Views read derived values and
@@ -21,6 +23,10 @@ final class AppModel {
   let voice: VoiceService
   private let store: ProgressStore
   private let clock: Clock
+  let sync: SyncService
+  /// Mirrors `sync.isOn` / `sync.lastSynced` so SwiftUI updates when they change.
+  private(set) var syncOn = false
+  private(set) var lastSynced: Date?
 
   // Market data the screens share (loaded once, cached by the service layer).
   var events: [EarningsEvent] = []
@@ -33,9 +39,12 @@ final class AppModel {
 
   init(content: KidsContent, services s: Services) {
     self.content = content
-    market = s.market; luna = s.luna; voice = s.voice; store = s.store; clock = s.clock
+    market = s.market; luna = s.luna; voice = s.voice; store = s.store; clock = s.clock; sync = s.sync
     state = s.store.load()
     brain = s.luna.activeBrain()
+    syncOn = sync.isOn; lastSynced = sync.lastSynced
+    sync.observe { [weak self] remote in self?.absorb(remote) }
+    if sync.isOn { syncNow() }
   }
 
   func refreshBrain() { let b = luna.activeBrain(); if b != brain { brain = b } }
@@ -57,8 +66,69 @@ final class AppModel {
   func mutate(_ f: (inout KidsState) -> Void) {
     var s = state; f(&s)
     guard s != state else { return }
+    commit(s, push: true)
+  }
+
+  /// The one place state is replaced: save locally, tell iCloud (if on), refresh anything derived.
+  private func commit(_ s: KidsState, push: Bool) {
     state = s
     store.save(s)
+    if push, sync.isOn { sync.push(s) }
+    stateDidChange()
+  }
+
+  /// Hook for things outside the app that mirror progress. Widgets: republish the App Group snapshot here
+  /// (after local edits AND after merges from other devices).
+  private func stateDidChange() {}
+
+  // MARK: Sync (iCloud, opt-in behind the grown-up gate)
+  /// Another device changed the synced copy: merge it in (merge is order-independent, so this is safe
+  /// however often it runs) and push back only if our side added something.
+  private func absorb(_ remote: KidsState) {
+    let merged = state.merged(with: remote)
+    lastSynced = sync.lastSynced
+    if merged != state { commit(merged, push: merged != remote.normalized()) }
+  }
+
+  /// Pull, merge, push. Turning sync on never loses progress on either side.
+  func syncNow() {
+    guard sync.isOn else { return }
+    let merged = sync.pull().map { state.merged(with: $0) } ?? state.normalized()
+    if merged != state { commit(merged, push: false) }
+    sync.push(merged)
+    lastSynced = sync.lastSynced ?? Date()
+  }
+
+  func setSync(_ on: Bool) {
+    sync.isOn = on && sync.isAvailable
+    syncOn = sync.isOn
+    if syncOn { syncNow() }
+  }
+
+  enum ResetScope { case thisDevice, everywhere }
+  /// "This device only" also turns sync off here; otherwise the next sync would bring the progress back.
+  /// "All devices" bumps the reset epoch, which beats every older copy (see MoonClubCore/Sync.swift).
+  func resetProgress(_ scope: ResetScope) {
+    switch scope {
+    case .everywhere:
+      commit(KidsState.resetEverywhere(from: state, nowMillis: Int(Date().timeIntervalSince1970 * 1000)), push: true)
+    case .thisDevice:
+      setSync(false)
+      var fresh = KidsState(); fresh.resetEpoch = state.resetEpoch
+      commit(fresh, push: false)
+    }
+  }
+
+  /// "Move my progress" from the website: decode the pasted code and merge it in. Safe to repeat.
+  func importProgress(_ text: String) -> Result<Int, Transfer.Failure> {
+    switch Transfer.decode(text, companies: content.companies) {
+    case .failure(let f): return .failure(f)
+    case .success(let incoming):
+      let before = state.lessons.count + state.guesses.count + state.quest.count
+      let merged = state.merged(with: incoming)
+      commit(merged, push: true)
+      return .success(merged.lessons.count + merged.guesses.count + merged.quest.count - before)
+    }
   }
 
   func loadMarket() async {

@@ -11,6 +11,8 @@ The user's call (2026-11-02): ship a working prototype to their own kids and bet
   - Luna questions: by default answered **on the device** with Apple Intelligence (nothing sent) when the device supports it; otherwise sent to the free kid-safe model with no key, capped at 200 characters. The UI asks kids not to type personal details.
   - **Only if a grown-up adds their own key and turns on the disclosure** ("your child's questions will be sent to <provider> using your key") are kid-typed questions and the chat's recent turns sent directly to that third party (Anthropic, OpenAI, Google or xAI) under the grown-up's own account and that company's terms. Consent is per provider and resets when the provider changes.
   - an optional voice provider on a grown-up's own key, which only ever speaks app text or Luna's answers
+- **Sync across devices stays in the family's iCloud.** Opt-in per device behind the gate. Progress goes to the family's own iCloud key-value storage; Apple holds it in their account, and we never receive it (there's no server of ours). An own AI key moves only if a grown-up turns on "Use on my other devices", and only through iCloud Keychain, which is end-to-end encrypted. Under the privacy manifest this is still "data not collected", since the developer never gets it.
+- **Web → app transfer is a code a grown-up copies.** It holds only lesson ids, days, picks and pretend-money numbers. There's no upload, no camera and no account.
 - **Privacy manifest:** no tracking, and no collected data types.
 
 ## Deferred (do before an App Store / Kids Category release)
@@ -24,5 +26,6 @@ The user's call (2026-11-02): ship a working prototype to their own kids and bet
 - [ ] App Store screenshots and marketing copy (`make shots` produces the raw frames).
 - [ ] **BYOK = kid text to a third party.** With a grown-up's own key, a child's free-text questions go to that AI company. Before public release: confirm each provider's terms allow under-13 content through a parent's account (several require users to be 18+ or exclude children's data); decide whether the in-app toggle counts as verifiable parental consent under COPPA, or whether BYOK must be limited to tap-to-ask questions; and name each provider in the privacy policy. On-device Apple Intelligence sends nothing, so it is the recommended default.
 - [ ] **Grown-up voice keys.** Confirm the third-party TTS terms allow children's content; document the data flow in the privacy policy.
+- [ ] **iCloud sync note in the privacy policy.** Say that progress can sync through the family's iCloud account if a grown-up turns it on, and that we never receive it.
 - [ ] Accessibility audit with VoiceOver on device.
 - [ ] Legal review of "pretend money / not investment advice" copy.

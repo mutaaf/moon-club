@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-11-02T16:48:20.456Z",
+  "generated": "2026-11-02T18:35:05.360Z",
   "source": "github.com/mutaaf/metaphases shared/kids*.ts",
   "companies": [
     {
@@ -3979,6 +3979,122 @@
       "DIS": 340,
       "RBLX": 330,
       "HSY": 330
+    },
+    "transfer": {
+      "code": "MOONP1-eyJ2IjoxLCJsIjpbWyJjb21wYW55IiwiMjAyNi0xMC0xMCJdLFsic2hhcmUiLCIyMDI2LTEwLTI4Il1dLCJxIjpbImNvbXBhbnkiLCJzaGFyZXMiXSwicWQiOjEsImIiOlsiZmlyc3QtZ3Vlc3MiLCJsZW1vbmFkZSJdLCJtZSI6MiwibGciOlsiTU9PTi0xMzMyLUI5OSJdLCJnIjpbWyJESVMiLCIyMDI2LTExLTA1IiwibSIsInUiLCIyMDI2LTEwLTMwIiwiIiwiIl0sWyJBQVBMIiwiMjAyNi0xMC0yOSIsImIiLCJ1IiwiMjAyNi0xMC0yNyIsInIiLCJ3Il0sWyJLTyIsIjIwMjYtMTAtMjEiLCJiIiwiIiwiMjAyNi0xMC0yMCIsInIiLCIiXV0sInAiOnsic3QiOiIyMDI2LTEwLTIwIiwiaCI6W1siRElTIiw0MDAsNCwxMDBdLFsiUkJMWCIsMzAwLDcuNSw0MF1dLCJoaSI6W1siMjAyNi0xMC0yMCIsMTAwMF0sWyIyMDI2LTEwLTI2IiwxMDEwXSxbIjIwMjYtMTAtMzAiLDEwMjQuMTRdXX19-R0F1",
+      "state": {
+        "guesses": [
+          {
+            "s": "AAPL",
+            "d": "2026-10-29",
+            "pick": "beat",
+            "price": "up",
+            "at": "2026-10-27",
+            "result": "right",
+            "priceResult": "wrong"
+          },
+          {
+            "s": "DIS",
+            "d": "2026-11-05",
+            "pick": "miss",
+            "price": "up",
+            "at": "2026-10-30"
+          },
+          {
+            "s": "KO",
+            "d": "2026-10-21",
+            "pick": "beat",
+            "at": "2026-10-20",
+            "result": "right"
+          }
+        ],
+        "piggy": {
+          "started": "2026-10-20",
+          "holdings": [
+            {
+              "s": "DIS",
+              "coins": 400,
+              "shares": 4,
+              "start": 100
+            },
+            {
+              "s": "RBLX",
+              "coins": 300,
+              "shares": 7.5,
+              "start": 40
+            }
+          ],
+          "history": {
+            "2026-10-20": 1000,
+            "2026-10-26": 1010,
+            "2026-10-30": 1024.14
+          }
+        },
+        "lessons": [
+          "company",
+          "share"
+        ],
+        "lessonDates": {
+          "share": "2026-10-28",
+          "company": "2026-10-10"
+        },
+        "seenBadges": [
+          "first-guess",
+          "lemonade"
+        ],
+        "me": 2,
+        "league": [
+          {
+            "emoji": 3,
+            "guesses": [
+              {
+                "s": "AAPL",
+                "d": "2026-10-29",
+                "pick": "beat",
+                "price": "up"
+              }
+            ]
+          }
+        ],
+        "quest": [
+          "company",
+          "shares"
+        ],
+        "questDone": true
+      },
+      "pasted": "Moon Club progress:\nMOONP1-eyJ2IjoxLCJsIjpbWyJjb21\nwYW55IiwiMjAyNi0xMC0xMCJdLFsic2hhcmUiLCIyMDI2LTEwLTI4Il1dLCJxIjpbImNvbXBhbnkiLCJzaGFyZXMiXSwicWQiOjEsImIiOlsiZmlyc3QtZ3Vlc3MiLCJsZW1vbmFkZSJdLCJtZSI6MiwibGciOlsiTU9PTi0xMzMyLUI5OSJdLCJnIjpbWyJESVMiLCIyMDI2LTExLTA1IiwibSIsInUiLCIyMDI2LTEwLTMwIiwiIiwiIl0sWyJBQVBMIiwiMjAyNi0xMC0yOSIsImIiLCJ1IiwiMjAyNi0xMC0yNyIsInIiLCJ3Il0sWyJLTyIsIjIwMjYtMTAtMjEiLCJiIiwiIiwiMjAyNi0xMC0yMCIsInIiLCIiXV0sInAiOnsic3QiOiIyMDI2LTEwLTIwIiwiaCI6W1siRElTIiw0MDAsNCwxMDBdLFsiUkJMWCIsMzAwLDcuNSw0MF1dLCJoaSI6W1siMjAyNi0xMC0yMCIsMTAwMF0sWyIyMDI2LTEwLTI2IiwxMDEwXSxbIjIwMjYtMTAtMzAiLDEwMjQuMTRdXX19-R0F1\n",
+      "checksums": [
+        {
+          "body": "",
+          "out": "S5EM"
+        },
+        {
+          "body": "abc",
+          "out": "FT5F"
+        },
+        {
+          "body": "eyJ2IjoxfQ",
+          "out": "F3K3"
+        },
+        {
+          "body": "eyJ2IjoxLCJsIjpbWyJjb21wYW55IiwiMjAyNi0xMC0xMCJdLFsic2hhcmUiLCIyMDI2LTEwLTI4Il1dLCJxIjpbImNvbXBhbnkiLCJzaGFyZXMiXSwicWQiOjEsImIiOlsiZmlyc3QtZ3Vlc3MiLCJsZW1vbmFkZSJdLCJtZSI6MiwibGciOlsiTU9PTi0xMzMyLUI5OSJdLCJnIjpbWyJESVMiLCIyMDI2LTExLTA1IiwibSIsInUiLCIyMDI2LTEwLTMwIiwiIiwiIl0sWyJBQVBMIiwiMjAyNi0xMC0yOSIsImIiLCJ1IiwiMjAyNi0xMC0yNyIsInIiLCJ3Il0sWyJLTyIsIjIwMjYtMTAtMjEiLCJiIiwiIiwiMjAyNi0xMC0yMCIsInIiLCIiXV0sInAiOnsic3QiOiIyMDI2LTEwLTIwIiwiaCI6W1siRElTIiw0MDAsNCwxMDBdLFsiUkJMWCIsMzAwLDcuNSw0MF1dLCJoaSI6W1siMjAyNi0xMC0yMCIsMTAwMF0sWyIyMDI2LTEwLTI2IiwxMDEwXSxbIjIwMjYtMTAtMzAiLDEwMjQuMTRdXX19",
+          "out": "R0F1"
+        }
+      ],
+      "bad": [
+        {
+          "code": "hello",
+          "why": "notACode"
+        },
+        {
+          "code": "MOONP1-eyJ2IjoxLCJsAjpbWyJjb21wYW55IiwiMjAyNi0xMC0xMCJdLFsic2hhcmUiLCIyMDI2LTEwLTI4Il1dLCJxIjpbImNvbXBhbnkiLCJzaGFyZXMiXSwicWQiOjEsImIiOlsiZmlyc3QtZ3Vlc3MiLCJsZW1vbmFkZSJdLCJtZSI6MiwibGciOlsiTU9PTi0xMzMyLUI5OSJdLCJnIjpbWyJESVMiLCIyMDI2LTExLTA1IiwibSIsInUiLCIyMDI2LTEwLTMwIiwiIiwiIl0sWyJBQVBMIiwiMjAyNi0xMC0yOSIsImIiLCJ1IiwiMjAyNi0xMC0yNyIsInIiLCJ3Il0sWyJLTyIsIjIwMjYtMTAtMjEiLCJiIiwiIiwiMjAyNi0xMC0yMCIsInIiLCIiXV0sInAiOnsic3QiOiIyMDI2LTEwLTIwIiwiaCI6W1siRElTIiw0MDAsNCwxMDBdLFsiUkJMWCIsMzAwLDcuNSw0MF1dLCJoaSI6W1siMjAyNi0xMC0yMCIsMTAwMF0sWyIyMDI2LTEwLTI2IiwxMDEwXSxbIjIwMjYtMTAtMzAiLDEwMjQuMTRdXX19-R0F1",
+          "why": "damaged"
+        },
+        {
+          "code": "MOONP1-eyJ2IjoxLCJsIjpbWyJjb21wYW55IiwiMjAyNi0xMC0xMCJdLFsic2hhcmUiLCIyMDI2LTEwLTI4Il1dLCJxIjpbImNvbXBhbnkiLCJzaGFyZXMiXSwicWQiOjEsImIiOlsiZmlyc3QtZ3Vlc3MiLCJsZW1vbmFkZSJdLCJtZSI6MiwibGciOlsiTU9PTi0xMzMyLUI5OSJdLCJnIjpbWyJESVMiLCIyMDI2LTExLTA1IiwibSIsInUiLCIyMDI2LTEwLTMwIiwiIiwiIl0sWyJBQVBMIiwiMjAyNi0xMC0yOSIsImIiLCJ1IiwiMjAyNi0xMC0yNyIsInIiLCJ3Il0sWyJLTyIsIjIwMjYtMTAtMjEiLCJiIiwiIiwiMjAyNi0xMC0yMCIsInIiLCIiXV0sInAiOnsic3QiOiIyMDI2LTEwLTIwIiwiaCI6W1siRElTIiw0MDAsNCwxMDBdLFsiUkJMWCIsMzAwLDcuNSw0MF1dLCJoaSI6W1siMjAyNi0xMC0yMCIsMTAwMF0sWyIyMDI2LTEwLTI2IiwxMDEwXSxbIjIwMjYtMTAtMzAiLDEwMjQuMTRdXX19-R0F",
+          "why": "damaged"
+        }
+      ]
     }
   }
 }

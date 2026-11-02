@@ -25,3 +25,10 @@ Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`
 - Agent worktrees live in `.claude/worktrees/` and are gitignored. Never `git add -A` before that's ignored.
 - **Luna brains**: `MoonClubCore/Brain.swift` (pure: router, prompt, guard, BYOK request builders) + `MoonClub/Live/Brains.swift` (live brains, FoundationModels behind `#if canImport(FoundationModels)` + `#available(iOS 26, *)`; the deployment target stays 17). Keep `LunaPrompts.kidsSystem` in sync with metaphases `worker/ai/prompts.ts` `KIDS_SYSTEM`. BYOK calls providers directly, NOT through the worker, because the web's `kids` task is FREE_ONLY and ignores keys. Demo: `-demo -grownups -brain byok` presets the picker for screenshots (DEBUG only).
 - **Apple Intelligence in the Simulator** follows the host Mac's Apple Intelligence state: it shows `available` only if the Mac has it on and its model downloaded. On-device answers are unverified until run on an eligible device (iPhone 15 Pro+ / M-series iPad).
+- **Sync** (`docs/ARCHITECTURE.md`, "Sync across devices"):
+  - `KidsState.merged(with:)` must stay a join; `SyncTests` property-checks it. Never filter or cap inside the merge: filtering "me" out of the league there broke associativity, so `leaguePlayers` filters at read time and `Sync.payload` caps at write time.
+  - New `KidsState` fields must be optional or have a merge rule, or old saves fail to decode and progress resets (`resetEpoch` is `Int?` for this reason).
+- **iCloud capability:** `asc.mjs capabilities` enables ICLOUD on the bundle id; `asc.mjs signing` runs it before making the App Store profile. The entitlement is in `project.yml` (generated to `MoonClub/MoonClub.entitlements`). `GET /v1/bundleIds/{id}/bundleIdCapabilities` rejects `limit=`.
+- **Web transfer codes** (`MOONP1-`) come from metaphases `shared/kidsTransfer.ts`; the app's `Transfer.swift` is checked against the `transfer` vectors. Change both together and re-run `make content`.
+- Debug screenshot args: `-demo -grownups -syncOn -scrollSync` shows the "Your devices" section.
+

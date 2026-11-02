@@ -6,6 +6,7 @@ import MoonClubCore
 struct BrainPicker: View {
   @Environment(AppModel.self) private var app
   @State private var s = BrainStore.load()
+  @State private var keyTravels = KeyTravel.isOn
   @State private var device = OnDevice.status()
   @State private var savedKey = BrainStore.lunaKey
   @State private var paste = ""
@@ -110,6 +111,15 @@ struct BrainPicker: View {
         Text("I understand my child's questions will be sent to **\(s.provider.label)** using my key, and \(s.provider.label)'s own privacy terms apply.").font(.callout)
       }
       .accessibilityIdentifier("byok-consent")
+      if savedKey != nil {
+        Toggle(isOn: Binding(get: { keyTravels }, set: { on in KeyTravel.setOn(on, settings: s); keyTravels = KeyTravel.isOn })) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Use on my other devices").font(.callout)
+            Text("Your key and this OK travel through iCloud Keychain, encrypted by Apple, to your own iPhones and iPads. Off unless you turn it on.").font(.footnote).foregroundStyle(.secondary)
+          }
+        }
+        .accessibilityIdentifier("byok-travel")
+      }
       if let v = s.provider.voice, savedKey != nil {
         Button {
           var vs = VoiceSettings.load()
@@ -128,7 +138,7 @@ struct BrainPicker: View {
   private func check() async {
     if savedKey == nil {
       let k = paste.trimmingCharacters(in: .whitespacesAndNewlines)
-      Keychain.set(k, service: Keychain.lunaService); savedKey = BrainStore.lunaKey; paste = ""
+      Keychain.set(k, service: Keychain.lunaService); savedKey = BrainStore.lunaKey; paste = ""; keyTravels = KeyTravel.isOn
     }
     guard let key = savedKey else { return }
     checking = true; defer { checking = false }
