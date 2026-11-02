@@ -6,6 +6,7 @@ struct StoryView: View {
   @Environment(AppModel.self) private var app
   @Environment(\.openQuest) private var openQuest
   @State private var page = 0
+  @State private var fold = FoldInfo()
 
   enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), word, quiz, next }
 
@@ -31,14 +32,30 @@ struct StoryView: View {
           RoundedRectangle(cornerRadius: 28).fill(.thinMaterial).frame(height: 460).overlay(ProgressView())
         } else {
           let cs = cards
+          // Opened wide (iPhone Duo, iPad) the story reads like a book: two cards per spread, one on
+          // each side of the fold. On a phone it's one card per swipe.
+          let sp = fold.split(minPage: 280)
+          let per = sp == nil ? 1 : 2
           TabView(selection: $page) {
-            ForEach(Array(cs.enumerated()), id: \.offset) { i, c in
-              StoryCard(card: c).padding(.horizontal, 2).padding(.bottom, 44).tag(i)
+            ForEach(Array(stride(from: 0, to: cs.count, by: per).enumerated()), id: \.offset) { p, start in
+              Group {
+                if let sp {
+                  PageSplit(split: sp, fill: true) {
+                    StoryCard(card: cs[start])
+                    if start + 1 < cs.count { StoryCard(card: cs[start + 1]) } else { TheEndPage() }
+                  }
+                } else {
+                  StoryCard(card: cs[start]).padding(.horizontal, 2)
+                }
+              }
+              .padding(.bottom, 44).tag(p)
             }
           }
           .tabViewStyle(.page(indexDisplayMode: .always))
           .indexViewStyle(.page(backgroundDisplayMode: .always))
           .frame(height: 560)
+          .foldProbe($fold)
+          .onChange(of: per) { old, new in page = page * old / new }
           .sensoryFeedback(.selection, trigger: page)
           if let e = app.marketError { Text(e.message).font(.footnote).foregroundStyle(.secondary) }
         }
@@ -49,6 +66,20 @@ struct StoryView: View {
     .background(AuroraField(surface: .story))
     .refreshable { await app.loadMarket() }
     .onDisappear { if cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
+  }
+}
+
+/// The facing page when today's story has an odd number of cards (two-card spreads only).
+struct TheEndPage: View {
+  var body: some View {
+    Card {
+      VStack(spacing: 14) {
+        Luna(size: 88, wave: true)
+        Text("That's today's story!").font(.kTitle)
+        Text("Come back tomorrow for a new page. 🌙").font(.kRead).multilineTextAlignment(.center)
+      }
+      .frame(maxWidth: .infinity, minHeight: 300)
+    }
   }
 }
 

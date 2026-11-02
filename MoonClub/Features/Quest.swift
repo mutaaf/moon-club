@@ -22,28 +22,45 @@ struct QuestView: View {
   var body: some View {
     NavigationStack {
       ScrollView {
-        VStack(alignment: .leading, spacing: 18) {
-          Hero(eyebrow: "Learn by doing · Chapter \((chapters.firstIndex { $0.id == chapter } ?? 0) + 1)", title: meta?.title ?? "", emoji: meta?.emoji)
-          stepper
-          VStack(alignment: .leading, spacing: 16) { content }
-            .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .id("\(chapter):\(stage)")
-            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+        // Opened wide (iPhone Duo, iPad): the chapter's story and progress on the left page, the thing
+        // you play on the right — a picture book, never across the fold. One column on a phone.
+        Storybook(minPage: 300) {
+          VStack(alignment: .leading, spacing: 18) { hero; stepper; stageCard }
+        } first: {
+          hero; stepper
+          HStack(alignment: .top, spacing: 12) {
+            Luna(size: 54, wave: true)
+            Text(meta?.blurb ?? "").font(.kRead).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
+          }
+          .padding(16).background(Palette.moon.opacity(0.35), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        } second: {
+          stageCard
         }
-        .padding(20).readable(720)
+        .padding(20).readable(820)
         .animation(.spring(response: 0.5, dampingFraction: 0.86), value: "\(chapter):\(stage)")
       }
       .background(AuroraField(surface: .quest))
       .overlay(Celebrate(trigger: burst))
+      .modifier(TaskToolbar())
       .toolbar {
-        ToolbarItem(placement: .topBarTrailing) { Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title2).symbolRenderingMode(.hierarchical) }.accessibilityLabel("Close") }
+        ToolbarItem(placement: .topBarTrailing) { Button { dismiss() } label: { Label("Close", systemImage: "xmark.circle.fill").font(.title2).symbolRenderingMode(.hierarchical) } }
         ToolbarItem(placement: .topBarLeading) {
           Menu { ForEach(chapters) { c in Button("\(c.emoji) \(c.title)") { go(c.id, "intro") } } } label: { Label("Chapters", systemImage: "books.vertical") }
         }
       }
     }
     .onAppear(perform: route)
+  }
+
+  private var hero: some View {
+    Hero(eyebrow: "Learn by doing · Chapter \((chapters.firstIndex { $0.id == chapter } ?? 0) + 1)", title: meta?.title ?? "", emoji: meta?.emoji)
+  }
+  private var stageCard: some View {
+    VStack(alignment: .leading, spacing: 16) { content }
+      .padding(22)
+      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+      .id("\(chapter):\(stage)")
+      .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
   }
 
   private func route() {

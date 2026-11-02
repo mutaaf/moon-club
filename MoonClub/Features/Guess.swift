@@ -7,12 +7,14 @@ struct GuessView: View {
   @Namespace private var ns
   @State private var bonus: [String: Direction] = [:]
   @State private var word: String?
+  @State private var gameNight = false
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
         Hero(eyebrow: "A guessing game", title: "Guess the", accent: "Report Card", emoji: "🎯")
         intro
+        gameNightCard
         LeagueBoard()
         let mine = app.state.guesses.sorted { $0.d < $1.d }
         if !mine.isEmpty {
@@ -34,6 +36,31 @@ struct GuessView: View {
     .background(AuroraField(surface: .guess))
     .refreshable { await app.loadMarket() }
     .sheet(item: Binding(get: { word.map(Ident.init) }, set: { word = $0?.id })) { WordSheet(key: $0.id) }
+    .fullScreenCover(isPresented: $gameNight) { GameNightView() }
+    #if DEBUG
+    .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
+    #endif
+  }
+
+  /// Two players, one phone. Best on iPhone Duo, where each player gets their own half of the screen.
+  private var gameNightCard: some View {
+    Button { gameNight = true } label: {
+      HStack(spacing: 14) {
+        Text("🌙🚀").font(.system(size: 30)).accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 2) {
+          Text("GAME NIGHT · 2 PLAYERS").font(.kEyebrow).opacity(0.8)
+          Text("Play head to head").font(.kTitle)
+          Text("Open the phone wide: one half each!").font(.caption).opacity(0.85)
+        }
+        Spacer(minLength: 0)
+        Image(systemName: "arrow.right").font(.title3.weight(.bold))
+      }
+      .foregroundStyle(.white).padding(18)
+      .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+      .background(Palette.midnight, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Game Night: play head to head with two players")
   }
 
   private var intro: some View {

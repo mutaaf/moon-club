@@ -7,6 +7,9 @@ struct WordSheet: View {
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openQuest) private var openQuest
+  @Environment(\.supportsMultipleWindows) private var multiWindow
+  @Environment(\.openWindow) private var openWindow
+  @Environment(DuoModel.self) private var duo: DuoModel?
   var body: some View {
     if let t = app.content.terms[key] {
       VStack(spacing: 18) {
@@ -20,6 +23,14 @@ struct WordSheet: View {
           if let play = t.play { Button("Play it 🍋") { dismiss(); openQuest(play) }.buttonStyle(SoftButtonStyle()) }
         }
         Button("Got it!") { dismiss() }.buttonStyle(PrimaryButtonStyle())
+        // iPhone Duo (and iPad) can show two windows side by side: keep the whole Word Book open next to
+        // a quest or lesson. New windows can't open on iPhone Duo's outer display, so it hides there.
+        if multiWindow && duo?.pose != .closed {
+          Button { dismiss(); openWindow(id: WordBookView.windowID, value: key) } label: {
+            Label("Keep the Word Book open beside me", systemImage: "rectangle.split.2x1")
+          }
+          .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
+        }
       }
       .padding(28)
       .readable(520)
@@ -56,6 +67,51 @@ struct WordChips: View {
   }
 }
 struct Ident: Identifiable { let id: String }
+
+/// 📖 Luna's Word Book: every tap-a-word card in one place, in its own window, so it can sit beside a
+/// quest or lesson in Split View (iPhone Duo open, iPad). Opens on the word the kid was reading.
+struct WordBookView: View {
+  static let windowID = "wordbook"
+  var start: String?
+  @Environment(AppModel.self) private var app
+  @State private var open: String?
+  var body: some View {
+    let terms = app.content.terms.sorted { $0.value.word.localizedCaseInsensitiveCompare($1.value.word) == .orderedAscending }
+    NavigationStack {
+      ScrollViewReader { proxy in
+        ScrollView {
+          LazyVStack(alignment: .leading, spacing: 10) {
+            ForEach(terms, id: \.key) { k, t in
+              Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { open = open == k ? nil : k } } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                  HStack(spacing: 12) {
+                    Text(t.emoji).font(.system(size: 34)).frame(width: 48).accessibilityHidden(true)
+                    Text(t.word).font(.kTitle).foregroundStyle(Palette.ink)
+                    Spacer()
+                    Image(systemName: open == k ? "chevron.up" : "chevron.down").foregroundStyle(.secondary)
+                  }
+                  if open == k {
+                    Text(t.means).font(.kRead).foregroundStyle(Palette.ink)
+                    Text(t.example).font(.system(.body, design: .serif).italic()).foregroundStyle(Palette.ink2)
+                    ReadAloud(source: .appCopy("\(t.word). \(t.means) \(t.example)"))
+                  }
+                }
+                .padding(14).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+              }
+              .buttonStyle(.plain)
+              .id(k)
+            }
+          }
+          .padding(16)
+        }
+        .onAppear { if let start { open = start; proxy.scrollTo(start, anchor: .top) } }
+      }
+      .background(AuroraField(surface: .school))
+      .navigationTitle("Luna's Word Book")
+    }
+  }
+}
 
 /// A simple wrapping layout for chips.
 struct FlowLayout: Layout {

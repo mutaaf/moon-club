@@ -87,7 +87,8 @@ struct BadgesGrid: View {
     let have = app.badges
     VStack(alignment: .leading, spacing: 12) {
       Text("Your moon badges").font(.kTitle)
-      LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)], spacing: 12) {
+      // An even number of columns whenever the fold crosses the grid, so no badge sits on the crease.
+      FoldColumns(minimum: 100) {
         ForEach(app.content.badges) { b in
           VStack(spacing: 6) {
             MoonPhase(phase: b.phase, size: 48, dim: !have.contains(b.id))
@@ -124,6 +125,10 @@ struct LessonPlayer: View {
     }
   }
 
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  /// iPhone Duo: closing the phone on a finished lesson tucks Luna in for the night.
+  @State private var tucked = false
+
   var body: some View {
     VStack(spacing: 18) {
       HStack(spacing: 5) {
@@ -134,23 +139,15 @@ struct LessonPlayer: View {
       .animation(.snappy, value: step)
       .accessibilityLabel(done ? "Finished" : "Step \(step + 1) of \(lesson.steps.count)")
 
-      ZStack {
-        if done {
-          VStack(spacing: 14) {
-            MoonPhase(phase: 4, size: 110)
-            Text("Lesson done! 🎉").font(.kHero)
-            Text("You filled a moon and earned 10 points.").font(.kRead)
-          }
-          .transition(.scale.combined(with: .opacity))
-        } else {
-          stepView(lesson.steps[step]).id(step)
-            .transition(rm ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
-        }
+      // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread — the story on the
+      // left page, the play on the right, never across the fold.
+      Storybook(minPage: 280, fill: true) {
+        card(art: true)
+      } first: {
+        storyPage
+      } second: {
+        card(art: false)
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .padding(24)
-      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-      .overlay(Celebrate(trigger: burst))
 
       HStack(spacing: 12) {
         if done {
@@ -168,6 +165,71 @@ struct LessonPlayer: View {
     .navigationTitle(lesson.title)
     .navigationBarTitleDisplayMode(.inline)
     .sensoryFeedback(.selection, trigger: step)
+    .modifier(TaskToolbar())
+    .onChange(of: duo?.closedTick) { _, _ in if done { withAnimation(rm ? nil : .spring) { tucked = true } } }
+    .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: tucked)
+  }
+
+  /// The single card (phone) or the right-hand "play" page (spread). `art` keeps the big picture on the
+  /// card when there's no left page to hold it.
+  private func card(art: Bool) -> some View {
+    ZStack {
+      if done {
+        VStack(spacing: 14) {
+          if art { doneArt }
+          Text(tucked ? "Goodnight, Luna! 💤" : "Lesson done! 🎉").font(.kHero).multilineTextAlignment(.center)
+          Text(tucked ? "Luna is tucked in. See you tomorrow for the next one!" : "You filled a moon and earned 10 points.").font(.kRead).multilineTextAlignment(.center)
+        }
+        .transition(.scale.combined(with: .opacity))
+      } else {
+        stepView(lesson.steps[step], art: art).id(step)
+          .transition(rm ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(24)
+    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+    .overlay(Celebrate(trigger: burst))
+  }
+
+  @ViewBuilder private var doneArt: some View {
+    if tucked { SleepyLuna(size: 110) } else { MoonPhase(phase: 4, size: 110) }
+  }
+
+  /// The left page of the spread: the picture for a "say" step, or — on a quiz step — the last thing
+  /// Luna said, so the answer is right there on the facing page.
+  private var storyPage: some View {
+    VStack(spacing: 18) {
+      Spacer(minLength: 0)
+      if done {
+        doneArt
+      } else if case let .say(emoji, _) = lesson.steps[step] {
+        Text(emoji).font(.system(size: 132)).accessibilityHidden(true)
+          .phaseAnimator([0.92, 1.0]) { v, p in v.scaleEffect(rm ? 1 : p) } animation: { _ in .spring(response: 0.6, dampingFraction: 0.55) }
+        Luna(size: 64, wave: true)
+      } else if let said = lastSay {
+        Eyebrow(text: "Luna said")
+        Text(said.emoji).font(.system(size: 72)).accessibilityHidden(true)
+        Text(said.text).font(.kRead).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+      } else {
+        Luna(size: 96, wave: true)
+      }
+      Spacer(minLength: 0)
+      Text(done ? lesson.title : "Page \(step + 1) of \(lesson.steps.count)").font(.kEyebrow).foregroundStyle(.secondary)
+    }
+    .id(done ? -1 : step)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(24)
+    .background(Palette.moon.opacity(0.35), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+    .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Palette.line.opacity(0.6), lineWidth: 0.5))
+    .transition(.opacity)
+  }
+
+  private var lastSay: (emoji: String, text: String)? {
+    for i in stride(from: min(step, lesson.steps.count) - 1, through: 0, by: -1) {
+      if case let .say(e, t) = lesson.steps[i] { return (e, t) }
+    }
+    return nil
   }
 
   var nextLesson: Lesson? { let ls = app.content.lessons; return ls.firstIndex(of: lesson).flatMap { $0 + 1 < ls.count ? ls[$0 + 1] : nil } }
@@ -177,12 +239,14 @@ struct LessonPlayer: View {
     if step >= lesson.steps.count { app.mutate { $0.finishLesson(lesson.id, today: app.today) }; burst += 1 }
   }
 
-  @ViewBuilder func stepView(_ s: Step) -> some View {
+  @ViewBuilder func stepView(_ s: Step, art: Bool = true) -> some View {
     switch s {
     case let .say(emoji, text):
       VStack(spacing: 22) {
-        Text(emoji).font(.system(size: 96)).accessibilityHidden(true)
-          .phaseAnimator([0.9, 1.0]) { v, p in v.scaleEffect(rm ? 1 : p) } animation: { _ in .spring(response: 0.5, dampingFraction: 0.55) }
+        if art {
+          Text(emoji).font(.system(size: 96)).accessibilityHidden(true)
+            .phaseAnimator([0.9, 1.0]) { v, p in v.scaleEffect(rm ? 1 : p) } animation: { _ in .spring(response: 0.5, dampingFraction: 0.55) }
+        }
         Text(text).font(.system(.title2, design: .rounded).weight(.semibold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }

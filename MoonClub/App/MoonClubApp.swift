@@ -24,6 +24,14 @@ struct MoonClubApp: App {
       }
       .task { boot() }
     }
+    // A second window for Luna's Word Book (iPhone Duo open, iPad): same model, same process.
+    WindowGroup("Word Book", id: WordBookView.windowID, for: String.self) { $word in
+      Group {
+        if let app { WordBookView(start: word).environment(app) }
+        else { Color(Palette.paper).ignoresSafeArea() }
+      }
+      .task { boot() }
+    }
   }
 
   @MainActor private func boot() {

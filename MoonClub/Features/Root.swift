@@ -9,10 +9,13 @@ enum Tab: String, CaseIterable, Identifiable {
   var surface: Surface { [.story, .guess, .piggy, .school, .luna][Tab.allCases.firstIndex(of: self)!] }
 }
 
-/// Phone: a TabView. iPad: a NavigationSplitView with a sidebar — never a stretched phone layout.
+/// Compact width (iPhone, iPhone Duo closed): a TabView — on iPhone Duo its bar moves to the side.
+/// Regular width (iPad, iPhone Duo open): a NavigationSplitView, whose columns the system keeps clear of
+/// the fold. Chosen by size class, never by device. Each scene owns one hinge listener (`DuoModel`).
 struct RootView: View {
   @Environment(AppModel.self) private var app
   @Environment(\.horizontalSizeClass) private var hSize
+  @State private var duo = DuoModel()
   @State private var tab: Tab = {
     let a = ProcessInfo.processInfo.arguments
     return a.firstIndex(of: "-tab").flatMap { Tab(rawValue: a[$0 + 1]) } ?? .story
@@ -39,6 +42,7 @@ struct RootView: View {
       #endif
     }
     .tint(Palette.accent)
+    .modifier(TracksHinge(duo: duo))
   }
 
   private var tabs: some View {
@@ -81,10 +85,16 @@ struct RootView: View {
     }
   }
 
+  /// On iPhone Duo these bars go vertical. The grown-ups gate is pinned (it never overflows) and both
+  /// items carry a title + symbol so the system can pick the form that fits the bar (Apple's HIG).
   @ToolbarContentBuilder private var topBar: some ToolbarContent {
-    ToolbarItem(placement: .topBarLeading) { LevelPill() }
-    ToolbarItem(placement: .topBarTrailing) {
-      Button("For grown-ups") { gate = true }.font(.footnote.weight(.semibold)).foregroundStyle(Palette.ink2)
+    if #available(iOS 27.1, *) {
+      ToolbarItem(placement: .topBarLeading) { LevelPill() }
+        .visibilityPriority(.high)
+      ToolbarItem(placement: .topBarPinnedTrailing) { GrownUpsButton { gate = true } }
+    } else {
+      ToolbarItem(placement: .topBarLeading) { LevelPill() }
+      ToolbarItem(placement: .topBarTrailing) { GrownUpsButton { gate = true } }
     }
   }
 }
@@ -94,15 +104,33 @@ struct OpenQuest { let open: (String) -> Void; func callAsFunction(_ id: String)
 private struct OpenQuestKey: EnvironmentKey { static let defaultValue = OpenQuest { _ in } }
 extension EnvironmentValues { var openQuest: OpenQuest { get { self[OpenQuestKey.self] } set { self[OpenQuestKey.self] = newValue } } }
 
+/// The grown-ups gate button: text in a horizontal bar, a lock symbol in a vertical one.
+struct GrownUpsButton: View {
+  let action: () -> Void
+  @Environment(\.toolbarVertical) private var vertical
+  var body: some View {
+    Button(action: action) {
+      if vertical { Image(systemName: "lock.shield").font(.title3) }
+      else { Text("For grown-ups").font(.footnote.weight(.semibold)) }
+    }
+    .foregroundStyle(Palette.ink2)
+    .frame(minWidth: 44, minHeight: 44)
+    .accessibilityLabel("For grown-ups")
+  }
+}
+
 struct LevelPill: View {
   @Environment(AppModel.self) private var app
+  @Environment(\.toolbarVertical) private var vertical
   var body: some View {
     let l = app.level
     HStack(spacing: 8) {
       MoonPhase(phase: l.index, size: 22)
-      VStack(alignment: .leading, spacing: 0) {
-        Text(l.name).font(.caption.weight(.bold))
-        Text("\(app.points) pts").font(.caption2).monospacedDigit().foregroundStyle(.secondary).contentTransition(.numericText(value: Double(app.points)))
+      if !vertical {
+        VStack(alignment: .leading, spacing: 0) {
+          Text(l.name).font(.caption.weight(.bold))
+          Text("\(app.points) pts").font(.caption2).monospacedDigit().foregroundStyle(.secondary).contentTransition(.numericText(value: Double(app.points)))
+        }
       }
     }
     .padding(.horizontal, 10).padding(.vertical, 4)
