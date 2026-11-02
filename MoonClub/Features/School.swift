@@ -67,7 +67,18 @@ struct SchoolView: View {
     .onAppear {
       let a = ProcessInfo.processInfo.arguments
       if deep == nil, let i = a.firstIndex(of: "-lesson"), i + 1 < a.count { deep = app.content.lessons.first { $0.id == a[i + 1] } }
+      openPending()
     }
+    .onChange(of: app.pendingLesson) { openPending() }
+  }
+}
+
+extension SchoolView {
+  /// A widget or Live Activity asked for a lesson: open it once.
+  func openPending() {
+    guard let id = app.pendingLesson else { return }
+    app.pendingLesson = nil
+    deep = app.content.lessons.first { $0.id == id }
   }
 }
 
@@ -163,6 +174,8 @@ struct LessonPlayer: View {
     .readable(720)
     .background(AuroraField(surface: .school))
     .navigationTitle(lesson.title)
+    .onAppear { LiveActivities.lesson(lesson, step: step) }
+    .onDisappear { if !done { LiveActivities.lessonLeft(lesson) } }
     .navigationBarTitleDisplayMode(.inline)
     .sensoryFeedback(.selection, trigger: step)
     .modifier(TaskToolbar())
@@ -236,7 +249,8 @@ struct LessonPlayer: View {
   func isQuiz(_ i: Int) -> Bool { if case .say = lesson.steps[i] { return false }; return true }
   func go(_ d: Int) {
     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step = max(0, step + d) }
-    if step >= lesson.steps.count { app.mutate { $0.finishLesson(lesson.id, today: app.today) }; burst += 1 }
+    if step >= lesson.steps.count { app.mutate { $0.finishLesson(lesson.id, today: app.today) }; burst += 1; LiveActivities.lessonDone(lesson) }
+    else { LiveActivities.lesson(lesson, step: step) }
   }
 
   @ViewBuilder func stepView(_ s: Step, art: Bool = true) -> some View {

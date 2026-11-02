@@ -36,6 +36,8 @@ final class AppModel {
   /// Which Luna brain answers right now (the grown-up corner can change it; refreshed on the way out).
   private(set) var brain: BrainKind = .free
   var brainCaps: BrainCapabilities { .of(brain) }
+  /// A lesson to open from a widget or Live Activity deep link (Moon School consumes it).
+  var pendingLesson: String?
 
   init(content: KidsContent, services s: Services) {
     self.content = content
@@ -77,9 +79,9 @@ final class AppModel {
     stateDidChange()
   }
 
-  /// Hook for things outside the app that mirror progress. Widgets: republish the App Group snapshot here
+  /// Hook for things outside the app that mirror progress. Widgets: republish the shared snapshot here
   /// (after local edits AND after merges from other devices).
-  private func stateDidChange() {}
+  private func stateDidChange() { WidgetPublisher.publish(self) }
 
   // MARK: Sync (iCloud, opt-in behind the grown-up gate)
   /// Another device changed the synced copy: merge it in (merge is order-independent, so this is safe
@@ -131,6 +133,22 @@ final class AppModel {
     }
   }
 
+  /// Widgets can change progress while the app sleeps (a guess, "I read it"): pick that up on return.
+  func reloadFromStore() {
+    let s = store.load()
+    if s != state { commit(s, push: true) } else { WidgetPublisher.publish(self) } // a widget guess syncs like any other
+  }
+
+  /// moonclub://tab/<name> and moonclub://lesson/<id> (widgets, Live Activities). In-app only.
+  func open(_ url: URL) -> Tab? {
+    guard url.scheme == MoonLink.scheme else { return nil }
+    switch url.host {
+    case "tab": return Tab(rawValue: url.lastPathComponent)
+    case "lesson": pendingLesson = url.lastPathComponent; return .school
+    default: return nil
+    }
+  }
+
   func loadMarket() async {
     guard !loadingMarket else { return }
     loadingMarket = true; defer { loadingMarket = false }
@@ -138,5 +156,6 @@ final class AppModel {
     async let m = market.mood()
     do { events = try await cal; marketError = nil } catch { marketError = (error as? KidError) ?? .offline }
     mood = try? await m
+    WidgetPublisher.publish(self)
   }
 }

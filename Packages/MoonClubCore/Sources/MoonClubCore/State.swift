@@ -21,6 +21,8 @@ public struct KidsState: Codable, Hashable, Sendable {
   public var questDone = false
   /// Bumped by "reset on all devices" (see Sync.swift). Optional so saves from before sync still decode.
   public var resetEpoch: Int?
+  /// The day the kid last marked today's Story as read (from the app or a widget). Optional, so old files decode.
+  public var storyRead: String?
   public init() {}
 
   // MARK: Intents (pure reducers)
@@ -55,6 +57,7 @@ public struct KidsState: Codable, Hashable, Sendable {
   public mutating func closeRecap(_ monday: String) { recapSeen = monday }
   public mutating func questStage(_ id: String) { if !quest.contains(id) { quest.append(id) } }
   public mutating func finishLemonade() { questDone = true }
+  public mutating func readStory(today: String) { storyRead = today }
 
   // MARK: Derived
   /// Family League players to show: everyone imported, minus this device's own player (after a sync merge,

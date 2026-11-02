@@ -41,6 +41,7 @@ struct RootView: View {
       if args.contains("-demo") && args.contains("-grownups") { grownUps = true } // screenshots only; release builds always use the gate
       #endif
     }
+    .onOpenURL { url in if let t = app.open(url) { tab = t } }
     .tint(Palette.accent)
     .modifier(TracksHinge(duo: duo))
   }
