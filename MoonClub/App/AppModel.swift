@@ -38,6 +38,20 @@ final class AppModel {
   var brainCaps: BrainCapabilities { .of(brain) }
   /// A lesson to open from a widget or Live Activity deep link (Moon School consumes it).
   var pendingLesson: String?
+  /// Market World charts: a year of real daily candles, bundled (works offline, deterministic in demo
+  /// mode) and refreshed from /api/kids/candles when the live app has a connection.
+  var candles: [String: CandleSeries] = AppModel.bundledCandles
+  static let bundledCandles: [String: CandleSeries] = {
+    guard let url = Bundle.main.url(forResource: "candles", withExtension: "json"),
+          let d = try? Data(contentsOf: url), let b = try? JSONDecoder().decode(CandleBundle.self, from: d) else { return [:] }
+    return Dictionary(b.all.map { ($0.s, $0) }, uniquingKeysWith: { a, _ in a })
+  }()
+  /// Set by the composition root for the live app only.
+  var candleLoader: (@Sendable () async -> CandleBundle?)?
+  func refreshCandles() async {
+    guard let b = await candleLoader?() else { return }
+    for s in b.all where s.candles.count >= 60 { candles[s.s] = s }
+  }
 
   init(content: KidsContent, services s: Services) {
     self.content = content

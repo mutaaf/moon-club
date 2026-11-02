@@ -36,24 +36,33 @@ struct StoryView: View {
           // each side of the fold. On a phone it's one card per swipe.
           let sp = fold.split(minPage: 280)
           let per = sp == nil ? 1 : 2
-          TabView(selection: $page) {
-            ForEach(Array(stride(from: 0, to: cs.count, by: per).enumerated()), id: \.offset) { p, start in
-              Group {
-                if let sp {
-                  PageSplit(split: sp, fill: true) {
+          // A horizontal pager that is as tall as its tallest card: no card ever scrolls inside itself,
+          // nothing hides under the tab bar (the page scrolls as a whole if the text is very large).
+          let pages = Array(stride(from: 0, to: cs.count, by: per))
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 0) {   // not lazy: the row is as tall as the tallest card, so swiping never jumps
+              ForEach(Array(pages.enumerated()), id: \.offset) { p, start in
+                Group {
+                  if let sp {
+                    PageSplit(split: sp) {
+                      StoryCard(card: cs[start])
+                      if start + 1 < cs.count { StoryCard(card: cs[start + 1]) } else { TheEndPage() }
+                    }
+                  } else {
                     StoryCard(card: cs[start])
-                    if start + 1 < cs.count { StoryCard(card: cs[start + 1]) } else { TheEndPage() }
                   }
-                } else {
-                  StoryCard(card: cs[start]).padding(.horizontal, 2)
                 }
+                .padding(.horizontal, 2)
+                .containerRelativeFrame(.horizontal)
+                .id(p)
               }
-              .padding(.bottom, 44).tag(p)
             }
+            .scrollTargetLayout()
           }
-          .tabViewStyle(.page(indexDisplayMode: .always))
-          .indexViewStyle(.page(backgroundDisplayMode: .always))
-          .frame(height: 560)
+          .scrollTargetBehavior(.paging)
+          .scrollPosition(id: Binding(get: { page }, set: { if let v = $0 { page = v } }))
+          .scrollClipDisabled()
+          PageDots(count: pages.count, page: page) { p in withAnimation(Motion.page) { page = p } }
           .foldProbe($fold)
           .onChange(of: per) { old, new in page = page * old / new }
           .sensoryFeedback(.selection, trigger: page)
@@ -69,6 +78,27 @@ struct StoryView: View {
   }
 }
 
+/// Tappable page dots under the story pager (44 pt touch targets, VoiceOver adjustable).
+struct PageDots: View {
+  let count: Int, page: Int
+  let go: (Int) -> Void
+  var body: some View {
+    HStack(spacing: 8) {
+      ForEach(0..<count, id: \.self) { i in
+        Capsule().fill(i == page ? Palette.accent : Palette.ink2.opacity(0.25))
+          .frame(width: i == page ? 22 : 8, height: 8)
+          .frame(minWidth: 16, minHeight: 32).contentShape(Rectangle())
+          .onTapGesture { go(i) }
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .animation(Motion.card, value: page)
+    .accessibilityElement()
+    .accessibilityLabel("Card \(page + 1) of \(count)")
+    .accessibilityAdjustableAction { d in go(max(0, min(count - 1, page + (d == .increment ? 1 : -1)))) }
+  }
+}
+
 /// The facing page when today's story has an odd number of cards (two-card spreads only).
 struct TheEndPage: View {
   var body: some View {
@@ -76,7 +106,7 @@ struct TheEndPage: View {
       VStack(spacing: 14) {
         Luna(size: 88, wave: true)
         Text("That's today's story!").font(.kTitle)
-        Text("Come back tomorrow for a new page. 🌙").font(.kRead).multilineTextAlignment(.center)
+        Text("Come back tomorrow for a new page.").font(.kRead).multilineTextAlignment(.center)
       }
       .frame(maxWidth: .infinity, minHeight: 300)
     }
@@ -87,7 +117,7 @@ struct StoryCard: View {
   let card: StoryView.Card
   @Environment(AppModel.self) private var app
   var body: some View {
-    ScrollView(showsIndicators: false) { Card {
+    Card(fill: true) {
       switch card {
       case .recap: if let r = app.recap { RecapCard(recap: r) }
       case let .weather(score): WeatherCard(score: score)
@@ -96,8 +126,7 @@ struct StoryCard: View {
       case .quiz: QuizOfDay()
       case .next: NextAdventures()
       }
-    } }
-    .scrollBounceBehavior(.basedOnSize)
+    }
   }
 }
 
@@ -107,7 +136,7 @@ struct WeatherCard: View {
     let w = weatherFor(score)
     Eyebrow(text: "Market weather")
     HStack { Spacer(); WeatherArt(icon: w.icon); Spacer() }
-    Text("\(w.title) \(w.emoji)").font(.kHero)
+    Text(w.title).font(.kHero)
     Text(w.line).font(.kRead)
     Text("Grown-ups check a “mood meter” for the market. Today it says \(Int(score)) out of 100. 0 is very scared, 100 is very brave.").font(.callout).foregroundStyle(.secondary)
     HStack { ReadAloud(source: .appCopy("Market weather: \(w.title). \(w.line)")); ExplainMore(question: LunaPrompts.explain(weather: w.title)) }
@@ -149,7 +178,7 @@ struct ReportCard: View {
     let when = kidWhen(event.d, event.h, today: app.today)
     Eyebrow(text: "Report card day!")
     HStack(spacing: 14) {
-      Text(co.emoji).font(.system(size: 56)).accessibilityHidden(true)
+      Glyph(co.emoji, size: 60)
       VStack(alignment: .leading) { Text(co.nick).font(.kHero); Text(co.hook.prefix(1).uppercased() + co.hook.dropFirst() + ".").foregroundStyle(.secondary) }
     }
     HStack(spacing: 10) { MoonPhase(phase: event.h == .dmh ? 4 : event.h == .bmo ? 1 : event.h == .amc ? 3 : 0, size: 26); Text("Shares its report card **\(when)**.") }.font(.kRead)
@@ -197,7 +226,7 @@ struct NextAdventures: View {
   }
   func adv(_ e: String, _ t: String, _ s: String, _ go: @escaping () -> Void) -> some View {
     Button(action: go) {
-      HStack(spacing: 14) { Text(e).font(.system(size: 34)); VStack(alignment: .leading) { Text(t).font(.kHeadline); Text(s).font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
+      HStack(spacing: 14) { Glyph(e, size: 44); VStack(alignment: .leading) { Text(t).font(.kHeadline); Text(s).font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
         .padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }.buttonStyle(.plain)
   }
@@ -212,7 +241,7 @@ struct StartHere: View {
     if let next = chapters.first(where: { !app.chaptersDone.contains($0.id) }) ?? (app.state.questDone ? nil : chapters.first) {
       Button { openQuest(next.id) } label: {
         HStack(spacing: 14) {
-          Text(next.emoji).font(.system(size: 40)).phaseAnimator([0, 1]) { v, p in v.rotationEffect(.degrees(p == 1 ? -6 : 4)) } animation: { _ in .easeInOut(duration: 1.6) }
+          Glyph(next.emoji, size: 48)
           VStack(alignment: .leading, spacing: 3) {
             Eyebrow(text: app.chaptersDone.isEmpty ? "New here? Start here!" : "Next chapter")
             Text(next.title).font(.kTitle).foregroundStyle(Palette.midnight)

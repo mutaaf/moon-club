@@ -4,8 +4,8 @@ import MoonClubCore
 enum Tab: String, CaseIterable, Identifiable {
   case story, guess, piggy, school, luna
   var id: String { rawValue }
-  var title: String { ["Story", "Guess", "Piggy Bank", "Moon School", "Ask Luna"][Tab.allCases.firstIndex(of: self)!] }
-  var icon: String { ["book.pages.fill", "target", "banknote.fill", "graduationcap.fill", "moon.stars.fill"][Tab.allCases.firstIndex(of: self)!] }
+  var title: String { ["Story", "Guess", "Piggy Bank", "World", "Ask Luna"][Tab.allCases.firstIndex(of: self)!] }
+  var icon: String { ["book.pages.fill", "target", "banknote.fill", "map.fill", "moon.stars.fill"][Tab.allCases.firstIndex(of: self)!] }
   var surface: Surface { [.story, .guess, .piggy, .school, .luna][Tab.allCases.firstIndex(of: self)!] }
 }
 
@@ -69,7 +69,7 @@ struct RootView: View {
         Section("Club") { ForEach(Tab.allCases) { t in Label(t.title, systemImage: t.icon).tag(t).font(.kHeadline).padding(.vertical, 6) } }
         Section("Quests") {
           ForEach(app.content.questChapters?.CHAPTERS ?? [], id: \.id) { ch in
-            Button { quest = ch.id } label: { Label { Text(ch.title) } icon: { Text(ch.emoji) } }
+            Button { quest = ch.id } label: { Label { Text(ch.title) } icon: { Glyph(ch.emoji, size: 24) } }
               .badge(app.chaptersDone.contains(ch.id) ? Text("✓") : nil)
           }
         }
@@ -87,7 +87,7 @@ struct RootView: View {
     case .story: StoryView()
     case .guess: GuessView()
     case .piggy: PiggyView()
-    case .school: SchoolView()
+    case .school: WorldView()
     case .luna: AskLunaView()
     }
   }

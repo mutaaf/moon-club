@@ -293,14 +293,14 @@ struct PiggyArt: View {
   var body: some View {
     let lid = rm ? 0 : (duo?.lid ?? 0)
     ZStack(alignment: .top) {
-      Text("🐷").font(.system(size: size))
+      PiggyMark().frame(width: size * 1.1, height: size * 0.9).offset(y: size * 0.12)
       // The lid: a little coin-slot hatch on the pig's back, hinged at the left.
       Capsule().fill(Palette.blush).frame(width: size * 0.5, height: size * 0.12)
         .overlay(Capsule().strokeBorder(Palette.midnight.opacity(0.5), lineWidth: 1))
         .rotationEffect(.degrees(-70 * lid), anchor: .leading)
         .offset(y: size * 0.02)
       ForEach(0..<3, id: \.self) { i in
-        Text("🪙").font(.system(size: size * 0.32))
+        Glyph("🪙", size: size * 0.36, style: .plain)
           .offset(x: CGFloat(i - 1) * size * 0.2, y: -size * 0.45 * lid * (1 + Double(i % 2) * 0.4))
           .opacity(min(1, lid * 3))
       }
@@ -320,7 +320,7 @@ struct SleepyLuna: View {
         // Closed, smiling eyes over Luna's open ones.
         HStack(spacing: size * 0.2) { lid; lid }.offset(y: -size * 0.045)
       }
-      Text("💤").font(.system(size: size * 0.32)).offset(x: size * 0.18, y: -size * 0.12)
+      Image(systemName: "moon.zzz.fill").font(.system(size: size * 0.26, weight: .bold)).foregroundStyle(Hue.grape.color).offset(x: size * 0.18, y: -size * 0.12)
     }
     .accessibilityHidden(true)
   }

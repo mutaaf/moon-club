@@ -60,4 +60,24 @@ enum Demo {
     s.setMe(1); s.addPlayer(LeaguePlayer(emoji: 4, guesses: [LeagueGuess(s: "AAPL", d: Day.add(today, -2), pick: .miss), LeagueGuess(s: "DIS", d: Day.add(today, 3), pick: .beat)]))
     return s
   }
+
+  /// Market World progress for screenshots: win the first `lands` regions (every node, varied stars) and
+  /// stop partway into the next one.
+  static func world(_ base: KidsState, content c: KidsContent, lands: Int) -> KidsState {
+    var s = base
+    let rs = World.regions(c)
+    for (ri, r) in rs.enumerated() where ri <= lands {
+      let upto = ri < lands ? r.nodes.count : 2
+      for (ni, n) in r.nodes.prefix(upto).enumerated() {
+        switch n.kind {
+        case let .unit(u): for l in c.lessons where l.unit == u { s.finishLesson(l.id, today: "2026-10-20") }
+        case let .lesson(l): s.finishLesson(l, today: "2026-10-20")
+        case let .quest(q): if q == "lemonade" { s.finishLemonade() } else { for st in c.questChapters?.CH_STAGES[q] ?? [] { s.questStage("\(q):\(st)") } }
+        default: s.earn(n.id, stars: [3, 2, 3, 1][(ri + ni) % 4])
+        }
+      }
+    }
+    s.seeBadges(s.badges(c)) // screenshots: no badge toast over the map
+    return s
+  }
 }

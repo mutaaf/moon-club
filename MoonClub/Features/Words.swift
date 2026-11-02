@@ -13,14 +13,14 @@ struct WordSheet: View {
   var body: some View {
     if let t = app.content.terms[key] {
       VStack(spacing: 18) {
-        Text(t.emoji).font(.system(size: 88)).phaseAnimator([0, 1]) { v, p in v.offset(y: p == 1 ? -6 : 0).rotationEffect(.degrees(p == 1 ? -4 : 0)) } animation: { _ in .easeInOut(duration: 1.4) }
+        Glyph(t.emoji, size: 104, style: .halo)
           .accessibilityHidden(true)
         Text(t.word).font(.kHero)
         Text(t.means).font(.kRead).multilineTextAlignment(.center)
         Text(t.example).font(.system(.title3, design: .serif).italic()).foregroundStyle(Palette.ink2).multilineTextAlignment(.center)
         HStack(spacing: 10) {
           ReadAloud(source: .appCopy("\(t.word). \(t.means) \(t.example)"))
-          if let play = t.play { Button("Play it 🍋") { dismiss(); openQuest(play) }.buttonStyle(SoftButtonStyle()) }
+          if let play = t.play { Button("Play it") { dismiss(); openQuest(play) }.buttonStyle(SoftButtonStyle()) }
         }
         Button("Got it!") { dismiss() }.buttonStyle(PrimaryButtonStyle())
         // iPhone Duo (and iPad) can show two windows side by side: keep the whole Word Book open next to
@@ -53,7 +53,7 @@ struct WordChips: View {
         ForEach(keys, id: \.self) { k in
           if let t = app.content.terms[k] {
             Button { open = k } label: {
-              HStack(spacing: 6) { Text(t.emoji); Text(t.word).font(.subheadline.weight(.semibold)); Image(systemName: "questionmark.circle.fill").foregroundStyle(Palette.accent) }
+              HStack(spacing: 6) { Glyph(t.emoji, size: 22); Text(t.word).font(.subheadline.weight(.semibold)); Image(systemName: "questionmark.circle.fill").foregroundStyle(Palette.accent) }
                 .padding(.horizontal, 12).frame(minHeight: 40)
                 .background(.thinMaterial, in: Capsule())
             }
@@ -85,7 +85,7 @@ struct WordBookView: View {
               Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { open = open == k ? nil : k } } label: {
                 VStack(alignment: .leading, spacing: 8) {
                   HStack(spacing: 12) {
-                    Text(t.emoji).font(.system(size: 34)).frame(width: 48).accessibilityHidden(true)
+                    Glyph(t.emoji, size: 40).frame(width: 48)
                     Text(t.word).font(.kTitle).foregroundStyle(Palette.ink)
                     Spacer()
                     Image(systemName: open == k ? "chevron.up" : "chevron.down").foregroundStyle(.secondary)

@@ -45,7 +45,9 @@ struct MoonClubApp: App {
       let services: Services
       if args.contains("-demo") {
         let clock = FixedClock(args.firstIndex(of: "-today").map { args[$0 + 1] } ?? "2026-10-31")
-        let seeded = args.contains("-fresh") ? KidsState() : Demo.seeded(today: clock.today())
+        var seeded = args.contains("-fresh") ? KidsState() : Demo.seeded(today: clock.today())
+        // Screenshots: -world mid|all seeds Market World progress (mid = three lands won; all = everything).
+        if let i = args.firstIndex(of: "-world"), i + 1 < args.count { seeded = Demo.world(seeded, content: content, lands: args[i + 1] == "all" ? 99 : 3) }
         #if DEBUG
         // Screenshots: -brain onDevice|free|byok presets Luna's brain choice (demo only).
         if let i = args.firstIndex(of: "-brain"), let k = BrainKind(rawValue: args[i + 1]) { var b = BrainStore.load(); b.choice = k; BrainStore.save(b) }
@@ -54,7 +56,12 @@ struct MoonClubApp: App {
       } else {
         services = Services(market: LiveMarketData(), luna: LunaRouter(brains: [OnDeviceBrain(), FreeBrain(contentVersion: content.generated), ByokBrain()], resolve: { BrainStore.resolve() }), voice: LiveVoice(), store: SharedProgressStore(), clock: SystemClock(), sync: ICloudSync())
       }
-      app = AppModel(content: content, services: services)
+      let model = AppModel(content: content, services: services)
+      if !args.contains("-demo") {
+        model.candleLoader = { await LiveMarketData.kidsCandles(Array(AppModel.bundledCandles.keys)) }
+        Task { await model.refreshCandles() }
+      }
+      app = model
     } catch {
       loadError = String(describing: error)
     }

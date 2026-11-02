@@ -1,34 +1,37 @@
 import SwiftUI
 import MoonClubCore
 
-/// Luna, the club's moon, drawn in SwiftUI (crisp at any size). Blinks now and then unless Reduce Motion.
+/// Luna, the club's moon, drawn in vector (crisp at any size) with five moods. She blinks now and then and
+/// floats gently; both stop under Reduce Motion. The float is a render-server repeat (no per-frame work).
 struct Luna: View {
+  enum Mood { case idle, happy, thinking, cheering, sleepy }
   var size: CGFloat = 56
   var wave = false
+  var mood: Mood = .idle
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var blink = false
   @State private var bob = false
   var body: some View {
     let s = size / 64
     ZStack {
-      Circle().fill(Palette.moon)
-      Circle().fill(Palette.moonShade.opacity(0.55)).mask(alignment: .leading) {
-        Ellipse().frame(width: 35 * s, height: 58 * s).offset(x: 3 * s)
-      }.clipShape(Circle())
-      HStack(spacing: 13 * s) { eye; eye }.offset(y: -3 * s)
-      Path { p in p.move(to: .init(x: 25.5 * s, y: 38 * s)); p.addQuadCurve(to: .init(x: 38.5 * s, y: 38 * s), control: .init(x: 32 * s, y: 43.5 * s)) }
-        .stroke(Palette.midnight, style: .init(lineWidth: 2.4 * s, lineCap: .round))
-      HStack(spacing: 19 * s) { Circle().fill(Palette.blush.opacity(0.6)).frame(width: 6 * s); Circle().fill(Palette.blush.opacity(0.6)).frame(width: 6 * s) }.offset(y: 4 * s)
+      Circle().fill(RadialGradient(colors: [Color(hex: 0xFFF8DA), Palette.moon, Palette.moonShade.opacity(0.9)], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2 * s, endRadius: 40 * s))
+      // craters: two soft dimples give her a real moon surface
+      Circle().fill(Palette.moonShade.opacity(0.5)).frame(width: 9 * s, height: 9 * s).offset(x: 15 * s, y: -17 * s)
+      Circle().fill(Palette.moonShade.opacity(0.4)).frame(width: 6 * s, height: 6 * s).offset(x: -18 * s, y: 16 * s)
+      eyes.offset(y: -3 * s)
+      mouth
+      HStack(spacing: 21 * s) { Circle().fill(Palette.blush.opacity(mood == .sleepy ? 0.35 : 0.6)).frame(width: 7 * s); Circle().fill(Palette.blush.opacity(mood == .sleepy ? 0.35 : 0.6)).frame(width: 7 * s) }.offset(y: 5 * s)
+      extras(s)
     }
     .frame(width: 58 * s, height: 58 * s)
     .frame(width: size, height: size)
-    .shadow(color: Palette.accent.opacity(0.18), radius: size * 0.18, y: size * 0.08)
-    .offset(y: wave && bob ? -size * 0.05 : 0)
-    .rotationEffect(.degrees(wave && bob ? -4 : 0))
+    .shadow(color: Color(hex: 0xF2BE2E).opacity(0.28), radius: size * 0.2)
+    .offset(y: wave && bob ? -size * 0.04 : 0)
     .accessibilityHidden(true)
     .task {
       guard !reduceMotion else { return }
-      if wave { withAnimation(.easeInOut(duration: 2.4).repeatForever()) { bob = true } }
+      if wave, !bob { withAnimation(.easeInOut(duration: 2.6).repeatForever()) { bob = true } }
+      guard mood != .sleepy else { return }
       while !Task.isCancelled {
         try? await Task.sleep(for: .seconds(Double.random(in: 3...6)))
         withAnimation(.easeInOut(duration: 0.08)) { blink = true }
@@ -37,7 +40,56 @@ struct Luna: View {
       }
     }
   }
-  private var eye: some View { Capsule().fill(Palette.midnight).frame(width: 5 * size / 64, height: (blink ? 0.8 : 5) * size / 64) }
+
+  @ViewBuilder private var eyes: some View {
+    let s = size / 64
+    switch mood {
+    case .happy, .cheering:
+      HStack(spacing: 13 * s) { arcEye(up: true); arcEye(up: true) }
+    case .sleepy:
+      HStack(spacing: 13 * s) { arcEye(up: false); arcEye(up: false) }
+    case .thinking:
+      HStack(spacing: 13 * s) { dot; dot }.offset(x: 2 * s, y: -2 * s)
+    case .idle:
+      HStack(spacing: 13 * s) { dot; dot }
+    }
+  }
+  private var dot: some View { let s = size / 64; return Capsule().fill(Palette.midnight).frame(width: 5.4 * s, height: (blink ? 0.8 : 6) * s) }
+  private func arcEye(up: Bool) -> some View {
+    let s = size / 64
+    return Path { p in
+      p.move(to: .init(x: 0, y: up ? 3 * s : 0)); p.addQuadCurve(to: .init(x: 7 * s, y: up ? 3 * s : 0), control: .init(x: 3.5 * s, y: up ? -2.5 * s : 4 * s))
+    }
+    .stroke(Palette.midnight, style: .init(lineWidth: 2.2 * s, lineCap: .round)).frame(width: 7 * s, height: 4 * s)
+  }
+  @ViewBuilder private var mouth: some View {
+    let s = size / 64
+    switch mood {
+    case .cheering:
+      Path { p in p.move(to: .init(x: 25 * s, y: 37 * s)); p.addQuadCurve(to: .init(x: 39 * s, y: 37 * s), control: .init(x: 32 * s, y: 49 * s)); p.closeSubpath() }
+        .fill(Palette.midnight).overlay(Path { p in p.addEllipse(in: CGRect(x: 29 * s, y: 40.5 * s, width: 6 * s, height: 3.4 * s)) }.fill(Palette.blush))
+    case .thinking:
+      Path { p in p.move(to: .init(x: 28 * s, y: 40 * s)); p.addLine(to: .init(x: 36 * s, y: 38.5 * s)) }.stroke(Palette.midnight, style: .init(lineWidth: 2.2 * s, lineCap: .round))
+    case .sleepy:
+      Ellipse().stroke(Palette.midnight, lineWidth: 1.8 * s).frame(width: 4 * s, height: 4.6 * s).offset(y: 8 * s)
+    case .happy:
+      Path { p in p.move(to: .init(x: 24.5 * s, y: 37 * s)); p.addQuadCurve(to: .init(x: 39.5 * s, y: 37 * s), control: .init(x: 32 * s, y: 46 * s)) }.stroke(Palette.midnight, style: .init(lineWidth: 2.4 * s, lineCap: .round))
+    case .idle:
+      Path { p in p.move(to: .init(x: 25.5 * s, y: 38 * s)); p.addQuadCurve(to: .init(x: 38.5 * s, y: 38 * s), control: .init(x: 32 * s, y: 43.5 * s)) }.stroke(Palette.midnight, style: .init(lineWidth: 2.4 * s, lineCap: .round))
+    }
+  }
+  @ViewBuilder private func extras(_ s: CGFloat) -> some View {
+    switch mood {
+    case .cheering:
+      Image(systemName: "sparkle").font(.system(size: 12 * s, weight: .bold)).foregroundStyle(Hue.gold.color).offset(x: 30 * s, y: -26 * s)
+      Image(systemName: "sparkle").font(.system(size: 8 * s, weight: .bold)).foregroundStyle(Hue.berry.color).offset(x: -31 * s, y: -20 * s)
+    case .thinking:
+      HStack(spacing: 2 * s) { ForEach(0..<3) { _ in Circle().fill(Palette.ink2.opacity(0.6)).frame(width: 3.4 * s) } }.offset(x: 30 * s, y: -28 * s)
+    case .sleepy:
+      Text("z").font(.system(size: 13 * s, weight: .heavy, design: .rounded)).foregroundStyle(Palette.accent.opacity(0.7)).offset(x: 28 * s, y: -26 * s)
+    default: EmptyView()
+    }
+  }
 }
 
 /// Moon-phase badge art: 0 = new moon … 4 = full moon.
@@ -68,11 +120,13 @@ struct MoonPhase: View {
 /// A calm card surface.
 struct Card<Content: View>: View {
   var padding: CGFloat = 20
+  /// Stretch to the height offered (e.g. so every card in a pager row matches the tallest).
+  var fill = false
   @ViewBuilder var content: Content
   var body: some View {
     VStack(alignment: .leading, spacing: 14) { content }
       .padding(padding)
-      .frame(maxWidth: .infinity, alignment: .leading)
+      .frame(maxWidth: .infinity, maxHeight: fill ? .infinity : nil, alignment: .topLeading)
       .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
       .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.line.opacity(0.7), lineWidth: 0.5))
       .shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10)
@@ -158,7 +212,7 @@ struct Hero: View {
       // (the piggy bank has its own hinge trick: its lid lifts).
       HingeHeroArt(enabled: !piggy) {
         if piggy { PiggyArt() }
-        else if let emoji { Text(emoji).font(.system(size: 44)).accessibilityHidden(true) } else { Luna(size: 56, wave: true) }
+        else if let emoji { Glyph(emoji, size: 52) } else { Luna(size: 56, wave: true) }
       }
       VStack(alignment: .leading, spacing: 4) {
         Eyebrow(text: eyebrow)

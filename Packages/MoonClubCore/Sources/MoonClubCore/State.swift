@@ -23,6 +23,8 @@ public struct KidsState: Codable, Hashable, Sendable {
   public var resetEpoch: Int?
   /// The day the kid last marked today's Story as read (from the app or a widget). Optional, so old files decode.
   public var storyRead: String?
+  /// Market World: best stars (0–3) per map node id. Optional so older saves decode.
+  public var stars: [String: Int]?
   public init() {}
 
   // MARK: Intents (pure reducers)
@@ -58,6 +60,8 @@ public struct KidsState: Codable, Hashable, Sendable {
   public mutating func questStage(_ id: String) { if !quest.contains(id) { quest.append(id) } }
   public mutating func finishLemonade() { questDone = true }
   public mutating func readStory(today: String) { storyRead = today }
+  /// Keep the best result for a Market World node (stars never go down).
+  public mutating func earn(_ node: String, stars n: Int) { var m = stars ?? [:]; m[node] = max(m[node] ?? 0, min(3, max(0, n))); stars = m }
 
   // MARK: Derived
   /// Family League players to show: everyone imported, minus this device's own player (after a sync merge,
@@ -67,7 +71,7 @@ public struct KidsState: Codable, Hashable, Sendable {
   public func progress(_ c: KidsContent) -> KidsProgress {
     KidsProgress(guesses: guesses, lessons: lessons, piggy: piggy != nil, piggyCount: piggy?.holdings.count ?? 0, quest: questDone, chapters: chapters(c))
   }
-  public func points(_ c: KidsContent) -> Int { pointsFor(progress(c)) }
+  public func points(_ c: KidsContent) -> Int { pointsFor(progress(c)) + World.points(self, c) }
   public func level(_ c: KidsContent) -> LevelInfo { levelFor(points(c), levels: c.levels) }
   public func badges(_ c: KidsContent) -> [String] { badgesFor(progress(c), totalLessons: c.lessons.count) }
   public func freshBadges(_ c: KidsContent) -> [String] { badges(c).filter { !seenBadges.contains($0) } }
