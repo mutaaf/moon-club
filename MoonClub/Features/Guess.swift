@@ -96,7 +96,7 @@ struct GuessView: View {
   }
 
   private func upcomingCard(_ e: EarningsEvent) -> some View {
-    let co = app.companies[e.s]!
+    let co = app.company(e.s)
     return Card {
       HStack(spacing: 14) {
         Glyph(co.emoji, size: 52)

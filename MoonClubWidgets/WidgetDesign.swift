@@ -89,7 +89,7 @@ struct Sparkline: View {
           Path { p in for (i, v) in values.enumerated() { i == 0 ? p.move(to: pt(i, v)) : p.addLine(to: pt(i, v)) } }
             .stroke(up ? Palette.goodInk : Palette.badInk, style: .init(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
             .widgetAccentable()
-          let last = pt(values.count - 1, values.last!)
+          let last = pt(values.count - 1, values.last ?? 0)
           Circle().fill(up ? Palette.goodInk : Palette.badInk).frame(width: 6, height: 6).position(last).widgetAccentable()
         }
       }

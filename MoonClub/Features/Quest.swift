@@ -254,7 +254,7 @@ struct PriceStage: View {
   @State private var hist: [Double] = [5]
   @State private var up = false
   @State private var down = false
-  var price: Double { hist.last! }
+  var price: Double { hist.last ?? 5 }
   var body: some View {
     Speech(text: (up && down ? t.done : t.ask) ?? "")
     VStack(spacing: 4) {
@@ -331,14 +331,14 @@ struct GrowStage: View {
     let lastDown = tree && years > 0 && treeP[years] < treeP[years - 1]
     Speech(text: (years >= max ? t.done : years > 0 && tree ? (lastDown ? t.downYear : t.upYear) : t.ask) ?? "")
     HStack(spacing: 12) {
-      box("🫙 Jar", jar.last!, Palette.sky)
-      if tree { box("🌳 Tree", treeP.last!, lastDown ? Palette.peach : Palette.mint) }
+      box("🫙 Jar", (jar.last ?? 0), Palette.sky)
+      if tree { box("🌳 Tree", (treeP.last ?? 0), lastDown ? Palette.peach : Palette.mint) }
     }
     Chart {
       ForEach(Array(jar.enumerated()), id: \.offset) { i, v in LineMark(x: .value("Year", i), y: .value("$", v), series: .value("k", "Jar")).foregroundStyle(Palette.accent) }
       if tree { ForEach(Array(treePart(treeP).enumerated()), id: \.offset) { i, v in LineMark(x: .value("Year", i), y: .value("$", v), series: .value("k", "Tree")).foregroundStyle(Palette.good) } }
-      PointMark(x: .value("Year", years), y: .value("$", jar.last!)).foregroundStyle(Palette.accent).symbolSize(70)
-      if tree { PointMark(x: .value("Year", years), y: .value("$", treeP.last!)).foregroundStyle(Palette.good).symbolSize(70) }
+      PointMark(x: .value("Year", years), y: .value("$", (jar.last ?? 0))).foregroundStyle(Palette.accent).symbolSize(70)
+      if tree { PointMark(x: .value("Year", years), y: .value("$", (treeP.last ?? 0))).foregroundStyle(Palette.good).symbolSize(70) }
     }
     .chartYAxis(.hidden)
     .chartXAxis { AxisMarks(values: .stride(by: tree ? 5 : 1)) { v in AxisValueLabel { Text("Year \(v.as(Int.self) ?? 0)").font(.caption2) } } }

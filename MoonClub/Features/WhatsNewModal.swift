@@ -43,7 +43,7 @@ struct WhatsNewModal: View {
   var body: some View {
     VStack(spacing: 18) {
       HStack {
-        Text(news.count > 1 ? "Updates \(news.last!.version)–\(news.first!.version)" : "Version \(news.first?.version ?? "")")
+        Text(news.count > 1 ? "Updates \(news.last?.version ?? "")–\(news.first?.version ?? "")" : "Version \(news.first?.version ?? "")")
           .font(.kEyebrow).foregroundStyle(Palette.accent)
           .padding(.horizontal, 12).padding(.vertical, 6).background(Palette.accent.opacity(0.1), in: Capsule())
         Spacer()

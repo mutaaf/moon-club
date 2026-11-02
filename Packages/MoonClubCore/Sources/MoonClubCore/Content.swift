@@ -3,7 +3,10 @@
 // incompatible file is rejected with a readable error instead of crashing a screen later.
 import Foundation
 
-public struct KidCo: Codable, Hashable, Sendable { public let s: String; public let nick: String; public let hook: String; public let emoji: String }
+public struct KidCo: Codable, Hashable, Sendable {
+  public let s: String; public let nick: String; public let hook: String; public let emoji: String
+  public init(s: String, nick: String, hook: String, emoji: String) { self.s = s; self.nick = nick; self.hook = hook; self.emoji = emoji }
+}
 public struct KidWord: Codable, Hashable, Sendable { public let word: String; public let means: String; public let example: String }
 public struct KidTerm: Codable, Hashable, Sendable { public let word: String; public let emoji: String; public let means: String; public let example: String; public let play: String? }
 public struct Unit: Codable, Hashable, Sendable, Identifiable { public let id: String; public let title: String; public let emoji: String; public let blurb: String }

@@ -67,6 +67,8 @@ final class AppModel {
 
   var today: String { clock.today() }
   var companies: [String: KidCo] { content.companyBySymbol }
+  /// Never traps: a symbol from synced/league/transferred state may not be in this build's content.
+  func company(_ s: String) -> KidCo { companies[s] ?? KidCo(s: s, nick: s, hook: "", emoji: "🏢") }
 
   // MARK: Derived
   var points: Int { state.points(content) }

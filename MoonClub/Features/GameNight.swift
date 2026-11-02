@@ -74,8 +74,11 @@ struct GameNightView: View {
     }
   }
 
-  private func pad(_ p: Int, _ g: GameNight) -> some View {
-    let round = g.round!
+  @ViewBuilder private func pad(_ p: Int, _ g: GameNight) -> some View {
+    if let round = g.round { padRound(p, g, round) } else { Color.clear }
+  }
+
+  private func padRound(_ p: Int, _ g: GameNight, _ round: GameNight.Round) -> some View {
     let co = app.companies[round.s]
     let mine = g.picks[p]
     return VStack(spacing: 14) {

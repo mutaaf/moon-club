@@ -174,7 +174,7 @@ struct ReportCard: View {
   @Environment(AppModel.self) private var app
   @State private var lastMove: Double??
   var body: some View {
-    let co = app.companies[event.s]!
+    let co = app.company(event.s)
     let when = kidWhen(event.d, event.h, today: app.today)
     Eyebrow(text: "Report card day!")
     HStack(spacing: 14) {

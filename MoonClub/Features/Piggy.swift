@@ -53,11 +53,11 @@ struct PiggySetup: View {
         HStack { Text("Split your coins").font(.kTitle); Spacer(); PretendPill() }
         ForEach(picks, id: \.self) { s in
           HStack {
-            Glyph(app.companies[s]!.emoji, size: 30); Text(app.companies[s]!.nick).font(.kHeadline)
+            Glyph(app.company(s).emoji, size: 30); Text(app.company(s).nick).font(.kHeadline)
             Spacer()
-            Button { bump(s, -100) } label: { Image(systemName: "minus.circle.fill").font(.title) }.accessibilityLabel("100 fewer coins for \(app.companies[s]!.nick)")
+            Button { bump(s, -100) } label: { Image(systemName: "minus.circle.fill").font(.title) }.accessibilityLabel("100 fewer coins for \(app.company(s).nick)")
             Ticker(value: Double(split[s] ?? 0), format: { coins($0) }, font: .kHeadline).frame(minWidth: 70)
-            Button { bump(s, 100) } label: { Image(systemName: "plus.circle.fill").font(.title) }.disabled(left < 100).accessibilityLabel("100 more coins for \(app.companies[s]!.nick)")
+            Button { bump(s, 100) } label: { Image(systemName: "plus.circle.fill").font(.title) }.disabled(left < 100).accessibilityLabel("100 more coins for \(app.company(s).nick)")
           }
         }
         HStack { Text(left > 0 ? "\(coins(Double(left))) left to place." : "All your coins are placed!").font(.subheadline); Spacer(); Button("Split evenly") { split = evenSplit(picks) }.font(.subheadline) }
@@ -91,7 +91,12 @@ struct PiggyBank: View {
   @State private var loaded = false
   @State private var confirm = false
   var body: some View {
-    let p = app.state.piggy!
+    // The piggy can disappear while this view is still on screen (start over, reset, an iCloud merge):
+    // never force-unwrap it. That was the 0.8.0 TestFlight crash (EXC_BREAKPOINT in PiggyBank.body).
+    if let p = app.state.piggy { bank(p) } else { PiggySetup() }
+  }
+
+  @ViewBuilder private func bank(_ p: Piggy) -> some View {
     let value = loaded ? piggyValue(p.holdings, prices: prices) : piggyValue(p.holdings, prices: [:])
     let change = value - app.content.startCoins
     let hist = p.history.sorted { $0.key < $1.key }
