@@ -84,9 +84,11 @@ export function notesFor(v = version()) {
     .replace(/^\s*[-*]\s+/gm, "• ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  if (text.length > 4000) throw new Error(`release-notes/${v}.md is ${text.length} characters; TestFlight allows 4000.`);
+  // TestFlight rejects emoji in whatsNew ("invalid characters"); keep them in the file / in-app, strip them here.
+  const plain = text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}]/gu, "").replace(/[ \t]+$/gm, "").replace(/ {2,}/g, " ");
+  if (plain.length > 4000) throw new Error(`release-notes/${v}.md is ${plain.length} characters; TestFlight allows 4000.`);
   if (/https?:\/\//.test(text)) throw new Error(`release-notes/${v}.md has a link; keep notes link-free (kids rules).`);
-  return text;
+  return plain;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -7,3 +7,4 @@ xcuserdata/
 *.p8
 .build/
 .swiftpm/
+.claude/
