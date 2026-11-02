@@ -222,7 +222,42 @@ async function capabilities(bundleIdId) {
   console.log(`✓ capabilities: ${[...new Set([...have, "ICLOUD"])].join(", ")}`);
 }
 
+/** TestFlight "Test Information" + Beta App Review contact, needed once before the first external review.
+ *  Contact details come from .env.testflight (BETA_CONTACT_*), never from the repo. */
+async function betaInfo() {
+  const e = env();
+  for (const k of ["BETA_CONTACT_FIRST", "BETA_CONTACT_LAST", "BETA_CONTACT_EMAIL", "BETA_CONTACT_PHONE"]) if (!e[k]) throw new Error(`Missing ${k} in .env.testflight`);
+  const a = await app();
+  const attrs = {
+    description: "Moon Club teaches kids aged 8 to 12 how money works by playing: Luna's Lemonade Stand quest, one-minute Moon School lessons, a pretend piggy bank that follows real prices, and Guess the Report Card. Pretend money only. No accounts, no ads, no tracking.",
+    feedbackEmail: e.BETA_CONTACT_EMAIL,
+    marketingUrl: "https://mutaafaziz.com/metaphases/kids/app",
+    privacyPolicyUrl: "https://mutaafaziz.com/metaphases/kids/privacy",
+  };
+  const locs = await api("GET", `/v1/apps/${a.id}/betaAppLocalizations`);
+  const en = locs.data.find((l) => l.attributes.locale === "en-US");
+  if (en) await api("PATCH", `/v1/betaAppLocalizations/${en.id}`, { data: { type: "betaAppLocalizations", id: en.id, attributes: attrs } });
+  else await api("POST", "/v1/betaAppLocalizations", { data: { type: "betaAppLocalizations", attributes: { locale: "en-US", ...attrs }, relationships: { app: { data: { type: "apps", id: a.id } } } } });
+  console.log("✓ beta app description, feedback email, privacy policy");
+  const d = await api("GET", `/v1/apps/${a.id}/betaAppReviewDetail`);
+  await api("PATCH", `/v1/betaAppReviewDetails/${d.data.id}`, { data: { type: "betaAppReviewDetails", id: d.data.id, attributes: {
+    contactFirstName: e.BETA_CONTACT_FIRST, contactLastName: e.BETA_CONTACT_LAST, contactEmail: e.BETA_CONTACT_EMAIL, contactPhone: e.BETA_CONTACT_PHONE,
+    demoAccountRequired: false,
+    notes: "No sign-in needed. Everything works offline with pretend money. Ask Luna (the AI helper) uses Apple Intelligence on device when available, or our free kid-safe server model. For grown-ups (behind a multiplication gate) holds settings.",
+  } } });
+  console.log("✓ beta review contact");
+}
+
+/** The external group's public TestFlight link and whether testers can join yet. */
+async function link() {
+  const a = await app();
+  const g = (await api("GET", `/v1/betaGroups?filter[app]=${a.id}&filter[name]=${encodeURIComponent(EXTERNAL)}`)).data[0];
+  if (!g) return console.log("No external group yet: BETA_EXTERNAL=1 node scripts/asc.mjs ship <build>");
+  const subs = await api("GET", `/v1/betaAppReviewSubmissions?filter[build]=${(await api("GET", `/v1/betaGroups/${g.id}/builds?limit=1`)).data[0]?.id ?? "none"}`).catch(() => ({ data: [] }));
+  console.log(`${g.attributes.publicLink ?? "(no public link)"}  review: ${subs.data[0]?.attributes.betaReviewState ?? "not submitted"}`);
+}
+
 const [cmd, arg] = process.argv.slice(2);
-const run = { whoami, bundle, signing, crew, capabilities: () => capabilities(), ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
+const run = { whoami, bundle, signing, "beta-info": betaInfo, link, crew, capabilities: () => capabilities(), ship: () => ship(arg), notes: () => console.log(notesFor(arg)) }[cmd];
 if (!run) { console.log("usage: asc.mjs whoami | bundle | ship <build> | notes [version]"); process.exit(2); }
 Promise.resolve().then(run).catch((e) => { console.error("✗ " + e.message); process.exit(1); });
