@@ -20,7 +20,7 @@ struct WordSheet: View {
         Text(t.example).font(.system(.title3, design: .serif).italic()).foregroundStyle(Palette.ink2).multilineTextAlignment(.center)
         HStack(spacing: 10) {
           ReadAloud(source: .appCopy("\(t.word). \(t.means) \(t.example)"))
-          if let play = t.play { Button("Play it 🍋") { dismiss(); openQuest(play) }.buttonStyle(SoftButtonStyle()) }
+          if let play = t.play { Button("Play it") { dismiss(); openQuest(play) }.buttonStyle(SoftButtonStyle()) }
         }
         Button("Got it!") { dismiss() }.buttonStyle(PrimaryButtonStyle())
         // iPhone Duo (and iPad) can show two windows side by side: keep the whole Word Book open next to

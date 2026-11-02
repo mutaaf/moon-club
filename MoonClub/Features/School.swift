@@ -188,6 +188,9 @@ struct LessonPlayer: View {
     }
     .background(AuroraField(surface: .school))
     .navigationTitle(lesson.title)
+    #if DEBUG
+    .onAppear { let a = ProcessInfo.processInfo.arguments; if let i = a.firstIndex(of: "-step"), i + 1 < a.count, let n = Int(a[i + 1]) { step = min(n, lesson.steps.count - 1) } } // screenshots
+    #endif
     .onAppear { LiveActivities.lesson(lesson, step: step) }
     .onDisappear { if !done { LiveActivities.lessonLeft(lesson) } }
     .navigationBarTitleDisplayMode(.inline)
@@ -263,25 +266,38 @@ struct LessonPlayer: View {
   var nextLesson: Lesson? { let ls = app.content.lessons; return ls.firstIndex(of: lesson).flatMap { $0 + 1 < ls.count ? ls[$0 + 1] : nil } }
   func isQuiz(_ i: Int) -> Bool { if case .say = lesson.steps[i] { return false }; return true }
   func go(_ d: Int) {
-    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step = max(0, step + d) }
+    withAnimation(Motion.safe(Motion.card, rm)) { step = max(0, step + d) }
     if step >= lesson.steps.count { app.mutate { $0.finishLesson(lesson.id, today: app.today) }; burst += 1; LiveActivities.lessonDone(lesson) }
     else { LiveActivities.lesson(lesson, step: step) }
   }
 
-  @ViewBuilder func stepView(_ s: Step, art: Bool = true) -> some View {
-    switch s {
+  func stepView(_ s: Step, art: Bool = true) -> some View {
+    StepContent(step: s, art: art, seed: step + lesson.id.count,
+                picked: Binding(get: { answers[step] }, set: { answers[step] = $0 }),
+                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }))
+  }
+}
+
+/// What one lesson step shows inside its card. A standalone view so CardFitTests can measure every step
+/// of every lesson at every device size and text size (no card may need to scroll).
+struct StepContent: View {
+  let step: Step
+  var art = true
+  var seed = 0
+  @Binding var picked: Int?
+  @Binding var picks: [Int: Int]
+  var body: some View {
+    switch step {
     case let .say(emoji, text):
       VStack(spacing: 22) {
-        if art {
-          Glyph(emoji, size: 112, style: .halo)
-        }
+        if art { Glyph(emoji, size: 96, style: .halo) }
         Text(text).font(.system(.title2, design: .rounded).weight(.semibold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }
     case let .check(c):
-      CheckView(check: c, seed: step + lesson.id.count, picked: Binding(get: { answers[step] }, set: { answers[step] = $0 }))
+      CheckView(check: c, seed: seed, picked: $picked)
     case let .sort(q, buckets, items, why):
-      SortView(q: q, buckets: buckets, items: items, why: why, picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }))
+      SortView(q: q, buckets: buckets, items: items, why: why, picks: $picks)
     }
   }
 }
@@ -298,56 +314,111 @@ struct CheckView: View {
     let opts = check.options.enumerated().map { ($0.offset, $0.element) }
     let k = (seed * 7 + check.q.count) % max(1, opts.count)
     let shuffled = Array(opts[k...] + opts[..<k])
-    VStack(alignment: .leading, spacing: 14) {
-      if !standalone { Eyebrow(text: "Quick check") }
-      Text(check.q).font(.kTitle).fixedSize(horizontal: false, vertical: true)
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .top, spacing: 10) {
+        Text(check.q).font(.kTitle).fixedSize(horizontal: false, vertical: true)
+        Spacer(minLength: 0)
+        SpeakButton(source: .appCopy("\(check.q) \(check.options.joined(separator: ". Or, ")).") )
+      }
       ForEach(shuffled, id: \.0) { i, text in
         let isPick = chosen == i, right = i == check.answer
-        Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { if standalone { local = i } else { picked = i } } } label: {
-          HStack { Text(text).font(.kHeadline).multilineTextAlignment(.leading); Spacer(); if isPick { Image(systemName: right ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill") } }
-            .padding(16).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        Button { withAnimation(Motion.tap) { if standalone { local = i } else { picked = i } } } label: {
+          HStack { Text(text).font(.kHeadline).multilineTextAlignment(.leading); Spacer(minLength: 4); if isPick { Image(systemName: right ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill") } }
+            .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
             .foregroundStyle(Palette.midnight)
-            .background(isPick ? (right ? Palette.mint : Palette.peach) : Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(isPick ? (right ? Palette.good : Palette.bad).opacity(0.5) : Palette.line, lineWidth: 1.5))
+            .background(isPick ? (right ? Palette.mint : Palette.peach) : Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(isPick ? (right ? Palette.good : Palette.bad).opacity(0.5) : Palette.line, lineWidth: 1.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
         .accessibilityAddTraits(isPick ? .isSelected : [])
         .sensoryFeedback(trigger: chosen) { _, n in n == i ? (right ? .success : .warning) : nil }
       }
-      if let c = chosen { Text((c == check.answer ? "🎉 Yes! " : "Good try! ") + check.why).font(.body).transition(.opacity) }
-      ReadAloud(source: .appCopy("\(check.q) \(check.options.joined(separator: ". Or, ")).") )
+      if let c = chosen { Text((c == check.answer ? "Yes! " : "Good try! ") + check.why).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true).transition(.opacity) }
     }
   }
 }
 
-/// A two-bucket sorting game with gentle corrections.
+/// A round 44 pt speaker that reads app copy aloud: the compact form of "Read it to me".
+struct SpeakButton: View {
+  let source: SpeakSource
+  @Environment(AppModel.self) private var app
+  @State private var speaking = false
+  var body: some View {
+    Button { speaking = true; Task { await app.voice.speak(source); speaking = false } } label: {
+      Image(systemName: speaking ? "waveform" : "speaker.wave.2.fill").font(.headline)
+        .symbolEffect(.variableColor.iterative, isActive: speaking)
+        .frame(width: 44, height: 44).background(Palette.lavender.opacity(0.85), in: Circle()).foregroundStyle(Palette.midnight)
+    }
+    .buttonStyle(PressStyle())
+    .accessibilityLabel("Read it to me")
+  }
+}
+
+/// The sorting game as a deck: one card at a time, two big buckets. Each sorted card drops into its
+/// bucket's pile, so the whole game fits one card at any size — no list to scroll.
 struct SortView: View {
   let q: String; let buckets: [String]; let items: [SortItem]; let why: String
   @Binding var picks: [Int: Int]
+  @Environment(\.accessibilityReduceMotion) private var rm
+  var next: Int? { items.indices.first { picks[$0] == nil } }
   var body: some View {
+    let done = next == nil
     VStack(alignment: .leading, spacing: 12) {
-      Eyebrow(text: "Sorting game")
-      Text(q).font(.kTitle)
-      ForEach(items.indices, id: \.self) { i in
-        let it = items[i], p = picks[i]
-        VStack(alignment: .leading, spacing: 8) {
-          HStack { Glyph(it.emoji, size: 30); Text(it.text).font(.kHeadline); Spacer(); if let p { Text(p == it.b ? "✅" : "↩︎ \(buckets[it.b])").font(.subheadline.weight(.semibold)) } }
-          HStack(spacing: 8) {
-            ForEach(buckets.indices, id: \.self) { b in
-              Button(buckets[b]) { withAnimation(.spring(response: 0.3)) { picks[i] = b } }.buttonStyle(SoftButtonStyle(selected: p == b))
-            }
+      HStack(alignment: .top, spacing: 10) {
+        Text(q).font(.kTitle).fixedSize(horizontal: false, vertical: true)
+        Spacer(minLength: 0)
+        SpeakButton(source: .appCopy("\(q) \(items.map(\.text).joined(separator: ". "))."))
+      }
+      ZStack {
+        if let i = next {
+          HStack(spacing: 12) {
+            Glyph(items[i].emoji, size: 48)
+            Text(items[i].text).font(.kTitle).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Text("\(i + 1)/\(items.count)").font(.caption.monospacedDigit().weight(.semibold)).foregroundStyle(.secondary)
           }
-          .accessibilityElement(children: .contain).accessibilityLabel(it.text)
+          .padding(14)
+          .frame(maxWidth: .infinity, minHeight: 76)
+          .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+          .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+          .id(i)
+          .transition(rm ? .opacity : .asymmetric(insertion: .scale(scale: 0.9).combined(with: .opacity), removal: .move(edge: .bottom).combined(with: .opacity)))
+        } else {
+          let right = items.indices.filter { picks[$0] == items[$0].b }.count
+          Text((right == items.count ? "All right! " : "\(right) of \(items.count) right. ") + why).font(.callout.weight(.medium))
+            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).transition(.opacity)
         }
-        .padding(12)
-        .background(p == nil ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(p == it.b ? Palette.mint : Palette.peach), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .sensoryFeedback(trigger: p) { _, n in n == nil ? nil : n == it.b ? .success : .warning }
       }
-      if items.indices.allSatisfy({ picks[$0] != nil }) {
-        let right = items.indices.filter { picks[$0] == items[$0].b }.count
-        Text((right == items.count ? "🎉 All right! " : "\(right) of \(items.count) right. ") + why).font(.body)
+      HStack(spacing: 10) {
+        ForEach(buckets.indices, id: \.self) { b in
+          let pile = items.indices.filter { picks[$0] == b }
+          let wrong = pile.filter { items[$0].b != b }.count
+          Button { if let i = next { withAnimation(Motion.safe(Motion.card, rm)) { picks[i] = b } } } label: {
+            VStack(spacing: 6) {
+              Text(buckets[b]).font(.kHeadline)
+              HStack(spacing: 3) {
+                ForEach(pile, id: \.self) { i in Glyph(items[i].emoji, size: 18, style: .plain).opacity(items[i].b == b ? 1 : 0.45) }
+              }
+              .frame(minHeight: 18)
+              if done && wrong > 0 { Text("\(wrong) belong\(wrong == 1 ? "s" : "") in the other one").font(.caption2.weight(.semibold)).foregroundStyle(Palette.badInk) }
+            }
+            .frame(maxWidth: .infinity, minHeight: 84)
+            .background(b == 0 ? Palette.mint.opacity(0.8) : Palette.lavender.opacity(0.9), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+            .foregroundStyle(Palette.midnight)
+          }
+          .buttonStyle(PressStyle())
+          .disabled(done)
+          .accessibilityLabel("Put it in \(buckets[b]). \(pile.count) so far.")
+        }
       }
-      ReadAloud(source: .appCopy("\(q) \(items.map(\.text).joined(separator: ". "))."))
+      .sensoryFeedback(trigger: picks.count) { _, _ in
+        guard let last = picks.keys.max(), let p = picks[last] else { return nil }
+        return p == items[last].b ? .success : .warning
+      }
+      if done {
+        Button("Sort again") { withAnimation(Motion.safe(Motion.card, rm)) { picks = [:] } }.font(.subheadline.weight(.semibold))
+      }
     }
   }
 }

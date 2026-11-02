@@ -56,7 +56,7 @@ struct TimeMachineBoss: View {
 
       Group {
         switch phase {
-        case .trend: question("Clue 1: what's the trend so far?", Trend.allCases.map(\.word), correct: Trend.allCases.firstIndex(of: trend)!) { ok in
+        case .trend: question("Clue 1: what's the trend so far?", Trend.allCases.map { $0 == .up ? "Up" : $0 == .down ? "Down" : "Sideways" }, correct: Trend.allCases.firstIndex(of: trend)!) { ok in
             RoundResult(right: ok, why: "Over these 40 days it was going \(trend == .sideways ? "sideways" : trend.rawValue).") }
         case .floor: question("Clue 2: where is the floor?", floorOpts.map { coins($0) }, correct: floorOpts.firstIndex(of: floor)!) { ok in
             RoundResult(right: ok, why: "Near \(coins(floor)) the price kept bouncing up.") }
@@ -108,7 +108,7 @@ struct TimeMachineBoss: View {
       HStack(spacing: 10) {
         ForEach([Trend.up, .sideways, .down], id: \.self) { t in
           Button { call = t; travel() } label: {
-            Label(t.word, systemImage: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right").font(.kHeadline).lineLimit(1).minimumScaleFactor(0.7)
+            Label(t == .up ? "Up" : t == .down ? "Down" : "Sideways", systemImage: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right").font(.kHeadline).lineLimit(1).minimumScaleFactor(0.7)
               .frame(maxWidth: .infinity, minHeight: 52).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
           }.buttonStyle(PressStyle())
         }

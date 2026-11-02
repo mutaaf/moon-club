@@ -8,6 +8,13 @@ Native SwiftUI (iOS 17+, iPhone + iPad) kids app; the native twin of mutaafaziz.
 ## Release notes
 Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`release-notes/README.md`): fun, at least 3 family-friendly pop-culture nods, never lyrics, no links, ≤ 4000 chars. It feeds TestFlight "What to Test", the GitHub release and the in-app What's new. `check-rules.sh` fails without it.
 
+## Market World, art and motion
+- The World tab is the map (`Features/WorldMap.swift`, games in `WorldGames.swift`, bosses in `WorldBosses.swift`); rules in MoonClubCore `World.swift` + `Charts.swift`. New chart lessons come from metaphases (`units` candles/trends/patterns/signals) via `make content`; the map drops nodes whose content is missing.
+- **Never draw an emoji as a picture.** Use `Glyph(key)` (`Design/Art.swift`); add new emoji keys to `Art.map` (CardFitTests fails on any content emoji without art, or any symbol that doesn't exist). No brand logos (`apple.logo` etc.).
+- **No ScrollView inside a card.** Make the page scroll, page the content, or shorten copy. CardFitTests measures every lesson step at SE/17/Duo/iPad with xxxLarge text.
+- Animations use `Motion` tokens; appear animations use `enterOnce`.
+- Debug launch args for screenshots: `-world mid|all` (seed map progress), `-play <node id>` (open a game/boss), `-step <n>` (lesson step), `-conquer` (win the current land after 2 s, for recording the conquer animation).
+
 ## iPhone Duo
 Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → code.
 - The hinge drives effects only: Luna's moon, the piggy lid, tuck-in.
@@ -60,3 +67,5 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
   - `Text(timerInterval:)` counts against the real clock even in ImageRenderer, so render fixtures use `Date()`.
 - **The first `xcodebuild` after `xcodegen generate` sometimes fails** with "the following command failed with exit code 0 but produced no further output". Rerunning it succeeds.
 - **Update reel:** `WhatsNewModal` appears once per version on the first launch after an update. Its lines come from `## Luna's news` in `release-notes/<version>.md`, which is required and linted by `asc.mjs notes`, and stripped from TestFlight. A fresh install records the version and shows nothing. Debug: `-demo -whatsnewFrom 0.5.0`.
+- **The first `xcodebuild` after `xcodegen generate` sometimes fails with "error: the following command failed with exit code 0 but produced no further output"** (no real error). Running the same build again succeeds. `make test` hits it too; rerun.
+- `candles.json` (app bundle) must also be copied to `Packages/MoonClubCore/Tests/MoonClubCoreTests/Resources/`. Refresh it with real prices: see `docs/ARCHITECTURE.md` (Market World); the live app also refreshes from `/api/kids/candles`.

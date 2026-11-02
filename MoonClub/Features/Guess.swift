@@ -47,7 +47,7 @@ struct GuessView: View {
   private var gameNightCard: some View {
     Button { gameNight = true } label: {
       HStack(spacing: 14) {
-        Glyph("🚀", size: 48)
+        Glyph(symbol: "person.2.fill", hue: .grape, size: 48)
         VStack(alignment: .leading, spacing: 2) {
           Text("GAME NIGHT · 2 PLAYERS").font(.kEyebrow).opacity(0.8)
           Text("Play head to head").font(.kTitle)
@@ -147,7 +147,7 @@ struct RevealRow: View {
           Text(co?.nick ?? guess.s).font(.kHeadline)
           Text("You guessed **\(guess.pick == .beat ? "BEAT 👍" : "MISS 👎")**\(guess.price.map { " and price \($0 == .up ? "UP ⬆️" : "DOWN ⬇️")" } ?? "").").font(.subheadline)
           if let result = guess.result, let e {
-            Text(result == .right ? "🎉 You got it right! +10" : "🌧️ Markets surprise everyone!").font(.kHeadline).foregroundStyle(result == .right ? Palette.good : Palette.ink)
+            Text(result == .right ? "You got it right! +10" : "Markets surprise everyone!").font(.kHeadline).foregroundStyle(result == .right ? Palette.good : Palette.ink)
             Text(whyLine(co?.nick ?? guess.s, e.report)).font(.subheadline)
             if guess.price != nil {
               if let pr = guess.priceResult { Text("The price went \((move ?? 0) >= 0 ? "up" : "down"): \(pr == .right ? "you were right! +5" : "not this time.")").font(.subheadline) }
@@ -156,7 +156,7 @@ struct RevealRow: View {
             if result == .wrong { Text("Even grown-up experts guess wrong a lot. That's why spreading out is smart.").font(.caption).foregroundStyle(.secondary) }
           } else {
             switch res {
-            case .pending: Text("⏳ Waiting for the report card \(e.map { kidWhen($0.d, $0.h, today: app.today) } ?? "").").font(.subheadline).foregroundStyle(.secondary)
+            case .pending: Text("Waiting for the report card \(e.map { kidWhen($0.d, $0.h, today: app.today) } ?? "").").font(.subheadline).foregroundStyle(.secondary)
             case .unknown: Text("This report card didn't have a grown-up guess, so nobody wins this one.").font(.subheadline).foregroundStyle(.secondary)
             case .right, .wrong:
               Button("The report card is out! Reveal 🎁") { reveal(res) }.buttonStyle(PrimaryButtonStyle())
@@ -197,7 +197,7 @@ struct LeagueBoard: View {
       }
       let score = players.map { p in p.guesses.filter { res($0) == .right }.count }
       Card {
-        Text("Family league 🏆").font(.kTitle)
+        Text("Family league").font(.kTitle)
         Grid(alignment: .center, horizontalSpacing: 10, verticalSpacing: 10) {
           GridRow {
             Text("Report card").font(.caption.weight(.semibold)).foregroundStyle(.secondary).gridColumnAlignment(.leading)
@@ -212,7 +212,7 @@ struct LeagueBoard: View {
               ForEach(r.picks.indices, id: \.self) { i in
                 if let g = r.picks[i] {
                   let x = res(g)
-                  Text((g.pick == .beat ? "👍" : "👎") + (x == .right ? "✅" : x == .wrong ? "❌" : "⏳")).accessibilityLabel("\(g.pick.rawValue), \(x == .right || x == .wrong ? x.rawValue : "waiting")")
+                  HStack(spacing: 3) { Image(systemName: g.pick == .beat ? "hand.thumbsup.fill" : "hand.thumbsdown.fill").foregroundStyle(g.pick == .beat ? Hue.mint.color : Hue.coral.color); Image(systemName: x == .right ? "checkmark.circle.fill" : x == .wrong ? "xmark.circle.fill" : "hourglass").foregroundStyle(x == .right ? Palette.goodInk : x == .wrong ? Palette.badInk : Palette.ink2) }.font(.title3).accessibilityElement().accessibilityLabel("\(g.pick.rawValue), \(x == .right || x == .wrong ? x.rawValue : "waiting")")
                 } else { Text("·").foregroundStyle(.tertiary).accessibilityLabel("No guess") }
               }
             }
@@ -220,10 +220,10 @@ struct LeagueBoard: View {
           Divider().gridCellUnsizedAxes(.horizontal)
           GridRow {
             Text("Right").font(.kHeadline)
-            ForEach(score.indices, id: \.self) { i in Text("\(score[i])\(score[i] == score.max() && score[i] > 0 ? " 🌕" : "")").font(.kHeadline).foregroundStyle(score[i] == score.max() && score[i] > 0 ? Palette.good : Palette.ink) }
+            ForEach(score.indices, id: \.self) { i in Text("\(score[i])").font(.kHeadline).foregroundStyle(score[i] == score.max() && score[i] > 0 ? Palette.good : Palette.ink) }
           }
         }
-        Text("👍 beat · 👎 miss · ✅ right · ❌ not this time · ⏳ waiting. Everyone is learning!").font(.caption).foregroundStyle(.secondary)
+        Text("\(Image(systemName: "hand.thumbsup.fill")) beat · \(Image(systemName: "hand.thumbsdown.fill")) miss · \(Image(systemName: "checkmark.circle.fill")) right · \(Image(systemName: "xmark.circle.fill")) not this time · \(Image(systemName: "hourglass")) waiting. Everyone is learning!").font(.caption).foregroundStyle(.secondary)
       }
     }
   }

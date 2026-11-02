@@ -61,7 +61,7 @@ struct PiggySetup: View {
           }
         }
         HStack { Text(left > 0 ? "\(coins(Double(left))) left to place." : "All your coins are placed!").font(.subheadline); Spacer(); Button("Split evenly") { split = evenSplit(picks) }.font(.subheadline) }
-        Text("🧺 " + basketTip(picks.count)).font(.callout).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Palette.moon.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
+        Text("\(Image(systemName: "basket.fill")) \(basketTip(picks.count))").font(.callout).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Palette.moon.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
         Button(busy ? "Filling your piggy bank…" : "Start my pretend piggy bank 🐷") { Task { await start() } }
           .buttonStyle(PrimaryButtonStyle()).disabled(left != 0 || busy)
         if let err { Text(err).font(.callout).foregroundStyle(Palette.bad) }
@@ -99,9 +99,9 @@ struct PiggyBank: View {
     TwoPage {
     Card {
       HStack { Eyebrow(text: "Your pretend money today"); Spacer(); PretendPill() }
-      Ticker(value: value, format: { "🌙 " + coins($0) }, font: .system(size: 48, weight: .heavy, design: .rounded))
+      Ticker(value: value, format: { coins($0) }, font: .system(size: 48, weight: .heavy, design: .rounded))
       if loaded && abs(change) >= 0.5 {
-        Text("\(change >= 0 ? "⬆️ Up" : "⬇️ Down") \(coins(abs(change))) since you started").font(.kHeadline).foregroundStyle(change >= 0 ? Palette.good : Palette.bad)
+        Label("\(change >= 0 ? "Up" : "Down") \(coins(abs(change))) since you started", systemImage: change >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill").font(.kHeadline).foregroundStyle(change >= 0 ? Palette.goodInk : Palette.badInk)
       }
       if hist.count >= 2 {
         Chart(Array(hist.enumerated()), id: \.offset) { i, e in
@@ -111,7 +111,7 @@ struct PiggyBank: View {
         .chartXAxis(.hidden).chartYAxis(.hidden).chartYScale(domain: .automatic(includesZero: false)).frame(height: 90)
         .accessibilityLabel("Your pretend money over \(hist.count) days")
       } else {
-        Text("Come back tomorrow to watch your line grow. 📈").font(.callout).foregroundStyle(.secondary)
+        Text("Come back tomorrow to watch your line grow.").font(.callout).foregroundStyle(.secondary)
       }
       ReadAloud(source: .appCopy("Your pretend money today is \(Int(value)) coins. You started with one thousand."))
     }
@@ -127,7 +127,7 @@ struct PiggyBank: View {
           Glyph(app.companies[h.s]?.emoji ?? "", size: 40)
           VStack(alignment: .leading) { Text(app.companies[h.s]?.nick ?? h.s).font(.kHeadline); Text("You put in \(coins(h.coins))").font(.caption).foregroundStyle(.secondary) }
           Spacer()
-          if !loaded || abs(c) < 0.05 { Text("New! 🌱").font(.subheadline).foregroundStyle(.secondary) }
+          if !loaded || abs(c) < 0.05 { Text("New!").font(.subheadline).foregroundStyle(.secondary) }
           else { Text("\(c >= 0 ? "+" : "")\(toFixed(c, 1))%").font(.kHeadline).monospacedDigit().foregroundStyle(c >= 0 ? Palette.good : Palette.bad) }
         }
         .padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))

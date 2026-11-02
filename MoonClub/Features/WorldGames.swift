@@ -227,7 +227,7 @@ struct BuildCandleRound: View {
   let day: (o: Double, h: Double, l: Double, c: Double)
   let answer: (RoundResult) -> Void
   let answered: RoundResult?
-  @State private var v: [Double] = [6, 7, 6, 7] // start, end, high, low
+  @State private var v: [Double] = [6, 6, 10, 2] // start, end, high, low: spread out so every handle is easy to grab
   @State private var dragging: Int?
   let domain = 0.0...12.0
   let names = ["Start", "End", "High", "Low"]
@@ -411,7 +411,7 @@ struct SpotTrendRound: View {
       HStack(spacing: 10) {
         ForEach([Trend.up, .sideways, .down], id: \.self) { t in
           Button { pick(t) } label: {
-            Label(t.word, systemImage: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right")
+            Label(t == .up ? "Up" : t == .down ? "Down" : "Sideways", systemImage: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right")
               .font(.kHeadline).labelStyle(.titleAndIcon).lineLimit(1).minimumScaleFactor(0.7)
               .frame(maxWidth: .infinity, minHeight: 52)
               .background(color(t), in: RoundedRectangle(cornerRadius: 18, style: .continuous))

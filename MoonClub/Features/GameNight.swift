@@ -107,7 +107,7 @@ struct GameNightView: View {
       if g.revealed, let a = g.answer {
         let right = mine == a
         VStack(spacing: 6) {
-          Text(right ? "🎉 You got it!" : "Good try!").font(.kTitle)
+          Text(right ? "You got it!" : "Good try!").font(.kTitle)
           Text("It was a **\(a == .beat ? "BEAT" : "MISS")**. You said \(mine == .beat ? "beat" : "miss").").font(.callout).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(14)
@@ -130,7 +130,7 @@ struct GameNightView: View {
       Spacer(minLength: 0)
       if g.revealed {
         Text(whyLine(co?.nick ?? round.s, round.report)).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-        Button(g.index + 1 < g.rounds.count ? "Next round →" : "See who won 🏆") { advance() }.buttonStyle(SoftButtonStyle())
+        Button(g.index + 1 < g.rounds.count ? "Next round →" : "See who won") { advance() }.buttonStyle(SoftButtonStyle())
       }
     }
     .padding(18)
@@ -226,7 +226,7 @@ struct TVBoard: View {
           Luna(size: 140, wave: true)
           Text("Moon Club Game Night").font(.system(size: 48, weight: .heavy, design: .rounded)).foregroundStyle(.white)
           if let g = game, g.isOver, !g.rounds.isEmpty {
-            Text(g.winner.map { "\(app.content.playerNames[players[$0]]) wins! 🏆" } ?? "It's a tie! 🤝").font(.largeTitle).foregroundStyle(Palette.moon)
+            Text(g.winner.map { "\(app.content.playerNames[players[$0]]) wins!" } ?? "It's a tie!").font(.largeTitle).foregroundStyle(Palette.moon)
           }
         }
       }
@@ -237,7 +237,7 @@ struct TVBoard: View {
       Text(app.content.players[players[p]]).font(.system(size: 90))
       Text(app.content.playerNames[players[p]]).font(.title.weight(.bold)).foregroundStyle(.white)
       Text("\(g.scores[p])").font(.system(size: 72, weight: .black, design: .rounded)).foregroundStyle(Palette.moon).monospacedDigit()
-      Text(g.revealed ? (g.picks[p] == g.answer ? "✅" : "↩︎") : g.picks[p] == nil ? "thinking…" : "🔒").font(.title2).foregroundStyle(.white.opacity(0.85))
+      Text(g.revealed ? (g.picks[p] == g.answer ? "Right!" : "Not this time") : g.picks[p] == nil ? "thinking…" : "Locked in").font(.title2).foregroundStyle(.white.opacity(0.85))
     }
     .frame(width: 240)
   }

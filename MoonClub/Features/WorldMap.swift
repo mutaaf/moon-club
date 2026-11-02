@@ -56,6 +56,16 @@ struct WorldView: View {
       let a = ProcessInfo.processInfo.arguments
       if let i = a.firstIndex(of: "-lesson"), i + 1 < a.count, lesson == nil { lesson = app.content.lessons.first { $0.id == a[i + 1] } }
       if let i = a.firstIndex(of: "-play"), i + 1 < a.count, playing == nil { playing = regions.flatMap(\.nodes).first { $0.id == a[i + 1] } }
+      #if DEBUG
+      // Screen recordings: -conquer wins the current land after a moment (fog lifts, flag, rocket flies on).
+      if a.contains("-conquer") {
+        Task {
+          try? await Task.sleep(for: .seconds(2))
+          let cur = World.current(regions, app.state, app.content)
+          for n in regions[cur.region].nodes { app.mutate { $0.earn(n.id, stars: 3) } }
+        }
+      }
+      #endif
     }
     .onChange(of: app.pendingLesson) { _, id in if let id { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } } }
     .onChange(of: regions.filter { World.conquered($0, app.state, app.content) }.map(\.id)) { _, now in
@@ -98,7 +108,7 @@ struct WorldView: View {
                   .place(layout.decor(ri, angle: d.angle, radius: d.radius))
               }
               if !open {
-                Fog(region: r).frame(width: layout.islandSize.width * 1.1, height: layout.islandSize.height * 1.08)
+                Fog(region: r).frame(width: layout.islandSize(ri).width * 1.1, height: layout.islandSize(ri).height * 1.08)
                   .place(layout.center(ri))
                   .transition(.opacity.combined(with: .scale(scale: 1.15)))
               }
@@ -134,6 +144,14 @@ struct WorldView: View {
       .background(Color(hex: 0x6FB7E8))
       .simultaneousGesture(MagnifyGesture().updating($pinch) { v, s, _ in s = v.magnification }.onEnded { v in zoom = min(1.7, max(1, zoom * v.magnification)) })
       .safeAreaInset(edge: .top) { WorldHeader(regions: regions) }
+      .onChange(of: burst) { _, _ in
+        // A land was just won: once the flag is planted, the camera follows Luna's rocket to the next land.
+        guard let n = regions[safe: current.region]?.nodes[safe: current.node] else { return }
+        Task {
+          try? await Task.sleep(for: .milliseconds(rm ? 0 : 900))
+          withAnimation(Motion.safe(Motion.page, rm)) { proxy.scrollTo(n.id, anchor: UnitPoint(x: 0.5, y: 0.55)) }
+        }
+      }
       .task {
         // Open on Luna: center the map on the node she's waiting at (once per visit to the tab).
         guard !didScroll, let n = regions[safe: current.region]?.nodes[safe: current.node] else { return }
@@ -189,33 +207,36 @@ enum MapDecor {
 struct MapLayout {
   let regions: [Region]
   let width: CGFloat
-  var bandHeight: CGFloat { max(width * 0.98, 360) }
-  var size: CGSize { CGSize(width: width, height: bandHeight * CGFloat(regions.count) + 180) }
-  var islandSize: CGSize { CGSize(width: width * 0.86, height: bandHeight * 0.86) }
+  /// Each land is as tall as its trail needs (≈ 96 pt per stop), so stars never touch the next stop.
+  func band(_ ri: Int) -> CGFloat { max(width * 0.95, CGFloat(regions[safe: ri]?.nodes.count ?? 4) * 96 + 110) }
+  var size: CGSize { CGSize(width: width, height: regions.indices.reduce(0) { $0 + band($1) } + 180) }
+  var islandSize: CGSize { islandSize(0) }
+  func islandSize(_ ri: Int) -> CGSize { CGSize(width: width * 0.86, height: band(ri) * 0.86) }
   func center(_ ri: Int) -> CGPoint {
-    let y = size.height - 90 - bandHeight * (CGFloat(ri) + 0.5)
+    let below = (0..<max(ri, 0)).reduce(0) { $0 + band($1) }
+    let y = size.height - 90 - below - band(ri) / 2
     return CGPoint(x: width * (ri % 2 == 0 ? 0.47 : 0.53), y: y)
   }
   func node(_ ri: Int, _ ni: Int, count: Int) -> CGPoint {
-    let c = center(ri)
+    let c = center(ri), b = band(ri)
     let t = count > 1 ? CGFloat(ni) / CGFloat(count - 1) : 0
     let dir: CGFloat = ri % 2 == 0 ? 1 : -1
     let x = c.x + dir * sin(t * .pi * 1.6 - 0.6) * width * 0.25
-    let y = c.y + bandHeight * 0.32 - t * bandHeight * 0.64
+    let y = c.y + b * 0.33 - t * b * 0.66
     return CGPoint(x: x, y: y)
   }
   func decor(_ ri: Int, angle: Double, radius: CGFloat) -> CGPoint {
-    let c = center(ri)
-    return CGPoint(x: c.x + CGFloat(cos(angle)) * islandSize.width / 2 * radius, y: c.y + CGFloat(sin(angle)) * islandSize.height / 2 * radius)
+    let c = center(ri), s = islandSize(ri)
+    return CGPoint(x: c.x + CGFloat(cos(angle)) * s.width / 2 * radius, y: c.y + CGFloat(sin(angle)) * s.height / 2 * radius)
   }
-  func banner(_ ri: Int) -> CGPoint { let c = center(ri); return CGPoint(x: c.x, y: c.y + bandHeight * 0.5) }
+  func banner(_ ri: Int) -> CGPoint { let c = center(ri); return CGPoint(x: c.x, y: c.y + band(ri) * 0.5) }
   func nodeIfAny(_ ri: Int, _ ni: Int, _ rs: [Region]) -> CGPoint? {
     guard let r = rs[safe: ri], r.nodes.indices.contains(ni) else { return nil }
     return node(ri, ni, count: r.nodes.count)
   }
   /// Island outline: an ellipse with a few soft bumps (seeded per region so it never changes).
   func island(_ ri: Int, inset: CGFloat = 0) -> Path {
-    let c = center(ri), rx = islandSize.width / 2 - inset, ry = islandSize.height / 2 - inset
+    let c = center(ri), s = islandSize(ri), rx = s.width / 2 - inset, ry = s.height / 2 - inset
     var p = Path()
     let k = Double(ri) * 1.7
     for i in 0...72 {
@@ -261,8 +282,8 @@ struct MapCanvas: View, Equatable {
         let land = layout.island(ri, inset: 14)
         let tone = open ? hue.light : Color(hex: 0xB9C2D6)
         g.fill(land, with: .linearGradient(Gradient(colors: [tone, open ? hue.color.opacity(won ? 0.95 : 0.7) : Color(hex: 0x98A2BA)]),
-                                           startPoint: CGPoint(x: 0, y: layout.center(ri).y - layout.islandSize.height / 2),
-                                           endPoint: CGPoint(x: 0, y: layout.center(ri).y + layout.islandSize.height / 2)))
+                                           startPoint: CGPoint(x: 0, y: layout.center(ri).y - layout.islandSize(ri).height / 2),
+                                           endPoint: CGPoint(x: 0, y: layout.center(ri).y + layout.islandSize(ri).height / 2)))
         g.stroke(land, with: .color(.white.opacity(0.35)), lineWidth: 2)
       }
       // The trail: dashed where you haven't been, solid gold where you have.
