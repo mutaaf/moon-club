@@ -56,9 +56,9 @@ struct TimeMachineBoss: View {
 
       Group {
         switch phase {
-        case .trend: question("Clue 1: what's the trend so far?", Trend.allCases.map { $0 == .up ? "Up" : $0 == .down ? "Down" : "Sideways" }, correct: Trend.allCases.firstIndex(of: trend)!) { ok in
+        case .trend: question("Clue 1: what's the trend so far?", Trend.allCases.map { $0 == .up ? "Up" : $0 == .down ? "Down" : "Sideways" }, correct: Trend.allCases.firstIndex(of: trend) ?? 0) { ok in
             RoundResult(right: ok, why: "Over these 40 days it was going \(trend == .sideways ? "sideways" : trend.rawValue).") }
-        case .floor: question("Clue 2: where is the floor?", floorOpts.map { coins($0) }, correct: floorOpts.firstIndex(of: floor)!) { ok in
+        case .floor: question("Clue 2: where is the floor?", floorOpts.map { coins($0) }, correct: floorOpts.firstIndex(of: floor) ?? 0) { ok in
             RoundResult(right: ok, why: "Near \(coins(floor)) the price kept bouncing up.") }
         case .call: callPicker
         case .reveal, .done: revealCard(trend: trend, after: after, name: name)
@@ -97,7 +97,7 @@ struct TimeMachineBoss: View {
       }
       if let f = feedback {
         Text((f.right ? "Yes! " : "Good try. ") + f.why).font(.callout.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
-        Button("Next clue") { withAnimation(Motion.safe(Motion.card, rm)) { feedback = nil; phase = Phase(rawValue: phase.rawValue + 1)! } }.buttonStyle(PrimaryButtonStyle())
+        Button("Next clue") { withAnimation(Motion.safe(Motion.card, rm)) { feedback = nil; phase = Phase(rawValue: phase.rawValue + 1) ?? .call } }.buttonStyle(PrimaryButtonStyle())
       }
     }
   }
