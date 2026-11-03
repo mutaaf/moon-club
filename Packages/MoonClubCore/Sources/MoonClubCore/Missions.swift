@@ -66,12 +66,11 @@ public enum Missions {
 extension Streak {
   /// Days in a row with any play (a lesson, a game, a boss, a quest or a guess), ending today or yesterday.
   public static func play(_ s: KidsState, today: String) -> Int {
-    let days = Array(s.lessonDates.values) + (s.played ?? []).compactMap { $0.split(separator: "|").first.map(String.init) } + s.guesses.map(\.at)
-    return Streak.days(days, today: today)
+    Streak.days(Streak.activeDays(s), today: today)
   }
 }
 
-// MARK: - Rocket skins (cosmetic only: earned from mission chests, never bought)
+// MARK: - Rocket skins (cosmetic only: bought with earned Moon points in the Moon Shop, never real money)
 
 public struct RocketSkin: Hashable, Identifiable, Sendable {
   public let id: String; public let name: String; public let body: UInt32; public let fin: UInt32; public let flame: UInt32
@@ -87,12 +86,10 @@ public enum Skins {
     RocketSkin(id: "ocean", name: "Deep Sea", body: 0xDFE8FF, fin: 0x2346D8, flame: 0x3DB97F),
     RocketSkin(id: "night", name: "Night Owl", body: 0x2F2C63, fin: 0xF2BE2E, flame: 0xFF9FB0),
   ]
-  /// The classic skin is free; each opened chest unlocks the next one.
-  public static func unlocked(_ s: KidsState) -> [RocketSkin] { Array(all.prefix(1 + min(all.count - 1, (s.chests ?? []).count))) }
-  /// The next skin a chest will unlock, if any.
-  public static func next(_ s: KidsState) -> RocketSkin? { let n = unlocked(s).count; return n < all.count ? all[n] : nil }
-  public static func current(_ s: KidsState) -> RocketSkin {
-    let id = s.skin?.split(separator: "|").last.map(String.init)
-    return unlocked(s).first { $0.id == id } ?? all[0]
-  }
+  /// Rockets the kid owns: the classic one, any bought in the Moon Shop, and those chests unlocked before it.
+  public static func unlocked(_ s: KidsState) -> [RocketSkin] { let o = Shop.owned(s); return all.filter { o.contains("rocket.\($0.id)") } }
+  /// The next rocket not owned yet, if any.
+  public static func next(_ s: KidsState) -> RocketSkin? { let have = Set(unlocked(s).map(\.id)); return all.first { !have.contains($0.id) } }
+  /// The rocket the kid flies (the Moon Shop's equipped rocket).
+  public static func current(_ s: KidsState) -> RocketSkin { Shop.rocket(s) }
 }

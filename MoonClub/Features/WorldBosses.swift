@@ -38,7 +38,7 @@ struct TimeMachineBoss: View {
     VStack(spacing: 12) {
       GameHUD(run: run, title: node.title, done: min(3, phase.rawValue), total: 3, boss: BossInfo(name: "\(name) · \(Day.en("MMM yyyy", pastC.last?.d ?? app.today))", art: "⏳"), dark: true) { dismiss() }
       if results {
-        RunResults(stars: 1 + right, run: run, boss: true, subtitle: "You read the clues like a pro. Clues help, but they're never promises.",
+        RunResults(stars: 1 + right, run: run, boss: true, subtitle: "Clues help, but they're never promises.", source: .boss, earnId: node.id,
                    again: { withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); right = 0; feedback = nil; call = nil; shown = 0; phase = .trend; results = false } },
                    map: { dismiss() })
           .padding(20)

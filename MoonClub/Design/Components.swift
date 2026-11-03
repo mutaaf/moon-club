@@ -8,7 +8,10 @@ struct Luna: View {
   var size: CGFloat = 56
   var wave = false
   var mood: Mood = .idle
+  /// Wear the kid's Moon Shop hat (off for shop previews of other hats).
+  var dressed = true
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.lunaLook) private var look
   @State private var blink = false
   @State private var bob = false
   var body: some View {
@@ -22,6 +25,7 @@ struct Luna: View {
       mouth
       HStack(spacing: 21 * s) { Circle().fill(Palette.blush.opacity(mood == .sleepy ? 0.35 : 0.6)).frame(width: 7 * s); Circle().fill(Palette.blush.opacity(mood == .sleepy ? 0.35 : 0.6)).frame(width: 7 * s) }.offset(y: 5 * s)
       extras(s)
+      if dressed, let hat = look.hat { LunaHat(item: hat, size: 58 * s) }
     }
     .frame(width: 58 * s, height: 58 * s)
     .frame(width: size, height: size)

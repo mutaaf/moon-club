@@ -6,7 +6,8 @@ enum Palette {
   static let moon = Color(hex: 0xFFF3C4)
   static let moonShade = Color(hex: 0xECD88F)
   static let midnight = Color(hex: 0x16152B)
-  static let accent = Color(hex: 0x2346D8)
+  /// The accent follows the kid's "App colors" pick in the Moon Shop (ThemeColor, set at the root).
+  static var accent: Color { Color(hex: ThemeColor.hex) }
   static let lavender = Color(hex: 0xECE4FF)
   static let mint = Color(hex: 0xD9F3E6)
   static let peach = Color(hex: 0xFFE4D2)
@@ -22,6 +23,11 @@ enum Palette {
   static let ink = Color(light: 0x16152B, dark: 0xF4F1FF)
   static let ink2 = Color(light: 0x4A4862, dark: 0xC9C5E8)
   static let line = Color(light: 0xE6E1F2, dark: 0x2F2C63)
+}
+
+/// The app's accent color (the Moon Shop's "App colors" slot; widgets keep the default). Set by the root.
+enum ThemeColor {
+  nonisolated(unsafe) static var hex: UInt32 = 0x2346D8
 }
 
 extension Color {

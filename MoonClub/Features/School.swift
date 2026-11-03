@@ -232,7 +232,7 @@ struct LessonPlayer: View {
           }
           .transition(.scale.combined(with: .opacity))
         } else {
-          RunResults(stars: stars, run: run, subtitle: "Lesson done! You filled a moon and earned 10 points.", again: retry, map: { dismiss() })
+          RunResults(stars: stars, run: run, subtitle: "Lesson done! You filled a moon.", source: .lesson, earnId: lesson.id, again: retry, map: { dismiss() })
             .transition(.scale.combined(with: .opacity))
         }
       } else {

@@ -13,6 +13,8 @@
 //   league                 union by player emoji; each player's guesses union by (company, day)
 //   me / recapSeen         larger wins (deterministic); the league view hides the player that is "me"
 //   played, chests         union (sorted); skin is the max of "<millis>|<id>", so the later pick wins
+//   bonus, asked           max per key; owned, frozen union; equipped max per slot; rankSeen max.
+//                          The wallet is earned minus the price of what's owned: derived, never a synced counter.
 //   resetEpoch             "reset on all devices" bumps it; a larger epoch wins outright, so older data from
 //                          a device that hasn't heard about the reset can't bring progress back
 import Foundation
@@ -58,6 +60,12 @@ public enum Sync {
     r.played = unionOpt(a.played, o.played)    // Game On play log (the 400 cap applies when writing, never here)
     r.chests = unionOpt(a.chests, o.chests)
     r.skin = maxOpt(a.skin, o.skin)            // "<millis>|<id>": the later pick wins
+    r.bonus = maxMap(a.bonus, o.bonus)         // banked points: best per day|source|id
+    r.owned = unionOpt(a.owned, o.owned)       // Moon Shop: owned items (a union can't double-spend one item)
+    r.equipped = maxMap(a.equipped, o.equipped) // per slot "<millis>|<id>": the later pick wins
+    r.frozen = unionOpt(a.frozen, o.frozen)
+    r.asked = maxMap(a.asked, o.asked)
+    r.rankSeen = maxOpt(a.rankSeen, o.rankSeen)
     return r
   }
 
@@ -65,6 +73,13 @@ public enum Sync {
     guard a != nil || b != nil else { return nil }
     var m = a ?? [:]
     for (k, v) in b ?? [:] { m[k] = max(m[k] ?? 0, v) }
+    return m
+  }
+
+  static func maxMap<V: Comparable>(_ a: [String: V]?, _ b: [String: V]?) -> [String: V]? {
+    guard a != nil || b != nil else { return nil }
+    var m = a ?? [:]
+    for (k, v) in b ?? [:] { m[k] = m[k].map { max($0, v) } ?? v }
     return m
   }
 

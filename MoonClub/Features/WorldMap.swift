@@ -140,7 +140,7 @@ struct WorldView: View {
             }
             ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
               if World.conquered(r, app.state, app.content) {
-                PlantedFlag(hue: hue(r)).allowsHitTesting(false).place(layout.decor(ri, angle: -.pi / 2 + (ri % 2 == 0 ? -0.5 : 0.5), radius: 0.5))
+                PlantedFlag(hue: hue(r), flag: Shop.equipped(.flag, app.state)).allowsHitTesting(false).place(layout.decor(ri, angle: -.pi / 2 + (ri % 2 == 0 ? -0.5 : 0.5), radius: 0.5))
                   .transition(.move(edge: .top).combined(with: .opacity))
               }
             }
@@ -350,7 +350,8 @@ struct MapCanvas: View, Equatable {
                                            endPoint: CGPoint(x: 0, y: layout.center(ri).y + layout.islandSize(ri).height / 2)))
         g.stroke(land, with: .color(.white.opacity(0.35)), lineWidth: 2)
       }
-      // The trail: dashed where you haven't been, solid gold where you have.
+      // The trail: dashed where you haven't been, solid where you have (in the kid's Moon Shop trail color).
+      let trail = Color(hex: Shop.equipped(.trail, state)?.color ?? 0xD99A1E)
       let pts = regions.enumerated().flatMap { ri, r in r.nodes.indices.map { (layout.node(ri, $0, count: r.nodes.count), World.stars(r.nodes[$0], state, content) > 0) } }
       for i in 1..<max(pts.count, 1) {
         let (a, _) = pts[i - 1], (b, done) = pts[i]
@@ -358,7 +359,7 @@ struct MapCanvas: View, Equatable {
         let mid = CGPoint(x: (a.x + b.x) / 2 + (b.y - a.y) * 0.18, y: (a.y + b.y) / 2)
         p.addQuadCurve(to: b, control: mid)
         let walked = done && pts[i - 1].1
-        g.stroke(p, with: .color(walked ? Hue.gold.color : .white.opacity(0.85)), style: .init(lineWidth: walked ? 6 : 4, lineCap: .round, dash: walked ? [] : [2, 10]))
+        g.stroke(p, with: .color(walked ? trail : .white.opacity(0.85)), style: .init(lineWidth: walked ? 6 : 4, lineCap: .round, dash: walked ? [] : [2, 10]))
       }
     }
     .drawingGroup()
@@ -488,28 +489,31 @@ struct Fin: Shape {
 /// A big flag planted on a conquered land, in the land's color.
 struct PlantedFlag: View {
   let hue: Hue
+  /// The kid's Moon Shop flag (its symbol and color); nil = the land's color.
+  var flag: ShopItem? = nil
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var wave = false
   var body: some View {
     ZStack(alignment: .topLeading) {
       Capsule().fill(Palette.midnight.opacity(0.75)).frame(width: 4, height: 64).offset(x: 0, y: 0)
-      Image(systemName: "flag.fill").font(.system(size: 34, weight: .heavy)).foregroundStyle(hue.color)
+      Image(systemName: flag?.symbol ?? "flag.fill").font(.system(size: 34, weight: .heavy)).foregroundStyle(flag.map { Color(hex: $0.color) } ?? hue.color)
         .overlay(Image(systemName: "star.fill").font(.system(size: 10, weight: .black)).foregroundStyle(.white).offset(x: 2, y: -4))
         .rotationEffect(.degrees(wave && !rm ? 4 : -2), anchor: .leading)
         .offset(x: 1, y: -2)
       Ellipse().fill(.black.opacity(0.18)).frame(width: 22, height: 7).offset(x: -9, y: 60)
     }
     .frame(width: 44, height: 70)
-    .shadow(color: hue.color.opacity(0.4), radius: 8)
+    .shadow(color: (flag.map { Color(hex: $0.color) } ?? hue.color).opacity(0.4), radius: 8)
     .onAppear { guard !rm else { return }; withAnimation(Motion.gentle.repeatForever()) { wave = true } }
     .accessibilityHidden(true)
   }
 }
 
-/// The rocket hangar: skins earned from mission chests (cosmetic only, never bought).
+/// The rocket hangar: the rockets you own (bought with earned Moon points, never real money).
 struct Hangar: View {
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.openLocker) private var openLocker
   var body: some View {
     let have = Set(Skins.unlocked(app.state).map(\.id))
     let current = Skins.current(app.state).id
@@ -517,7 +521,7 @@ struct Hangar: View {
       HStack {
         VStack(alignment: .leading, spacing: 2) {
           Text("Rocket hangar").font(.kTitle)
-          Text("Open a mission chest to unlock the next rocket.").font(.callout).foregroundStyle(Palette.ink2)
+          Text("Get more rockets in the Moon Shop.").font(.callout).foregroundStyle(Palette.ink2)
         }
         Spacer()
         Button { dismiss() } label: { Image(systemName: "xmark").font(.headline.weight(.heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle()) }
@@ -526,7 +530,7 @@ struct Hangar: View {
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
         ForEach(Skins.all) { s in
           let unlocked = have.contains(s.id)
-          Button { if unlocked { app.mutate { $0.pickSkin(s.id, nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } } } label: {
+          Button { if unlocked { app.mutate { $0.equip("rocket.\(s.id)", nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } } else { dismiss(); openLocker(.shop) } } label: {
             VStack(spacing: 6) {
               ZStack {
                 RocketMark(skin: s, size: 54).opacity(unlocked ? 1 : 0.25)
@@ -539,8 +543,7 @@ struct Hangar: View {
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(current == s.id ? Palette.accent : Palette.line, lineWidth: current == s.id ? 2.5 : 1))
           }
           .buttonStyle(PressStyle())
-          .disabled(!unlocked)
-          .accessibilityLabel("\(s.name). \(unlocked ? (current == s.id ? "Flying now" : "Tap to fly it") : "Locked")")
+          .accessibilityLabel("\(s.name). \(unlocked ? (current == s.id ? "Flying now" : "Tap to fly it") : "In the Moon Shop")")
         }
       }
       Spacer(minLength: 0)

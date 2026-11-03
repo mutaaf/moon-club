@@ -12,6 +12,7 @@ extension EnvironmentValues { var openTab: OpenTab { get { self[OpenTabKey.self]
 struct TodaysMissions: View {
   @Environment(AppModel.self) private var app
   @Environment(\.openTab) private var openTab
+  @Environment(\.openLocker) private var openLocker
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var lesson: Lesson?
   @State private var node: WorldNode?
@@ -85,22 +86,23 @@ struct TodaysMissions: View {
           .symbolEffect(.bounce, options: .repeating, isActive: ready && !rm)
       }
       VStack(alignment: .leading, spacing: 1) {
-        if let reward {
-          Text("New rocket: \(reward.name)!").font(.kHeadline)
-          Text("Fly it from the rocket hangar on the map.").font(.caption).foregroundStyle(Palette.ink2)
+        if reward != nil {
+          Text("+\(Rewards.chestPoints) Moon points!").font(.kHeadline)
+          Text("Spend them in the Moon Shop.").font(.caption).foregroundStyle(Palette.ink2)
         } else if wasOpened {
           Text("Chest opened today").font(.kHeadline)
           Text("Come back tomorrow for new missions.").font(.caption).foregroundStyle(Palette.ink2)
         } else {
           Text(ready ? "Your chest is ready!" : "Mission chest").font(.kHeadline)
-          Text(next.map { "Finish all 3 to unlock the \($0.name) rocket." } ?? "Finish all 3 for a chest of pretend coins.").font(.caption).foregroundStyle(Palette.ink2)
+          Text("Finish all 3 for \(Rewards.chestPoints) Moon points\(next.map { ", closer to the \($0.name) rocket" } ?? "").").font(.caption).foregroundStyle(Palette.ink2)
         }
       }
       Spacer(minLength: 0)
       if ready {
         Button("Open") { openChest() }.buttonStyle(ChunkyStyle(face: Hue.gold.color, edge: Color(hex: 0x9A6A0C), ink: .white, radius: 16)).frame(width: 96)
-      } else if let skin = reward ?? (wasOpened ? Skins.current(app.state) : nil) {
-        RocketMark(skin: skin, size: 40)
+      } else if reward != nil || wasOpened {
+        Button { openLocker(.shop) } label: { Label("Shop", systemImage: "bag.fill").font(.subheadline.weight(.heavy)) }
+          .buttonStyle(ChunkyStyle(face: Hue.gold.light, edge: Hue.gold.color, ink: Palette.ink, depth: 3, radius: 14)).frame(width: 96)
       }
     }
     .padding(10)
@@ -109,10 +111,9 @@ struct TodaysMissions: View {
   }
 
   private func openChest() {
-    let next = Skins.next(app.state)
-    app.mutate { $0.openChest(today: app.today); if let n = next { $0.pickSkin(n.id, nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } }
+    app.mutate { $0.openChest(today: app.today) }
     GameSound.play(.chest)
-    withAnimation(Motion.safe(Motion.celebrate, rm)) { reward = next; opened += 1 }
+    withAnimation(Motion.safe(Motion.celebrate, rm)) { reward = Skins.current(app.state); opened += 1 }
   }
 
   private func go(_ m: Mission) {

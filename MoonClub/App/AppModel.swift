@@ -74,6 +74,20 @@ final class AppModel {
   var points: Int { state.points(content) }
   var level: LevelInfo { state.level(content) }
   var freshBadges: [Badge] { state.freshBadges(content).compactMap { id in content.badges.first { $0.id == id } } }
+  // Points that matter (0.11): see MoonClubCore/Rewards.swift.
+  /// Moon points left to spend (earned minus the Moon Shop).
+  var wallet: Int { Shop.wallet(state, content) }
+  var trophies: [TrophyProgress] { Trophies.progress(state, content) }
+  var earnedCount: Int { Trophies.earnedCount(state, content) }
+  var nextRankName: String? { let ls = Ranks.levels(content), i = level.index + 1; return i < ls.count ? ls[i].name : nil }
+  /// Web badges, then trophy tiers, not celebrated yet.
+  var freshRewards: [RewardNews] { freshBadges.map(RewardNews.badge) + Trophies.fresh(state, content).map { RewardNews.trophy($0.0, $0.1) } }
+  /// A rank reached whose ceremony hasn't played (the first rank, New Moon, has none).
+  var pendingRank: Int? { let i = level.index; return i > 0 && i > (state.rankSeen ?? 0) ? i : nil }
+  var lunaLook: LunaLook { LunaLook(hat: Shop.equipped(.hat, state), frame: Shop.equipped(.frame, state)) }
+  var themeHex: UInt32 { let h = Shop.equipped(.theme, state)?.color ?? 0x2346D8; ThemeColor.hex = h; return h }
+  /// The app came to the front today: the visit counts for the streak and the daily bonus.
+  func checkIn() { mutate { $0.checkIn(today: today) } }
   var badges: Set<String> { Set(state.badges(content)) }
   var recap: Recap? { state.recap(content, today: today) }
   var kidEvents: [EarningsEvent] { events.filter { companies[$0.s] != nil } }
