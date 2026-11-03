@@ -55,13 +55,14 @@ final class MissionsTests: XCTestCase {
     XCTAssertEqual(Skins.current(s).id, "classic")
     s.pickSkin("galaxy", nowMillis: 1)
     XCTAssertEqual(Skins.current(s).id, "classic", "a locked skin can't be worn")
+    // Chests opened before the Moon Shop (0.11) keep the skins they unlocked; later chests give points.
     s.openChest(today: "2026-11-01"); s.openChest(today: day); s.openChest(today: "2026-11-03")
-    XCTAssertEqual(Skins.unlocked(s).count, 4)
+    XCTAssertEqual(Skins.unlocked(s).count, 3)
     var a = s, b = s
     a.pickSkin("mint", nowMillis: 1_700_000_000_000)
-    b.pickSkin("galaxy", nowMillis: 1_800_000_000_000)
-    XCTAssertEqual(Skins.current(a.merged(with: b)).id, "galaxy")
-    XCTAssertEqual(Skins.current(b.merged(with: a)).id, "galaxy")
+    b.pickSkin("sunset", nowMillis: 1_800_000_000_000)
+    XCTAssertEqual(Skins.current(a.merged(with: b)).id, "sunset")
+    XCTAssertEqual(Skins.current(b.merged(with: a)).id, "sunset")
   }
 
   func testPlayLogIsCappedAndOldSavesDecode() throws {

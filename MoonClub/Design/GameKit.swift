@@ -35,7 +35,10 @@ enum GameSound {
   var hearts = RunModel.maxHearts
   var combo = 0
   var bestCombo = 0
+  /// Moon points this run (shown in the HUD; banked at the results, best run per game per day).
   var coins = 0
+  /// The kid's points when the run started, so the results can say what the whole run earned.
+  var startPoints: Int?
   var right = 0
   var answered = 0
   var mood: Luna.Mood = .happy
@@ -63,7 +66,7 @@ enum GameSound {
     answered += 1
     if ok {
       right += 1; combo += 1; bestCombo = max(bestCombo, combo)
-      let gained = 10 * multiplier + (fast ? 5 : 0)
+      let gained = Rewards.perRight * multiplier + (fast ? 1 : 0)
       coins += gained; coinTick += 1
       mood = combo >= 3 ? .cheering : .happy
       if bossHit > 0 { bossHP = max(0, bossHP - bossHit) }
@@ -78,7 +81,7 @@ enum GameSound {
   }
   func nextRound() { roundStart = Date(); if mood == .oops { mood = .thinking } }
   func reset() {
-    hearts = Self.maxHearts; combo = 0; bestCombo = 0; coins = 0; right = 0; answered = 0
+    hearts = Self.maxHearts; combo = 0; bestCombo = 0; coins = 0; right = 0; answered = 0; startPoints = nil
     mood = .happy; bossHP = 1; roundStart = Date(); started = false
   }
 }
@@ -104,6 +107,8 @@ struct GameHUD: View {
   let onClose: () -> Void
 
   @Environment(\.accessibilityReduceMotion) private var rm
+  @Environment(\.lunaLook) private var look
+  @Environment(AppModel.self) private var app
   @State private var confirm = false
 
   var body: some View {
@@ -125,6 +130,7 @@ struct GameHUD: View {
       }
       HStack(spacing: 10) {
         Luna(size: 30, mood: run.mood)
+          .overlay(LunaFrame(item: look.frame, size: 30))
           .modifier(Shake(amount: rm ? 0 : 5, tick: run.crackTick))
           .scaleEffect(run.mood == .cheering && !rm ? 1.12 : 1)
           .animation(Motion.safe(Motion.celebrate, rm), value: run.mood)
@@ -139,8 +145,9 @@ struct GameHUD: View {
       if let boss { BossBar(boss: boss, hp: run.bossHP) }
     }
     .padding(.top, 6)
+    .onChange(of: run.answered, initial: true) { _, n in if n == 0 || run.startPoints == nil { run.startPoints = app.points } }
     .accessibilityElement(children: .contain)
-    .accessibilityLabel("\(title). \(run.hearts) hearts, \(run.coins) coins.")
+    .accessibilityLabel("\(title). \(run.hearts) hearts, \(run.coins) Moon points.")
   }
 }
 
@@ -244,7 +251,7 @@ struct CoinCounter: View {
     .background(dark ? AnyShapeStyle(.white.opacity(0.1)) : AnyShapeStyle(.thinMaterial), in: Capsule())
     .modifier(Pop(tick: tick))
     .animation(Motion.safe(Motion.tap, rm), value: coins)
-    .accessibilityLabel("\(coins) pretend coins")
+    .accessibilityLabel("\(coins) Moon points this round")
   }
 }
 
@@ -262,7 +269,7 @@ struct CoinMark: View {
   }
 }
 
-/// Speed ring: a round's clock drains around it; answering before it's empty earns +5 bonus coins.
+/// Speed ring: a round's clock drains around it; answering before it's empty earns +1 bonus Moon point.
 /// It never ends a round or costs a heart.
 struct SpeedRing: View {
   let start: Date; let seconds: Double
@@ -467,9 +474,11 @@ struct ChunkyStyle: ButtonStyle {
 
 /// The big primary action ("Next", "Check"), chunky like the answers.
 struct ChunkyPrimary: ButtonStyle {
-  var tint: Color = Palette.accent
+  /// nil = the app's accent (which follows the kid's App colors pick).
+  var tint: Color? = nil
   func makeBody(configuration: Configuration) -> some View {
-    ChunkyStyle(face: tint, edge: tint.blend(with: .black, by: 0.35), ink: .white, radius: 22)
+    let tint = self.tint ?? Palette.accent
+    return ChunkyStyle(face: tint, edge: tint.blend(with: .black, by: 0.35), ink: .white, radius: 22)
       .makeBody(configuration: configuration)
       .font(.system(.headline, design: .rounded).weight(.heavy))
   }
@@ -483,6 +492,9 @@ struct RunResults: View {
   let run: RunModel
   var boss = false
   var subtitle: String? = nil
+  /// Where the run's Moon points are banked (shown under the stats, with a way to the Moon Shop).
+  var source: PointSource = .game
+  var earnId: String? = nil
   let again: () -> Void
   let map: () -> Void
   @Environment(\.accessibilityReduceMotion) private var rm
@@ -518,8 +530,9 @@ struct RunResults: View {
       HStack(spacing: 10) {
         stat("\(run.accuracy)%", "right", "target", .mint)
         stat("\(run.bestCombo)", "best combo", "flame.fill", .orange)
-        stat("\(run.coins)", "coins", "moon.fill", .gold)
+        stat("\(run.coins)", "points", "moon.fill", .gold)
       }
+      if let earnId { RunEarnings(run: run, source: source, earnId: earnId) }
       Spacer(minLength: 0)
       VStack(spacing: 8) {
         Button(action: map) { Text(boss ? "Plant my flag" : "Back to the map") }.buttonStyle(ChunkyPrimary())
@@ -607,6 +620,8 @@ extension View {
       .toolbar(.hidden, for: .navigationBar)
       .navigationBarBackButtonHidden(true)
       .statusBarHidden(false)
+      .onAppear { PlayActivity.shared.active += 1 }
+      .onDisappear { PlayActivity.shared.active = max(0, PlayActivity.shared.active - 1) }
   }
 }
 

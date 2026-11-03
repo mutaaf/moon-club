@@ -44,7 +44,7 @@ struct GameShell<Round: View>: View {
       }
       ZStack {
         if finished {
-          RunResults(stars: stars, run: run, boss: boss != nil, again: again, map: { dismiss() })
+          RunResults(stars: stars, run: run, boss: boss != nil, source: boss != nil ? .boss : .game, earnId: node.id, again: again, map: { dismiss() })
             .padding(20)
             .background(Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
             .transition(.scale(scale: 0.92).combined(with: .opacity))

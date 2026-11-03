@@ -104,6 +104,32 @@ final class CardFitTests: XCTestCase {
     XCTAssertTrue(misfits.isEmpty, "Quest stages that would need scrolling:\n" + misfits.joined(separator: "\n"))
   }
 
+  /// The Moon Locker (a sheet): every tab and every shop shelf fits on iPhone SE and iPhone 17 at
+  /// standard text, with nothing to scroll (the trophy shelf pages; the shop shows one shelf at a time).
+  func testMoonShopAndBadgeCabinetFitWithoutScrolling() throws {
+    let c = try content(), app = model(c)
+    app.mutate { $0.bank(.game, "fit", points: 2000, today: "2026-10-31"); $0.finishLesson("company", today: "2026-10-31") }
+    var misfits: [String] = [], checked = 0
+    // A large sheet starts ~10 pt below the status bar and ends at the screen bottom.
+    for d in [Device(name: "iPhone SE", width: 375, height: 667, chrome: 40), Device(name: "iPhone 17", width: 402, height: 874, chrome: 62 + 34 + 10)] {
+      let room = d.height - d.chrome
+      var screens: [(String, MoonLocker)] = [("badges", MoonLocker(tab: .badges)), ("points", MoonLocker(tab: .points))]
+      for s in ShopSlot.allCases { screens.append(("shop \(s.rawValue)", MoonLocker(tab: .shop, slot: s))) }
+      for (name, v) in screens {
+        let host = UIHostingController(rootView: v.environment(app).environment(\.dynamicTypeSize, .large))
+        let h = host.sizeThatFits(in: CGSize(width: d.width, height: 1)).height; checked += 1
+        if h > room { misfits.append("\(d.name) \(name): \(Int(h)) > \(Int(room))") }
+      }
+    }
+    XCTAssertGreaterThan(checked, 15)
+    XCTAssertTrue(misfits.isEmpty, "Locker screens that would need scrolling:\n" + misfits.joined(separator: "\n"))
+    for s in ShopSlot.allCases { XCTAssertLessThanOrEqual(Shop.all.filter { $0.slot == s }.count, 8, "a shelf is at most two rows of four") }
+    for it in Shop.all { XCTAssertNotNil(UIImage(systemName: it.symbol), "shop symbol \(it.symbol)") }
+    for t in Trophies.all { XCTAssertNotNil(UIImage(systemName: t.symbol), "trophy symbol \(t.symbol)") }
+    for s in ShopSlot.allCases { XCTAssertNotNil(UIImage(systemName: MoonShop.icon(s)), "slot icon \(s)") }
+    for p in PointSource.allCases { XCTAssertNotNil(UIImage(systemName: p.symbol), "source symbol \(p.symbol)") }
+  }
+
   func testArtReviewListAndNoMisleadingPictures() {
     // The whole emoji → picture map, for a human to skim (printed in the test log).
     print("ART REVIEW\n" + Art.reviewList.joined(separator: "\n"))
@@ -116,9 +142,9 @@ final class CardFitTests: XCTestCase {
   func testNoCardHasAScrollViewInside() throws {
     // Source check: the card-content views never contain a ScrollView (the page may scroll, a card may not).
     let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-    for f in ["MoonClub/Features/School.swift", "MoonClub/Features/Story.swift", "MoonClub/Features/WorldGames.swift", "MoonClub/Features/WorldBosses.swift", "MoonClub/Features/WhatsNewModal.swift", "MoonClub/Features/Missions.swift", "MoonClub/Design/GameKit.swift"] {
+    for f in ["MoonClub/Features/School.swift", "MoonClub/Features/Story.swift", "MoonClub/Features/WorldGames.swift", "MoonClub/Features/WorldBosses.swift", "MoonClub/Features/WhatsNewModal.swift", "MoonClub/Features/Missions.swift", "MoonClub/Design/GameKit.swift", "MoonClub/Features/Rewards.swift"] {
       let src = try String(contentsOf: root.appendingPathComponent(f), encoding: .utf8)
-      for marker in ["struct StepContent", "struct StoryCard", "struct ChartCard", "struct GameShell", "struct CheckView", "struct SortView", "struct TodaysMissions", "struct RunResults", "struct GameHUD", "struct ArtPanel", "struct TimeMachineBoss"] {
+      for marker in ["struct StepContent", "struct StoryCard", "struct ChartCard", "struct GameShell", "struct CheckView", "struct SortView", "struct TodaysMissions", "struct RunResults", "struct GameHUD", "struct ArtPanel", "struct TimeMachineBoss", "struct MoonLocker", "struct TrophyShelf", "struct TrophyCell", "struct MoonShop", "struct ShopCell", "struct PointsBook", "struct RankCeremony", "struct RunEarnings"] {
         guard let r = src.range(of: marker) else { continue }
         let body = src[r.lowerBound...].prefix(4000)
         let end = body.range(of: "\n}\n").map { body[..<$0.lowerBound] } ?? body

@@ -24,7 +24,7 @@ struct MoonClubApp: App {
         else { Color(Palette.paper).ignoresSafeArea() }
       }
       .task { boot() }
-      .onChange(of: phase) { _, p in if p == .active { app?.reloadFromStore() } }
+      .onChange(of: phase) { _, p in if p == .active { app?.reloadFromStore(); app?.checkIn() } }
     }
     // A second window for Luna's Word Book (iPhone Duo open, iPad): same model, same process.
     WindowGroup("Word Book", id: WordBookView.windowID, for: String.self) { $word in
@@ -49,7 +49,16 @@ struct MoonClubApp: App {
         // Screenshots: -world mid|all seeds Market World progress (mid = three lands won; all = everything).
         if let i = args.firstIndex(of: "-world"), i + 1 < args.count { seeded = Demo.world(seeded, content: content, lands: args[i + 1] == "all" ? 99 : 3) }
         // Screenshots never carry a stale badge toast: demo badges start seen (-toast keeps them fresh to film the toast).
-        if !args.contains("-toast") { seeded.seeBadges(seeded.badges(content)) }
+        if !args.contains("-toast") {
+          seeded.seeBadges(seeded.badges(content))
+          seeded.seeBadges(Trophies.progress(seeded, content).flatMap { p in (0...p.tier).dropFirst().map { Trophies.key(p, tier: $0) } })
+        }
+        // Screenshots: -points <n> banks spendable points; -rank shows the ceremony for the current rank.
+        if let i = args.firstIndex(of: "-points"), i + 1 < args.count, let n = Int(args[i + 1]) { seeded.bank(.game, "demo", points: n, today: clock.today()) }
+        if !args.contains("-rank") { seeded.seeRank(seeded.level(content).index) }
+        if let i = args.firstIndex(of: "-equip"), i + 1 < args.count {
+          for id in args[i + 1].split(separator: ",").map(String.init) { var o = Set(seeded.owned ?? []); o.insert(id); seeded.owned = o.sorted(); seeded.equip(id, nowMillis: 1) }
+        }
         #if DEBUG
         // Screenshots: -brain onDevice|free|byok presets Luna's brain choice (demo only).
         if let i = args.firstIndex(of: "-brain"), let k = BrainKind(rawValue: args[i + 1]) { var b = BrainStore.load(); b.choice = k; BrainStore.save(b) }

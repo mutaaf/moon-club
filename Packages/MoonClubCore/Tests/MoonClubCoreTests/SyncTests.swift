@@ -38,6 +38,13 @@ final class SyncTests: XCTestCase {
     if g.bool() { for d in Self.at where g.bool() { s.play(g.pick(["lesson", "game", "guess"]), g.pick(["a", "b"]), today: d) } }
     if g.bool() { for d in Self.at where g.bool() { s.openChest(today: d) } }
     if g.bool() { s.pickSkin(g.pick(["classic", "mint", "galaxy"]), nowMillis: g.pick([100, 200, 300])) }
+    // Points that matter (0.11)
+    if g.bool() { for d in Self.at where g.bool() { s.bank(g.pick([.game, .lesson, .streak]), g.pick(["a", "b", "daily"]), points: 1 + g.int(30), today: d) } }
+    if g.bool() { s.owned = ["rocket.mint", "hat.party", "freeze#1", "freeze#2", "flag.grape"].filter { _ in g.bool() } }
+    if g.bool() { var e: [String: String] = [:]; for slot in ["rocket", "hat", "flag"] where g.bool() { e[slot] = "\(g.pick(["000000000000100", "000000000000200"]))|\(g.pick(["rocket.mint", "hat.party", "flag.grape"]))" }; s.equipped = e }
+    if g.bool() { s.frozen = Self.at.filter { _ in g.bool() } }
+    if g.bool() { var a: [String: Int] = [:]; for d in Self.at where g.bool() { a[d] = 1 + g.int(5) }; s.asked = a }
+    if g.bool() { s.rankSeen = g.int(6) }
     return s
   }
 

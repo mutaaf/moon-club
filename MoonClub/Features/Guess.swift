@@ -206,6 +206,29 @@ struct LeagueBoard: View {
                 .accessibilityLabel(i == 0 ? "You" : app.content.playerNames[players[i].emoji])
             }
           }
+          // Rank and badges. League codes only carry guesses (they must stay compatible with the website), so
+          // family players show their Report Card Guesser tier from the league; you show your full rank.
+          GridRow {
+            Text("Badges").font(.caption.weight(.semibold)).foregroundStyle(.secondary).gridColumnAlignment(.leading)
+            ForEach(players.indices, id: \.self) { i in
+              if i == 0 {
+                VStack(spacing: 1) {
+                  RankBadge(index: app.level.index, progress: app.level.progress, size: 26)
+                  Text("\(app.earnedCount)").font(.caption2.weight(.heavy)).monospacedDigit()
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("You: \(app.level.name), \(app.earnedCount) badges")
+              } else {
+                let tier = [1, 5, 15].filter { score[i] >= $0 }.count
+                VStack(spacing: 1) {
+                  ZStack { Circle().fill(Tier.color(tier)); Image(systemName: "target").font(.system(size: 12, weight: .bold)).foregroundStyle(.white) }.frame(width: 26, height: 26)
+                  Text(["New", "Bronze", "Silver", "Gold"][tier]).font(.caption2.weight(.heavy))
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(app.content.playerNames[players[i].emoji]): \(["no", "bronze", "silver", "gold"][tier]) Report Card Guesser")
+              }
+            }
+          }
           ForEach(rows) { r in
             GridRow {
               HStack(spacing: 6) { Glyph(app.companies[r.s]?.emoji ?? "", size: 28); VStack(alignment: .leading, spacing: 0) { Text(app.companies[r.s]?.nick ?? r.s).font(.subheadline.weight(.semibold)); Text(Day.en("MMM d", r.d)).font(.caption2.monospaced()).foregroundStyle(.secondary) } }
@@ -236,7 +259,7 @@ struct RecapCard: View {
   var body: some View {
     // Short on purpose: title + read-aloud up top (always visible), the four numbers, one sentence.
     // The full sentence list is what Luna reads aloud, so nothing is lost.
-    let lines = recapLines(recap, levels: app.content.levels)
+    let lines = recapLines(recap, levels: Ranks.levels(app.content))
     Eyebrow(text: "\(recap.label) in the Moon Club")
     HStack(spacing: 12) {
       MoonPhase(phase: recap.level, size: 44)

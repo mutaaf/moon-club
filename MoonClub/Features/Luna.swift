@@ -82,6 +82,7 @@ struct AskLunaView: View {
     guard !text.isEmpty, !busy else { return }
     task?.cancel(); focus = false
     asked = text; answer = ""; err = nil; busy = true; q = ""
+    app.mutate { $0.askLuna(today: app.today) } // a count for the Curious badge, never the words
     typedQuestion = typed ? text : nil
     let w = app.mood.map(weatherFor)
     var next: [String: EarningsEvent] = [:]
