@@ -572,7 +572,11 @@ async function storeShots(dir = join(ROOT, "build", "store-shots")) {
       } catch (err) { if (t === s.types.at(-1)) throw err; }
     }
     const remote = (await api("GET", `/v1/appScreenshotSets/${set.id}/appScreenshots?limit=10`)).data;
-    if (remote.length === local.length && remote.every((r, i) => r.attributes.sourceFileChecksum === local[i].md5 && r.attributes.assetDeliveryState?.state === "COMPLETE")) {
+    // Same files in the same order = nothing to do. Apple fills sourceFileChecksum only after processing, so a
+    // just-uploaded set matches on name + size until then; a FAILED one is always replaced.
+    const same = (r, l) => r.attributes.fileName === l.f && r.attributes.fileSize === l.buf.length && r.attributes.assetDeliveryState?.state !== "FAILED"
+      && (r.attributes.sourceFileChecksum == null || r.attributes.sourceFileChecksum === l.md5);
+    if (remote.length === local.length && remote.every((r, i) => same(r, local[i]))) {
       console.log(`✓ ${s.label} (${set.attributes.screenshotDisplayType}): ${local.length} screenshots already up to date`);
       continue;
     }
@@ -590,14 +594,16 @@ async function storeShots(dir = join(ROOT, "build", "store-shots")) {
     }
     await api("PATCH", `/v1/appScreenshotSets/${set.id}/relationships/appScreenshots`, { data: ids.map((id) => ({ type: "appScreenshots", id })) });
     // Wait for Apple to finish processing so a failure shows up here, not at submission.
-    for (let i = 0; i < 40; i++) {
-      const st = (await api("GET", `/v1/appScreenshotSets/${set.id}/appScreenshots?limit=10`)).data.map((x) => x.attributes.assetDeliveryState?.state);
+    let st = [];
+    for (let i = 0; i < 100; i++) { // up to ~5 minutes
+      st = (await api("GET", `/v1/appScreenshotSets/${set.id}/appScreenshots?limit=10`)).data.map((x) => x.attributes.assetDeliveryState?.state);
       if (st.every((x) => x === "COMPLETE")) break;
       const failed = st.filter((x) => x === "FAILED").length;
       if (failed) throw new Error(`${s.label}: ${failed} screenshot(s) failed processing`);
       await sleep(3000);
     }
-    console.log(`✓ ${s.label} (${set.attributes.screenshotDisplayType}): uploaded ${ids.length} screenshots`);
+    const pending = st.filter((x) => x !== "COMPLETE").length;
+    console.log(`✓ ${s.label} (${set.attributes.screenshotDisplayType}): uploaded ${ids.length} screenshots${pending ? ` (${pending} still processing at Apple; store-check counts only finished ones)` : ""}`);
   }
 }
 

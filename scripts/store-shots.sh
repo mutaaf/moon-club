@@ -30,7 +30,7 @@ args() {
     shop) echo "-locker shop -points 640" ;;
     luna) echo "-tab luna" ;;
     piggy) echo "-tab piggy" ;;
-    badges) echo "-locker badges -world mid" ;;
+    badges) echo "-tab story -locker badges -world mid" ;;
   esac
 }
 
@@ -93,7 +93,9 @@ shoot_duo() {
     N=$(printf %02d $n)-$(echo "$S" | tr ':' '-')
     xcrun simctl io "$ID" screenshot --display=primary --type=png "$D/$N-outer.png" >/dev/null 2>&1
     T=20 t xcrun simctl io "$ID" screenshot --display=primary-1 --type=png "$D/$N-inner.png" >/dev/null 2>&1
-    # keep the inner frame only if the device is open (a closed inner framebuffer is all black, so it compresses tiny)
+    # keep the inner frame only if the device is open (a closed inner framebuffer is all black, so it compresses
+    # tiny). Measure after dropping alpha: simctl's own RGBA encoding of a black frame is over 60 KB.
+    [ -f "$D/$N-inner.png" ] && node scripts/brand/png.mjs "$D/$N-inner.png"
     [ -f "$D/$N-inner.png" ] && [ "$(wc -c < "$D/$N-inner.png")" -gt 60000 ] || rm -f "$D/$N-inner.png"
     for retry in 1 2 3; do [ "$(wc -c < "$D/$N-outer.png")" -gt 150000 ] && break; sleep 15; xcrun simctl io "$ID" screenshot --display=primary --type=png "$D/$N-outer.png" >/dev/null 2>&1; done
     node scripts/brand/png.mjs "$D"/$N-*.png
