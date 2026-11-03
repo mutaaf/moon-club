@@ -46,6 +46,8 @@ final class SyncTests: XCTestCase {
     if g.bool() { var a: [String: Int] = [:]; for d in Self.at where g.bool() { a[d] = 1 + g.int(5) }; s.asked = a }
     if g.bool() { var r: [String: String] = [:]; for (i, d) in Self.at.enumerated() where g.bool() { r["share#\(i % 3)"] = "\(d)|\(g.int(5))" }; s.review = r }
     if g.bool() { s.rankSeen = g.int(6) }
+    // Party Moon (0.12): iPhone Duo use counts
+    if g.bool() { for u in DuoUse.allCases where g.bool() { for _ in 0..<(1 + g.int(3)) { s.useDuo(u) } } }
     return s
   }
 

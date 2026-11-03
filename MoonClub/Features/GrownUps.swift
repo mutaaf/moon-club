@@ -19,7 +19,7 @@ struct ParentGate: View {
       Text("Please answer to continue:").foregroundStyle(.secondary)
       Text("What is \(a) × \(b)?").font(.kTitle).accessibilityIdentifier("gate-question")
       TextField("", text: $v).keyboardType(.numberPad).multilineTextAlignment(.center).font(.system(size: 34, weight: .bold, design: .rounded))
-        .frame(height: 64).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18)).focused($focus)
+        .frame(height: 64).moonGlass(radius: 18, weight: .thin).focused($focus)
         .accessibilityLabel("Answer").accessibilityIdentifier("gate-answer")
         .onChange(of: v) { _, x in v = String(x.filter(\.isNumber).prefix(3)) }
       if wrong { Text("That's not it. Ask a grown-up for help!").foregroundStyle(Palette.bad) }
@@ -77,7 +77,7 @@ struct GrownUpsView: View {
           Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
         }
         Section { PlaySettings() } header: { Text("Games") } footer: {
-          Text("Relaxed play hides the speed ring, so there's no clock at all. Hearts never cost anything: out of hearts just means \"try again\". Sounds follow the ring/silent switch.")
+          Text("Relaxed play hides the speed ring, so there's no clock at all. Hearts never cost anything: out of hearts just means \"try again\". Sounds follow the ring/silent switch. After about 20 minutes, between games, Luna gets sleepy and offers a goodnight; \"one more game\" is always fine. Moon Club is also made for iPhone Duo: lessons become storybooks, bosses play in tabletop mode, and the hinge is a game control.")
         }
         Section { LeagueSettings() } header: { Text("Family league") } footer: {
           Text("Each player picks an emoji instead of a name. A code holds only the company, the date and the guess. Codes work with the website too.")

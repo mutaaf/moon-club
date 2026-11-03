@@ -39,7 +39,7 @@ struct SchoolView: View {
               Glyph(u.emoji, size: 40)
               VStack(alignment: .leading) { Text(u.title).font(.kTitle); Text(u.blurb).font(.caption).foregroundStyle(.secondary) }
               Spacer()
-              Text(n == ls.count ? "Done" : "\(n)/\(ls.count)").font(.caption.monospaced().weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 4).background(.thinMaterial, in: Capsule())
+              Text(n == ls.count ? "Done" : "\(n)/\(ls.count)").font(.caption.monospaced().weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 4).moonGlass(Capsule(), interactive: true, weight: .thin)
             }
             ForEach(ls) { l in
               NavigationLink(value: l) {
@@ -49,7 +49,7 @@ struct SchoolView: View {
                   Spacer()
                   MoonPhase(phase: done.contains(l.id) ? 4 : 0, size: 24)
                 }
-                .padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .padding(14).moonGlass(radius: 18, weight: .thin)
                 .modifier(ZoomSource(id: l.id, ns: zoom))
               }
               .buttonStyle(.plain)
@@ -107,7 +107,7 @@ struct BadgesGrid: View {
             Text(have.contains(b.id) ? b.why : "Not yet!").font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(3)
           }
           .frame(maxWidth: .infinity, minHeight: 130).padding(10)
-          .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+          .moonGlass(radius: 18, weight: .thin)
           .accessibilityElement(children: .combine)
         }
       }
@@ -156,6 +156,7 @@ struct LessonPlayer: View {
     .safeAreaInset(edge: .bottom) { actions }
     .background(AuroraField(surface: .school))
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
+    .glassStage()
     .playChrome()
     #if DEBUG
     .onAppear { let a = ProcessInfo.processInfo.arguments; if let i = a.firstIndex(of: "-step"), i + 1 < a.count, let n = Int(a[i + 1]) { step = min(n, lesson.steps.count - 1) } } // screenshots
@@ -185,6 +186,7 @@ struct LessonPlayer: View {
   private var stage: some View {
     VStack(spacing: 12) {
       GameHUD(run: run, title: lesson.title, done: min(step, lesson.steps.count), total: lesson.steps.count) { dismiss() }
+      if bookOpen { DuoCallout(text: "Storybook mode: one page each side", symbol: "book.pages.fill") }
       // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread: the story on the
       // left page, the play on the right, never across the fold.
       Storybook(minPage: 280, fill: true) {
@@ -290,12 +292,17 @@ struct LessonPlayer: View {
     return nil
   }
 
+  /// The iPhone Duo is open (book pose or flat), so the lesson is a two-page storybook on the inner display.
+  var bookOpen: Bool { duo?.reading.map { $0.status != .closed } ?? false }
+
   func isQuiz(_ i: Int) -> Bool { if case .say = lesson.steps[i] { return false }; return true }
   func go(_ d: Int) {
     withAnimation(Motion.safe(Motion.card, rm)) { step = max(0, step + d) }
     run.nextRound()
     if step >= lesson.steps.count {
       app.mutate { $0.finishLesson(lesson.id, today: app.today); $0.play("lesson", lesson.id, today: app.today) }
+      // iPhone Duo: a lesson read open, as a two-page storybook, counts toward Storybook Reader.
+      if bookOpen { app.mutate { $0.useDuo(.book) } }
       burst += 1; LiveActivities.lessonDone(lesson)
     } else { LiveActivities.lesson(lesson, step: step) }
   }

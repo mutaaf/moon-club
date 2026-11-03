@@ -49,7 +49,7 @@ struct QuestView: View {
     HStack(alignment: .top, spacing: 10) {
       GameHUD(run: run, title: meta?.title ?? "Quest", done: stageIndex, total: max(stages.count, 1)) { dismiss() }
       Menu { ForEach(chapters) { c in Button(c.title) { go(c.id, "intro") } } } label: {
-        Image(systemName: "books.vertical.fill").font(.system(size: 16, weight: .heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle())
+        Image(systemName: "books.vertical.fill").font(.system(size: 16, weight: .heavy)).frame(width: 40, height: 40).moonGlass(Circle(), interactive: true, weight: .thin)
       }
       .padding(.top, 6)
       .accessibilityLabel("Chapters")
@@ -110,7 +110,7 @@ struct QuestView: View {
   private var stageCard: some View {
     VStack(alignment: .leading, spacing: 12) { content }
       .padding(16)
-      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+      .moonGlass(radius: 32)
       .id("\(chapter):\(stage)")
       .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
   }
@@ -360,7 +360,7 @@ struct ReportStage: View {
     } else if !open {
       Button { withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { open = true } } label: {
         VStack(spacing: 6) { Text("✉️").font(.system(size: 60)); Text(t.reveal ?? "Open").font(.kHeadline) }
-          .frame(maxWidth: .infinity, minHeight: 140).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22))
+          .frame(maxWidth: .infinity, minHeight: 140).moonGlass(radius: 22, weight: .thin)
           .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Palette.accent, style: .init(lineWidth: 2, dash: [8, 6])))
           .phaseAnimator([0, -3, 3, 0]) { v, a in v.rotationEffect(.degrees(a)) } animation: { _ in .easeInOut(duration: 0.12) }
       }.buttonStyle(.plain)
@@ -441,7 +441,7 @@ struct ChooseStage: View {
           Button { withAnimation(.spring) { picks[it.id] = "invest" } } label: { Label("Invest it", systemImage: "tree.fill") }.buttonStyle(PrimaryButtonStyle(tint: Palette.good))
         }
       }
-      .padding(12).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+      .padding(12).moonGlass(radius: 18, weight: .thin)
       .id(it.id).transition(.asymmetric(insertion: .scale(scale: 0.92).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
     }
     if let it = last, let p = picks[it.id] {

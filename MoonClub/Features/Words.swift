@@ -55,7 +55,7 @@ struct WordChips: View {
             Button { open = k } label: {
               HStack(spacing: 6) { Glyph(t.emoji, size: 22); Text(t.word).font(.subheadline.weight(.semibold)); Image(systemName: "questionmark.circle.fill").foregroundStyle(Palette.accent) }
                 .padding(.horizontal, 12).frame(minHeight: 40)
-                .background(.thinMaterial, in: Capsule())
+                .moonGlass(Capsule(), interactive: true, weight: .thin)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(t.word): what does it mean?")
@@ -97,7 +97,7 @@ struct WordBookView: View {
                   }
                 }
                 .padding(14).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .moonGlass(radius: 20, weight: .thin)
               }
               .buttonStyle(.plain)
               .id(k)

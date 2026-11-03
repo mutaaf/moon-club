@@ -220,6 +220,59 @@ extension FoldInfo {
   }
 }
 
+/// iPhone Duo tabletop mode: when the fold is horizontal and *active* (half open, set down like a laptop),
+/// `top` (the chart, the boss) fills the upright half and `bottom` (the answers) becomes the game pad on
+/// the flat half, with nothing on the crease. Anywhere else (no hinge, book pose, flat, iPad) the two simply
+/// stack. Decided by the fold region (capability), never by device. `active` reports the mode to the
+/// caller (for the Tabletop Trader trophy and Luna's line).
+struct TabletopStage<Top: View, Bottom: View>: View {
+  @Binding var active: Bool
+  var spacing: CGFloat = 12
+  var dark = true
+  @ViewBuilder var top: Top
+  @ViewBuilder var bottom: Bottom
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  @Environment(\.accessibilityReduceMotion) private var rm
+
+  var body: some View {
+    GeometryReader { g in
+      let f = horizontalFold(g)
+      Group {
+        if let f {
+          VStack(spacing: 0) {
+            top.frame(maxWidth: .infinity).frame(height: max(0, f.minY - 8))
+            Color.clear.frame(height: f.height + 16).accessibilityHidden(true)
+            VStack(spacing: 8) {
+              DuoCallout(text: "Tabletop mode: this half is your game pad", symbol: "laptopcomputer", dark: dark)
+              bottom
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+          }
+          .transition(.opacity)
+        } else {
+          VStack(spacing: spacing) { top; bottom }
+        }
+      }
+      .animation(rm ? nil : Motion.page, value: f != nil)
+      .onChange(of: f != nil, initial: true) { _, on in if active != on { active = on } }
+    }
+  }
+
+  private func horizontalFold(_ proxy: GeometryProxy) -> CGRect? {
+    if #available(iOS 27.1, *),
+       let r = proxy.reservedRegions(kind: .division).first(where: { $0.frame.width > $0.frame.height }),
+       r.frame.intersects(CGRect(origin: .zero, size: proxy.size)) {
+      return r.frame
+    }
+    #if DEBUG
+    if duo?.pinned == .tabletop, proxy.size.height >= 400 {
+      return CGRect(x: 0, y: proxy.size.height / 2 - 20, width: proxy.size.width, height: 40)
+    }
+    #endif
+    return nil
+  }
+}
+
 /// Grid columns that stay even whenever the fold crosses the grid, so cards split cleanly.
 struct FoldColumns<Content: View>: View {
   var minimum: CGFloat

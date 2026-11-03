@@ -18,6 +18,7 @@ struct GameNightView: View {
   var body: some View {
     NavigationStack {
       VStack(spacing: 0) {
+        if duo?.hasHinge == true { DuoCallout(text: "Game Night: one half each").padding(.top, 6) }
         if let hint { Text(hint).font(.footnote.weight(.semibold)).foregroundStyle(Palette.ink2).padding(.top, 6).transition(.opacity) }
         Group {
           if let game, !game.isOver { board(game) }
@@ -26,7 +27,7 @@ struct GameNightView: View {
         }
       }
       .background(AuroraField(surface: .guess))
-      .overlay(Celebrate(trigger: burst))
+      .overlay(Celebrate(trigger: burst, tier: game?.isOver == true ? .large : .medium).ignoresSafeArea())
       .navigationTitle("Game Night")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -62,7 +63,9 @@ struct GameNightView: View {
   // MARK: Board — one pad per player, split across the fold by the system's arrangement view.
   @ViewBuilder private func board(_ g: GameNight) -> some View {
     if #available(iOS 27.1, *) {
-      ArrangementView { pad(0, g) } secondary: { pad(1, g) }
+      // Two even halves (splitArrangementLayoutRatio). Stacked top/bottom on a phone lying flat, the top
+      // player's half turns to face them across the table (splitArrangementAxis + the hinge).
+      ArrangementView { pad(0, g).modifier(FaceToFace(player: 0)).splitArrangementLayoutRatio(0.5) } secondary: { pad(1, g).splitArrangementLayoutRatio(0.5) }
         .arrangementViewStyle(.split)
         .padding(12)
     } else {
@@ -119,7 +122,7 @@ struct GameNightView: View {
       } else if mine != nil {
         Label("Locked in! Waiting for \(app.content.playerNames[players[1 - p]])…", systemImage: "lock.fill")
           .font(.kHeadline).frame(maxWidth: .infinity, minHeight: 64)
-          .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+          .moonGlass(radius: 20, weight: .thin)
           .transition(.opacity)
       } else {
         HStack(spacing: 10) {
@@ -138,7 +141,7 @@ struct GameNightView: View {
     }
     .padding(18)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .moonGlass(radius: 28)
     .animation(rm ? nil : .spring(response: 0.4, dampingFraction: 0.8), value: g)
   }
 
@@ -156,14 +159,18 @@ struct GameNightView: View {
         Text(app.content.players[players[w]]).font(.system(size: 90))
         Text("\(app.content.playerNames[players[w]]) wins!").font(.kHero)
       } else {
-        Text("🤝").font(.system(size: 90))
+        Image(systemName: "hands.clap.fill").font(.system(size: 80, weight: .bold)).foregroundStyle(Hue.gold.color)
         Text("It's a tie!").font(.kHero)
       }
       Text("\(g.scores[0]) to \(g.scores[1]). Even experts miss a lot, so everyone did great.").font(.kRead).multilineTextAlignment(.center)
       Button("Play again") { game = nil; setup() }.buttonStyle(PrimaryButtonStyle()).frame(maxWidth: 320)
     }
     .padding(32).frame(maxWidth: .infinity, maxHeight: .infinity)
-    .onAppear { burst += 1 }
+    .onAppear {
+      burst += 1; Chime.rising()
+      // iPhone Duo: a whole Game Night on the two halves (and tabletop, if it was set down) counts.
+      if duo?.hasHinge == true { app.mutate { $0.useDuo(.night); if duo?.pose == .tabletop { $0.useDuo(.tabletop) } } }
+    }
   }
 
   private func cycle(_ p: Int) {
@@ -176,6 +183,23 @@ struct GameNightView: View {
     if game?.revealed == true { burst += 1 }
   }
   private func advance() { withAnimation { game?.next() } }
+}
+
+/// Face to face: when the halves stack (vertical split axis) and the phone lies wide open on a table, the
+/// first player's half turns 180° so both players read their own half from opposite sides.
+struct FaceToFace: ViewModifier {
+  let player: Int
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  func body(content: Content) -> some View {
+    if #available(iOS 27.1, *) { Rotated(player: player, flat: duo?.reading?.status == .fullyOpen) { content } } else { content }
+  }
+  @available(iOS 27.1, *)
+  private struct Rotated<C: View>: View {
+    let player: Int; let flat: Bool
+    @ViewBuilder var content: C
+    @Environment(\.splitArrangementAxis) private var axis
+    var body: some View { content.rotationEffect(.degrees(player == 0 && flat && axis == .vertical ? 180 : 0)) }
+  }
 }
 
 /// 📺 Game Night on the big screen: when a TV or display is connected (AirPlay or cable), the system may

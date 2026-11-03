@@ -37,7 +37,7 @@ struct AskLunaView: View {
             TextField("Why do companies sell shares?", text: $q)
               .textInputAutocapitalization(.sentences).autocorrectionDisabled(false).submitLabel(.send)
               .focused($focus).onSubmit { ask(q, typed: true) }
-              .padding(.horizontal, 16).frame(minHeight: 52).background(.thinMaterial, in: Capsule())
+              .padding(.horizontal, 16).frame(minHeight: 52).moonGlass(Capsule(), interactive: true, weight: .thin)
               .onChange(of: q) { _, v in if v.count > 200 { q = String(v.prefix(200)) } }
             Button("Ask") { ask(q, typed: true) }.buttonStyle(PrimaryButtonStyle()).frame(width: 90).disabled(busy || q.trimmingCharacters(in: .whitespaces).isEmpty)
           }
@@ -48,7 +48,7 @@ struct AskLunaView: View {
             ForEach(Array(turns.dropLast(2).suffix(6).enumerated()), id: \.offset) { _, t in
               Text(t.role == .kid ? "You: \(t.text)" : "Luna: \(t.text)").font(.callout).foregroundStyle(t.role == .kid ? Palette.ink2 : .primary).lineLimit(3)
             }
-          }.padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+          }.padding(14).moonGlass(radius: 18, weight: .thin)
         }
         if !asked.isEmpty {
           Card {
@@ -128,7 +128,7 @@ struct ExplainMore: View {
       Button { open = true } label: {
         Label("Explain more", systemImage: app.brain.symbol).font(.subheadline.weight(.semibold))
           .padding(.horizontal, 14).frame(minHeight: 44)
-          .background(.thinMaterial, in: Capsule())
+          .moonGlass(Capsule(), interactive: true, weight: .thin)
       }
       .buttonStyle(.plain)
       .sheet(isPresented: $open) { ExplainSheet(question: question).presentationDetents([.medium, .large]) }

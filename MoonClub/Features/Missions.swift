@@ -18,6 +18,8 @@ struct TodaysMissions: View {
   @State private var node: WorldNode?
   @State private var opened = 0
   @State private var reward: RocketSkin?
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  @State private var lastHinge: HingeReading?
 
   var body: some View {
     let ms = Missions.today(app.today, app.state, app.content)
@@ -43,11 +45,19 @@ struct TodaysMissions: View {
       chest(ready: ready, opened: wasOpened)
     }
     .padding(18)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .moonGlass(radius: 28)
     .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.line.opacity(0.7), lineWidth: 0.5))
     .shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10)
-    .overlay(Celebrate(trigger: opened))
+    .overlay(Celebrate(trigger: opened, tier: .medium))
     .sensoryFeedback(.success, trigger: opened)
+    // iPhone Duo: opening the phone wide opens a ready chest (the hinge is the lid).
+    .onChange(of: duo?.reading) { _, new in
+      if Missions.chestReady(app.today, app.state, app.content), HingeLaunch.launches(from: lastHinge, to: new) {
+        app.mutate { $0.useDuo(.hinge) }
+        openChest()
+      }
+      lastHinge = new
+    }
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .navigationDestination(item: $node) { NodePlayer(node: $0, regions: World.regions(app.content)) }
   }
@@ -94,7 +104,11 @@ struct TodaysMissions: View {
           Text("Come back tomorrow for new missions.").font(.caption).foregroundStyle(Palette.ink2)
         } else {
           Text(ready ? "Your chest is ready!" : "Mission chest").font(.kHeadline)
-          Text("Finish all 3 for \(Rewards.chestPoints) Moon points\(next.map { ", closer to the \($0.name) rocket" } ?? "").").font(.caption).foregroundStyle(Palette.ink2)
+          if ready, duo?.hasHinge == true, duo?.reading?.status != .fullyOpen {
+            Text("Open your iPhone Duo wide to open it!").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
+          } else {
+            Text("Finish all 3 for \(Rewards.chestPoints) Moon points\(next.map { ", closer to the \($0.name) rocket" } ?? "").").font(.caption).foregroundStyle(Palette.ink2)
+          }
         }
       }
       Spacer(minLength: 0)
@@ -114,6 +128,7 @@ struct TodaysMissions: View {
     app.mutate { $0.openChest(today: app.today) }
     GameSound.play(.chest)
     withAnimation(Motion.safe(Motion.celebrate, rm)) { reward = Skins.current(app.state); opened += 1 }
+    PartyCenter.shared.fire(.chest, title: "Chest open! +\(Rewards.chestPoints)")
   }
 
   private func go(_ m: Mission) {
