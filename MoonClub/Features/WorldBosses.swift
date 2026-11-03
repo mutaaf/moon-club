@@ -21,6 +21,8 @@ struct TimeMachineBoss: View {
   @State private var burst = 0
   @State private var run = RunModel()
   @State private var results = false
+  /// iPhone Duo tabletop mode is on (counts toward the Tabletop Trader trophy when the boss is done).
+  @State private var tabletop = false
 
   private let past = 40, future = 12
 
@@ -38,7 +40,7 @@ struct TimeMachineBoss: View {
     VStack(spacing: 12) {
       GameHUD(run: run, title: node.title, done: min(3, phase.rawValue), total: 3, boss: BossInfo(name: "\(name) · \(Day.en("MMM yyyy", pastC.last?.d ?? app.today))", art: "⏳"), dark: true) { dismiss() }
       if results {
-        RunResults(stars: 1 + right, run: run, boss: true, subtitle: "Clues help, but they're never promises.", source: .boss, earnId: node.id,
+        RunResults(stars: 1 + right, run: run, boss: true, subtitle: "Clues help, but they're never promises.", source: .boss, earnId: node.id, node: node,
                    again: { withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); right = 0; feedback = nil; call = nil; shown = 0; phase = .trend; results = false } },
                    map: { dismiss() })
           .padding(20)
@@ -46,6 +48,8 @@ struct TimeMachineBoss: View {
           .frame(maxHeight: .infinity)
           .transition(.scale(scale: 0.92).combined(with: .opacity))
       } else {
+      // iPhone Duo tabletop: the chart stands up on the top half, the clues become a game pad below.
+      TabletopStage(active: $tabletop) {
       ChartCard(caption: phase == .reveal || phase == .done ? "What happened next" : "The chart, up to that day") {
         CandleChart(candles: all,
                     level: phase == .floor && feedback == nil ? nil : (phase.rawValue >= Phase.floor.rawValue ? floor : nil),
@@ -54,7 +58,7 @@ struct TimeMachineBoss: View {
                     cut: past - 1,
                     domain: domain(all))
       }
-
+      } bottom: {
       Group {
         switch phase {
         case .trend: question("Clue 1: what's the trend so far?", Trend.allCases.map { $0 == .up ? "Up" : $0 == .down ? "Down" : "Sideways" }, correct: Trend.allCases.firstIndex(of: trend) ?? 0) { ok in
@@ -69,12 +73,15 @@ struct TimeMachineBoss: View {
       .padding(16)
       .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
       }
+      .onChange(of: tabletop) { _, on in if on { run.lunaSays(.duoTabletop) } }
+      }
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
     .background(BossBackdrop())
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
+    .glassStage()
     .playChrome()
   }
 
@@ -128,6 +135,7 @@ struct TimeMachineBoss: View {
       }
       withAnimation(Motion.safe(Motion.card, rm)) { phase = .done; run.bossHP = 0 }
       onFinish(1 + right)
+      if tabletop { app.mutate { $0.useDuo(.tabletop) } }
       burst += 1
     }
   }

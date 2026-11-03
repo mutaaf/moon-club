@@ -26,11 +26,20 @@ Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`
 - Quests are play screens too: on a phone, the stepper caption names the chapter (no big hero). Long stages are decks (one goal, card or question at a time). `CardFitTests.testEveryQuestStageFitsWithoutScrolling` measures `QuestView(start:, scrolls: false)` for every stage on SE and 17. **Don't measure through a NavigationStack or ScrollView**: `sizeThatFits` just returns the proposed height, so the first version of the quest test passed while every stage overflowed.
 - `-play <node id>` goes through the same `play(_:)` as a tap. Setting `playing` directly rendered lessons, units and quests blank.
 
+## Party Moon (0.12): celebrations, Liquid Glass, engagement
+- **Celebrations** have three tiers (MoonClubCore `Party.swift` `PartyMoment.tier`): small (right answer: `Sparkle` on the button, coins, `LunaBounce`), medium (combo 3/6, perfect round, badge tier: confetti + `EdgeGlow` + Luna flip), large (boss, land, rank, chest, streak 3/7/30: fireworks + cannons + `PartyShake` + `Chime.rising()`). Fire them with `PartyCenter.shared.fire(_:title:)`; `PartyOverlay` sits over the root. **Root overlays don't show over `fullScreenCover`s** (quests, rank ceremony, Game Night), so those use a local `Celebrate(trigger:tier:)`. Reduce Motion: glow + haptic only.
+- **Liquid Glass** goes through `Design/Glass.swift` only: `.moonGlass(shape|radius:, tint:, interactive:, weight:, dark:)` (glass on iOS 26+, material before, solid with Reduce Transparency), `GlassGroup`, `.glassStage()` (one container + namespace per play screen) and `GlassMorphID("points")` (HUD points pill → results card). Map stop → game uses the iOS 18 zoom transition (`zoomSource`/`zoomFrom`). Don't call `glassEffect` directly; the deployment target is still iOS 17.
+- **Luna's lines** (`LunaLine`, ~50, grade ≤ 5, tested for no "buy/hurry/lose") show in the HUD bubble from `RunModel.record` (first win of the day, comeback, combo, every other miss) and on Duo moments.
+- **Mystery Stop**: `Mystery.node` picks one open game per day (seeded, same on every device); finishing it banks `bonus["day|game|mystery"]` (max-merge, can't be farmed). **Nudges** (`Nudge.after`) on results; **sticker book** (`Stickers`, derived from map stars, no saved state); **goodnight** (`Bedtime`, 20 min then 10 min snooze, never during play: `PlayActivity.playing`).
+- Debug/demo args: `-party small|medium|large`, `-sleepy`, `-duocoach`.
+
 ## iPhone Duo
 Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → code.
 - The hinge drives effects only: Luna's moon, the piggy lid, tuck-in.
 - Layout comes from the fold's reserved region (`Storybook` / `TwoPage` / `FoldColumns` in `Design/Duo.swift`) and size classes. Never branch on device.
-- Pose logic is pure and tested in `MoonClubCore/Duo.swift`.
+- Pose logic is pure and tested in `MoonClubCore/Duo.swift` (+ `Party.swift`: `HingeDial`, `HingeLaunch`, `DuoUse`).
+- **Duo features are gated on `DuoModel.hasHinge`** (capability), never a model string. Duo-only trophies/shop items go through `Trophies.visible(hinge:)` / `Shop.visible(hinge:)`; What's New lines mentioning "iPhone Duo" show only with a hinge. `KidsState.duo` counts uses (max per key).
+- Tabletop layouts use `TabletopStage` (a wide, *active* division region). Debug `-pose tabletop` synthesizes a horizontal center fold on tall sims.
 
 ## Environment nuances (found the hard way)
 - **XcodeGen** generates `MoonClub.xcodeproj` (gitignored); edit `project.yml`, never the project.

@@ -76,7 +76,7 @@ struct GuessView: View {
         ReadAloud(source: .appCopy("Before a company shares its report card, grown-ups guess its profit. Will the company beat that guess, or miss? Make your guess, then come back to see."))
         Button { withAnimation(Motion.card) { showWords.toggle() } } label: {
           Label(showWords ? "Hide words" : "Words", systemImage: "character.book.closed.fill").font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 14).frame(minHeight: 44).background(.thinMaterial, in: Capsule())
+            .padding(.horizontal, 14).frame(minHeight: 44).moonGlass(Capsule(), interactive: true, weight: .thin)
         }
         .buttonStyle(PressStyle())
         Spacer(minLength: 0)
@@ -91,7 +91,7 @@ struct GuessView: View {
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 12).padding(.horizontal, 6)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .moonGlass(radius: 20, weight: .thin)
     .accessibilityElement(children: .combine)
   }
 

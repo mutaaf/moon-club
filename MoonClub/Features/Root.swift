@@ -27,6 +27,10 @@ struct RootView: View {
   @State private var locker: LockerTab?
   @State private var lockerSlot: ShopSlot = .rocket
   @State private var ceremony: Int?
+  @State private var duoCoach = false
+  @State private var sleepy = false
+  @State private var bedtime = BedtimeClock.shared
+  @Environment(\.scenePhase) private var phase
 
   var body: some View {
     Group {
@@ -34,7 +38,24 @@ struct RootView: View {
     }
     // The App colors pick repaints everything that reads Palette.accent (sheets above keep their state).
     .id(app.themeHex)
+    .modifier(PartyShake())
+    .overlay { PartyOverlay() }
     .overlay(alignment: .bottom) { BadgeToast() }
+    // iPhone Duo: "Fold me like a book!" once, the first time this device reports a hinge.
+    .sheet(isPresented: $duoCoach) { DuoCoach { DuoCoachStore.markSeen(); duoCoach = false }.presentationDetents([.large]) }
+    .onChange(of: duo.hasHinge, initial: true) { _, has in showDuoCoach(has) }
+    // Healthy screen time: after ~20 minutes, between games, Luna gets sleepy (never mid-game).
+    .sheet(isPresented: $sleepy) {
+      GoodnightSheet(goodnight: { sleepy = false; bedtime.lastAsked = Date() }, oneMore: { sleepy = false; bedtime.lastAsked = Date() })
+        .presentationDetents([.height(440)]).presentationCornerRadius(32)
+    }
+    .task {
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .seconds(30))
+        if bedtime.sleepy(), !PlayActivity.shared.playing, !sleepy, ceremony == nil, whatsNew.isEmpty { bedtime.lastAsked = Date(); sleepy = true }
+      }
+    }
+    .onChange(of: phase) { old, new in if new == .active && old == .background { bedtime.newSession() } }
     .sheet(isPresented: $gate) { ParentGate { gate = false; grownUps = true } }
     .fullScreenCover(isPresented: $grownUps, onDismiss: { app.refreshBrain() }) { GrownUpsView() }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
@@ -57,7 +78,7 @@ struct RootView: View {
     .environment(\.openQuest, OpenQuest { quest = $0 })
     .environment(\.openTab, OpenTab { t in withAnimation(Motion.page) { tab = t } })
     .task { await app.loadMarket() }
-    .task { app.checkIn() }
+    .task { app.checkIn(); celebrateStreak() }
     .onAppear {
       let args = ProcessInfo.processInfo.arguments
       if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
@@ -68,11 +89,32 @@ struct RootView: View {
       // Screenshots: -locker badges|shop|points [-slot rocket|hat|…] opens the Moon Locker.
       if args.contains("-demo"), let i = args.firstIndex(of: "-locker"), i + 1 < args.count { locker = LockerTab(rawValue: args[i + 1]) }
       if args.contains("-demo"), let i = args.firstIndex(of: "-slot"), i + 1 < args.count { lockerSlot = ShopSlot(rawValue: args[i + 1]) ?? .rocket }
+      // Party Moon screenshots: -sleepy (goodnight sheet), -duocoach (iPhone Duo coach), -party small|medium|large.
+      if args.contains("-demo") && args.contains("-sleepy") { Task { try? await Task.sleep(for: .seconds(1)); sleepy = true } }
+      if args.contains("-demo") && args.contains("-duocoach") { duoCoach = true }
+      if args.contains("-demo"), let i = args.firstIndex(of: "-party"), i + 1 < args.count {
+        let m: PartyMoment = ["small": .right, "medium": .perfectRound, "large": .landWon][args[i + 1]] ?? .landWon
+        Task { for _ in 0..<3 { try? await Task.sleep(for: .seconds(1.2)); PartyCenter.shared.fire(m, title: "Land won!") ; try? await Task.sleep(for: .seconds(3)) } }
+      }
       #endif
     }
     .onOpenURL { url in if let t = app.open(url) { tab = t } }
     .tint(Palette.accent)
     .modifier(TracksHinge(duo: duo))
+  }
+
+  private func showDuoCoach(_ has: Bool) {
+    guard has, !DuoCoachStore.seen, !ProcessInfo.processInfo.arguments.contains("-demo") else { return }
+    Task { try? await Task.sleep(for: .seconds(1.2)); if whatsNew.isEmpty, quest == nil { duoCoach = true } }
+  }
+
+  /// A streak milestone (3, 7, 30 days…) gets its own party once on that day.
+  private func celebrateStreak() {
+    let n = Streak.days(Streak.activeDays(app.state), today: app.today)
+    let key = "party.streakDay"
+    guard StreakMilestone.isMilestone(n), UserDefaults.standard.string(forKey: key) != app.today else { return }
+    UserDefaults.standard.set(app.today, forKey: key)
+    Task { try? await Task.sleep(for: .seconds(1.5)); PartyCenter.shared.fire(.streak(n), title: StreakMilestone.title(n)) }
   }
 
   private func showRank(_ r: Int?) {

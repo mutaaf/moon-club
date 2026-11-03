@@ -14,6 +14,8 @@ struct WorldView: View {
   @State private var selected: WorldNode?
   @State private var playing: WorldNode?
   @State private var lesson: Lesson?
+  /// The tapped stop zooms into its game (and back out to the stop).
+  @Namespace private var stopNS
   @State private var zoom: CGFloat = 1
   @GestureState private var pinch: CGFloat = 1
   @State private var fold = FoldInfo()
@@ -52,7 +54,7 @@ struct WorldView: View {
           .presentationBackground(.regularMaterial)
       }
     }
-    .navigationDestination(item: $playing) { n in NodePlayer(node: n, regions: regions) }
+    .navigationDestination(item: $playing) { n in NodePlayer(node: n, regions: regions).zoomFrom(n.id, in: stopNS) }
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .onAppear {
       conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
@@ -75,7 +77,7 @@ struct WorldView: View {
     .onChange(of: regions.filter { World.conquered($0, app.state, app.content) }.map(\.id)) { _, now in
       let fresh = Set(now).subtracting(conquered)
       conquered = Set(now)
-      if !fresh.isEmpty { burst += 1 }
+      if !fresh.isEmpty { burst += 1; PartyCenter.shared.fire(.landWon, title: "Land won!") }
     }
     .overlay(Celebrate(trigger: burst))
     .sensoryFeedback(.success, trigger: burst)
@@ -97,6 +99,7 @@ struct WorldView: View {
   private func map(_ regions: [Region], current: (region: Int, node: Int), width: CGFloat) -> some View {
     let z = min(1.7, max(1, zoom * pinch))
     let layout = MapLayout(regions: regions, width: width * z)
+    let mysteryID = Mystery.claimed(app.state, today: app.today) ? nil : Mystery.node(app.state, app.content, today: app.today)?.id
     return ScrollViewReader { proxy in
       ScrollView([.vertical, .horizontal], showsIndicators: false) {
         ZStack(alignment: .topLeading) {
@@ -132,8 +135,10 @@ struct WorldView: View {
                   let nodeOpen = World.nodeOpen(n, in: r, regionOpen: true, app.state, app.content)
                   NodeButton(node: n, stars: World.stars(n, app.state, app.content), open: nodeOpen,
                              current: current.region == ri && current.node == ni, hue: hue(r),
+                             mystery: n.id == mysteryID,
                              tap: { if nodeOpen { play(n) } else { selected = n } }, info: { selected = n })
                     .id(n.id)
+                    .zoomSource(n.id, in: stopNS)
                     .place(layout.node(ri, ni, count: r.nodes.count))
                 }
               }
@@ -379,7 +384,7 @@ struct RegionBanner: View {
       if conquered { Image(systemName: "flag.checkered").font(.caption.weight(.bold)).foregroundStyle(Palette.good) }
     }
     .padding(.horizontal, 12).padding(.vertical, 7)
-    .background(.regularMaterial, in: Capsule())
+    .moonGlass(Capsule(), interactive: true)
     .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
     .fixedSize()
     .accessibilityElement(children: .combine)
@@ -389,6 +394,8 @@ struct RegionBanner: View {
 
 struct NodeButton: View {
   let node: WorldNode, stars: Int, open: Bool, current: Bool, hue: Hue
+  /// Today's Mystery Stop (a sparkle tag; finishing it today banks bonus points).
+  var mystery = false
   let tap: () -> Void
   var info: () -> Void = {}
   @State private var held = false
@@ -433,12 +440,13 @@ struct NodeButton: View {
         }
         .offset(y: MapLayout.pillGap + MapLayout.pill.height)
       }
+      .overlay(alignment: .top) { if mystery && open { MysteryTag().offset(y: -18).fixedSize() } }
       .contentShape(Circle().inset(by: -10))
     }
     .buttonStyle(PressStyle())
     .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in held = true; info() })
     .sensoryFeedback(.impact(weight: .light), trigger: held)
-    .accessibilityLabel("\(node.title). \(open ? "\(stars) of 3 stars" : "Locked")\(current ? ". You are here. Double tap to play" : "")")
+    .accessibilityLabel("\(node.title). \(open ? "\(stars) of 3 stars" : "Locked")\(mystery && open ? ". Mystery stop: bonus points today" : "")\(current ? ". You are here. Double tap to play" : "")")
     .accessibilityAction(named: "About this stop") { info() }
     .onAppear { guard current, !rm, !pulse else { return }; withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { pulse = true } }
   }
@@ -524,7 +532,7 @@ struct Hangar: View {
           Text("Get more rockets in the Moon Shop.").font(.callout).foregroundStyle(Palette.ink2)
         }
         Spacer()
-        Button { dismiss() } label: { Image(systemName: "xmark").font(.headline.weight(.heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle()) }
+        Button { dismiss() } label: { Image(systemName: "xmark").font(.headline.weight(.heavy)).frame(width: 40, height: 40).moonGlass(Circle(), interactive: true, weight: .thin) }
           .buttonStyle(PressStyle()).accessibilityLabel("Close")
       }
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
@@ -683,7 +691,14 @@ struct NodePlayer: View {
   @Environment(AppModel.self) private var app
   var body: some View {
     let kind = node.isBoss ? "boss" : { if case .game = node.kind { return "game" }; return "node" }()
-    let finish: (Int) -> Void = { s in app.mutate { $0.earn(node.id, stars: s); $0.play(kind, node.id, today: app.today) } }
+    let finish: (Int) -> Void = { s in
+      let mystery = Mystery.node(app.state, app.content, today: app.today)?.id == node.id && !Mystery.claimed(app.state, today: app.today)
+      app.mutate { $0.earn(node.id, stars: s); $0.play(kind, node.id, today: app.today) }
+      if mystery {
+        app.mutate { $0.bank(.game, Mystery.bonusID, points: Mystery.points, today: app.today) }
+        PartyCenter.shared.fire(.mystery)
+      }
+    }
     let rounds = Rounds(series: Array(app.candles.values).sorted { $0.s < $1.s }, seed: node.id.hashValueStable &+ app.today.hashValueStable)
     switch node.kind {
     case let .game(k):
