@@ -40,7 +40,7 @@ final class WorldTests: XCTestCase {
     XCTAssertEqual(World.stars(rs[0].nodes[1], s, content), 1)
     for l in content.lessons where l.unit == "money" { s.finishLesson(l.id, today: "2026-11-02") }
     XCTAssertEqual(World.stars(rs[0].nodes[1], s, content), 3)
-    for l in content.lessons where ["companies", "shares"].contains(l.unit) { s.finishLesson(l.id, today: "2026-11-02") }
+    for l in content.lessons where ["companies", "shares", "piggy"].contains(l.unit) { s.finishLesson(l.id, today: "2026-11-02") }
     XCTAssertTrue(World.nodeOpen(rs[0].boss, in: rs[0], regionOpen: true, s, content))
     s.earn("coast-boss", stars: 2)
     XCTAssertTrue(World.conquered(rs[0], s, content))

@@ -46,6 +46,11 @@ public protocol MarketDataSource: Sendable {
   func mood() async throws -> Double?
   func quotes(_ symbols: [String]) async throws -> [String: Double]
   func lastMove(_ symbol: String) async throws -> TickerPayload
+  /// "Why did it move?" inputs for a kid company's day or week (/api/kids/why). The app explains them itself.
+  func why(_ symbol: String, range: WhyRange) async throws -> WhyInput?
+}
+extension MarketDataSource {
+  public func why(_ symbol: String, range: WhyRange) async throws -> WhyInput? { nil }
 }
 /// The app-facing Luna: yields guarded, CUMULATIVE snapshots of the answer (see LunaRouter in Brain.swift).
 public protocol LunaService: Sendable {

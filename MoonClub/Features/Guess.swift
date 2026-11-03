@@ -15,6 +15,7 @@ struct GuessView: View {
       VStack(alignment: .leading, spacing: 22) {
         Hero(eyebrow: "A guessing game", title: "Guess the", accent: "Report Card", emoji: "🎯")
         intro
+        CourseCard(kind: .guess)
         gameNightCard
         LeagueBoard()
         let mine = app.state.guesses.sorted { $0.d < $1.d }
@@ -153,7 +154,9 @@ struct RevealRow: View {
               if let pr = guess.priceResult { Text("The price went \((move ?? 0) >= 0 ? "up" : "down"): \(pr == .right ? "you were right! +5" : "not this time.")").font(.subheadline) }
               else { Text("We'll know the price part soon.").font(.caption).foregroundStyle(.secondary) }
             }
-            if result == .wrong { Text("Even grown-up experts guess wrong a lot. That's why spreading out is smart.").font(.caption).foregroundStyle(.secondary) }
+            if let course = app.content.guessCourse, let m = move { Text(Coach.reveal(course, eA: e.eA, eE: e.eE, move: m)).font(.subheadline) }
+            if result == .wrong { Text(app.content.guessCourse?.reveal.tryAgain ?? "Even grown-up experts guess wrong a lot.").font(.caption).foregroundStyle(.secondary) }
+            WhyCard(symbol: guess.s, range: .week, title: "Why did the price move?").padding(.top, 6)
           } else {
             switch res {
             case .pending: Text("Waiting for the report card \(e.map { kidWhen($0.d, $0.h, today: app.today) } ?? "").").font(.subheadline).foregroundStyle(.secondary)

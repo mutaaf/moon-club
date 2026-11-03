@@ -16,7 +16,10 @@ struct Services {
 /// send intents; intents run the pure reducers in MoonClubCore and persist atomically.
 @MainActor @Observable
 final class AppModel {
-  let content: KidsContent
+  /// The curriculum a kid sees: Core plus the lesson packs a grown-up turned on (see `setPack`).
+  private(set) var content: KidsContent
+  /// Core, as it shipped (packs compose on top of it).
+  let baseContent: KidsContent
   private(set) var state: KidsState
   let market: MarketDataSource
   let luna: LunaService
@@ -54,7 +57,8 @@ final class AppModel {
   }
 
   init(content: KidsContent, services s: Services) {
-    self.content = content
+    baseContent = content
+    self.content = content.with(packs: content.bundledPacks.filter { PackPrefs.enabled.contains($0.id) })
     market = s.market; luna = s.luna; voice = s.voice; store = s.store; clock = s.clock; sync = s.sync
     state = s.store.load()
     brain = s.luna.activeBrain()
@@ -93,6 +97,31 @@ final class AppModel {
   var kidEvents: [EarningsEvent] { events.filter { companies[$0.s] != nil } }
   var upcoming: [EarningsEvent] { kidEvents.filter { $0.d >= today }.sorted { ($0.d, $0.s) < ($1.d, $1.s) } }
   var chaptersDone: [String] { state.chapters(content) }
+
+  // MARK: Lesson packs (grown-up corner, behind the gate). Device-only setting; Core is always on.
+  var packs: [LessonPack] { baseContent.bundledPacks }
+  func packOn(_ id: String) -> Bool { content.activePacks.contains(id) }
+  func setPack(_ id: String, on: Bool) {
+    var ids = PackPrefs.enabled
+    if on { ids.insert(id) } else { ids.remove(id) }
+    PackPrefs.enabled = ids
+    content = baseContent.with(packs: baseContent.bundledPacks.filter { ids.contains($0.id) })
+  }
+
+  // MARK: Spaced review (MoonClubCore Review.swift): only misses and Review-stop answers, kept on this device.
+  func answered(lesson: String, step: Int, right: Bool, review: Bool) {
+    let retire = Review.config(content).retireAt
+    mutate { $0.answer(Review.itemId(lesson, step), right: right, today: today, review: review, retireAt: retire) }
+  }
+
+  /// How many times the Piggy Bank was opened today (a count on this device only; feeds "don't peek every minute").
+  func peekPiggy() -> Int {
+    let d = UserDefaults.standard, key = "moonclub.piggy.peeks"
+    let parts = (d.string(forKey: key) ?? "").split(separator: "|")
+    let n = (parts.count == 2 && parts[0] == Substring(today) ? Int(parts[1]) ?? 0 : 0) + 1
+    d.set("\(today)|\(n)", forKey: key)
+    return n
+  }
 
   // MARK: Intents
   func mutate(_ f: (inout KidsState) -> Void) {
@@ -187,5 +216,14 @@ final class AppModel {
     do { events = try await cal; marketError = nil } catch { marketError = (error as? KidError) ?? .offline }
     mood = try? await m
     WidgetPublisher.publish(self)
+  }
+}
+
+/// Which optional lesson packs a grown-up turned on, on this device (UserDefaults; nothing about the child).
+enum PackPrefs {
+  static let key = "moonclub.packs.v1"
+  static var enabled: Set<String> {
+    get { Set(UserDefaults.standard.stringArray(forKey: key) ?? []) }
+    set { UserDefaults.standard.set(newValue.sorted(), forKey: key) }
   }
 }

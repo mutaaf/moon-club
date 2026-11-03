@@ -13,6 +13,7 @@
 //   league                 union by player emoji; each player's guesses union by (company, day)
 //   me / recapSeen         larger wins (deterministic); the league view hides the player that is "me"
 //   played, chests         union (sorted); skin is the max of "<millis>|<id>", so the later pick wins
+//   review                 max per question of "day|box" (later day, then higher box)
 //   bonus, asked           max per key; owned, frozen union; equipped max per slot; rankSeen max.
 //                          The wallet is earned minus the price of what's owned: derived, never a synced counter.
 //   resetEpoch             "reset on all devices" bumps it; a larger epoch wins outright, so older data from
@@ -66,6 +67,7 @@ public enum Sync {
     r.frozen = unionOpt(a.frozen, o.frozen)
     r.asked = maxMap(a.asked, o.asked)
     r.rankSeen = maxOpt(a.rankSeen, o.rankSeen)
+    r.review = maxMap(a.review, o.review)     // spaced review: "day|box" per question, the later day (then higher box) wins
     return r
   }
 

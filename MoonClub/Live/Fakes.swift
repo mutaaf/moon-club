@@ -20,6 +20,16 @@ struct FakeMarket: MarketDataSource {
   func lastMove(_ symbol: String) async throws -> TickerPayload {
     try JSONDecoder().decode(TickerPayload.self, from: Data(#"{"history":[{"date":"2026-07-30","move":4.8}]}"#.utf8))
   }
+  /// Demo "why" inputs: a report-card day for companies that just reported, a market day for the rest.
+  func why(_ symbol: String, range: WhyRange) async throws -> WhyInput? {
+    let g = Why.group(symbol)
+    let k = range == .day ? 1.0 : 2.2
+    switch symbol {
+    case "AAPL": return WhyInput(s: symbol, nick: "Apple", range: range, move: -2.4 * k, market: -0.3 * k, sector: g.map { .init(etf: $0.etf, name: $0.name, move: -0.4 * k) }, report: .init(date: Day.add(today, -2), eA: 2.10, eE: 2.02), dividend: nil, normal: 1.3 * k, asOf: Day.add(today, -1))
+    case "KO": return WhyInput(s: symbol, nick: "Coca-Cola", range: range, move: -0.9, market: 0.2, sector: g.map { .init(etf: $0.etf, name: $0.name, move: 0.1) }, report: nil, dividend: .init(date: Day.add(today, -1), amount: 0.51, pct: 0.73), normal: 0.9 * k, asOf: Day.add(today, -1))
+    default: return WhyInput(s: symbol, nick: symbol, range: range, move: -1.8 * k, market: -1.3 * k, sector: g.map { .init(etf: $0.etf, name: $0.name, move: -2.3 * k) }, report: nil, dividend: nil, normal: 1.4 * k, asOf: Day.add(today, -1))
+    }
+  }
 }
 
 /// A scripted brain per kind (demo mode still routes through the real LunaRouter + guard).
