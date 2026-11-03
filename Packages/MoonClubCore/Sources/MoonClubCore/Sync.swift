@@ -15,6 +15,9 @@
 //   played, chests         union (sorted); skin is the max of "<millis>|<id>", so the later pick wins
 //   review                 max per question of "day|box" (later day, then higher box)
 //   bonus, asked, duo      max per key; owned, frozen union; equipped max per slot; rankSeen max.
+//   garden                 Moon Garden events: a set union (each plant/harvest has a unique id and stores its
+//                          price); holdings, payouts and the wallet are replayed from it, so nothing double counts.
+//   gardenLimit            "<millis>|<pct>", max: the later grown-up pick wins
 //                          The wallet is earned minus the price of what's owned: derived, never a synced counter.
 //   resetEpoch             "reset on all devices" bumps it; a larger epoch wins outright, so older data from
 //                          a device that hasn't heard about the reset can't bring progress back
@@ -69,6 +72,8 @@ public enum Sync {
     r.rankSeen = maxOpt(a.rankSeen, o.rankSeen)
     r.duo = maxMap(a.duo, o.duo)               // iPhone Duo uses: max per key (a sync can never inflate a count)
     r.review = maxMap(a.review, o.review)     // spaced review: "day|box" per question, the later day (then higher box) wins
+    r.garden = unionEvents(a.garden, o.garden) // Moon Garden: plant/harvest events, a set union (replayed, never summed)
+    r.gardenLimit = maxOpt(a.gardenLimit, o.gardenLimit) // "<millis>|<pct>": the later grown-up pick wins
     return r
   }
 
@@ -89,6 +94,11 @@ public enum Sync {
   static func unionOpt(_ a: [String]?, _ b: [String]?) -> [String]? {
     guard a != nil || b != nil else { return nil }
     return Set((a ?? []) + (b ?? [])).sorted()
+  }
+
+  static func unionEvents(_ a: [GardenEvent]?, _ b: [GardenEvent]?) -> [GardenEvent]? {
+    guard a != nil || b != nil else { return nil }
+    return Set((a ?? []) + (b ?? [])).sorted(by: GardenEvent.before)
   }
 
   static func maxOpt<T: Comparable>(_ a: T?, _ b: T?) -> T? {

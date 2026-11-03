@@ -21,7 +21,7 @@ struct CandleChart: View {
   var cut: Int? = nil             // a dashed "today" line after this index
   var domain: ClosedRange<Double>? = nil
 
-  static let up = Color(hex: 0x1FA36A), down = Color(hex: 0xE0533F)
+  static let up = CandleInk.up, down = CandleInk.down
 
   var range: ClosedRange<Double> {
     if let domain { return domain }
@@ -56,10 +56,8 @@ struct CandleChart: View {
       } else {
         let bw = max(2, min(step * 0.62, 22))
         for i in 0..<shown {
-          let c = candles[i], col = c.up ? Self.up : Self.down
-          g.stroke(Path { $0.move(to: .init(x: x(i), y: y(c.h))); $0.addLine(to: .init(x: x(i), y: y(c.l))) }, with: .color(col), lineWidth: max(1, bw * 0.16))
-          let top = y(c.bodyTop), bot = y(c.bodyBottom)
-          g.fill(Path(roundedRect: CGRect(x: x(i) - bw / 2, y: top, width: bw, height: max(bot - top, 1.5)), cornerRadius: min(3, bw * 0.2)), with: .color(col))
+          let c = candles[i]
+          CandleInk.draw(g, x: x(i), high: y(c.h), low: y(c.l), top: y(c.bodyTop), bottom: y(c.bodyBottom), width: bw, up: c.up)
         }
       }
       if volume {
@@ -121,17 +119,86 @@ struct BigCandle: View {
   var body: some View {
     Canvas { g, size in
       func y(_ p: Double) -> CGFloat { size.height - 10 - CGFloat((p - domain.lowerBound) / (domain.upperBound - domain.lowerBound)) * (size.height - 20) }
-      let col = c >= o ? CandleChart.up : CandleChart.down
       let cx = size.width * 0.38, bw: CGFloat = min(70, size.width * 0.26)
-      g.stroke(Path { $0.move(to: .init(x: cx, y: y(h))); $0.addLine(to: .init(x: cx, y: y(l))) }, with: .color(col), style: .init(lineWidth: 5, lineCap: .round))
-      g.fill(Path(roundedRect: CGRect(x: cx - bw / 2, y: y(max(o, c)), width: bw, height: max(4, y(min(o, c)) - y(max(o, c)))), cornerRadius: 10), with: .color(col))
+      CandleInk.draw(g, x: cx, high: y(h), low: y(l), top: y(max(o, c)), bottom: y(min(o, c)), width: bw, up: c >= o, big: true)
       guard labels else { return }
-      for (name, v) in [("High", h), (c >= o ? "End" : "Start", max(o, c)), (c >= o ? "Start" : "End", min(o, c)), ("Low", l)] {
-        let t = g.resolve(Text("\(name) \(coins(v))").font(.subheadline.weight(.semibold)).foregroundColor(Palette.ink2))
-        g.draw(t, at: CGPoint(x: cx + bw / 2 + 16, y: y(v)), anchor: .leading)
+      // Labels never overlap: equal prices share one label ("Start and end"), and close ones are pushed apart.
+      let rows = BigCandle.labels(o: o, h: h, l: l, c: c).map { (text: $0.text, y: y($0.price)) }
+      let lineH = g.resolve(Text("Hg").font(.subheadline.weight(.semibold))).measure(in: size).height + 2
+      for (text, yy) in zip(rows.map(\.text), BigCandle.spread(rows.map(\.y), gap: lineH, in: 0...size.height)) {
+        let t = g.resolve(Text(text).font(.subheadline.weight(.semibold)).foregroundColor(Palette.ink2))
+        g.draw(t, at: CGPoint(x: cx + bw / 2 + 16, y: yy), anchor: .leading)
       }
     }
     .accessibilityElement()
-    .accessibilityLabel("A candle. Started at \(coins(o)), ended at \(coins(c)), highest \(coins(h)), lowest \(coins(l)).")
+    .accessibilityLabel("A \(c >= o ? "hollow green, up" : "filled red, down") candle. Started at \(coins(o)), ended at \(coins(c)), highest \(coins(h)), lowest \(coins(l)).")
+  }
+}
+
+extension BigCandle {
+  /// Label rows top to bottom. Prices that round to the same cent share one row, so "Start" and "Low" (or
+  /// "Start" and "End" on a flat day) never print on top of each other.
+  static func labels(o: Double, h: Double, l: Double, c: Double) -> [(text: String, price: Double)] {
+    let rows: [(String, Double)] = [("High", h), (c >= o ? "End" : "Start", max(o, c)), (c >= o ? "Start" : "End", min(o, c)), ("Low", l)]
+    var out: [(text: String, price: Double)] = []
+    for (name, v) in rows {
+      if let last = out.last, coins(last.price) == coins(v) {
+        out[out.count - 1].text = last.text.replacingOccurrences(of: " \(coins(v))", with: "") + " and \(name.lowercased()) \(coins(v))"
+      } else { out.append((text: "\(name) \(coins(v))", price: v)) }
+    }
+    return out
+  }
+  /// Pushes label centers (top to bottom) apart so neighbours are at least `gap` apart, kept inside `bounds`.
+  static func spread(_ ys: [CGFloat], gap: CGFloat, in bounds: ClosedRange<CGFloat>) -> [CGFloat] {
+    var r = ys
+    for i in r.indices.dropFirst() where r[i] - r[i - 1] < gap { r[i] = r[i - 1] + gap }
+    if let last = r.last, last > bounds.upperBound - gap / 2 {
+      let shift = last - (bounds.upperBound - gap / 2)
+      r = r.map { $0 - shift }
+      for i in r.indices.reversed().dropFirst() where r[i + 1] - r[i] < gap { r[i] = r[i + 1] - gap }
+    }
+    return r
+  }
+}
+
+/// How every candle is drawn, so direction never depends on colour alone (colour-blind safe):
+///  • up (ended higher): a HOLLOW green body (outline only)
+///  • down (ended lower): a FILLED red body
+///  • big candles also carry an arrow inside the body; candles too thin to show a hollow body (< 5 pt)
+///    get a tiny tick on the wick's end that points the way it went.
+enum CandleInk {
+  static let up = Color(hex: 0x1FA36A), down = Color(hex: 0xE0533F)
+  static func draw(_ g: GraphicsContext, x: CGFloat, high: CGFloat, low: CGFloat, top: CGFloat, bottom: CGFloat, width bw: CGFloat, up isUp: Bool, big: Bool = false) {
+    let col = isUp ? up : down
+    let lw = big ? 5 : max(1, bw * 0.16)
+    let h = max(bottom - top, big ? 4 : 1.5)
+    let body = CGRect(x: x - bw / 2, y: top, width: bw, height: h)
+    let radius = big ? 10 : min(3, bw * 0.2)
+    if isUp {
+      // The wick stops at the body, so the hollow stays empty.
+      g.stroke(Path { $0.move(to: .init(x: x, y: high)); $0.addLine(to: .init(x: x, y: top)); $0.move(to: .init(x: x, y: body.maxY)); $0.addLine(to: .init(x: x, y: low)) }, with: .color(col), style: .init(lineWidth: lw, lineCap: .round))
+      let stroke = big ? 5 : max(1, min(2, bw * 0.22))
+      g.fill(Path(roundedRect: body, cornerRadius: radius), with: .color(col.opacity(0.14)))
+      g.stroke(Path(roundedRect: body.insetBy(dx: stroke / 2, dy: min(stroke / 2, h / 2)), cornerRadius: max(0, radius - stroke / 2)), with: .color(col), lineWidth: stroke)
+    } else {
+      g.stroke(Path { $0.move(to: .init(x: x, y: high)); $0.addLine(to: .init(x: x, y: low)) }, with: .color(col), style: .init(lineWidth: lw, lineCap: .round))
+      g.fill(Path(roundedRect: body, cornerRadius: radius), with: .color(col))
+    }
+    if big, h >= 28 {
+      let a = min(bw * 0.42, h * 0.5)
+      var p = Path()
+      let cy = body.midY, s = a / 2
+      if isUp { p.move(to: .init(x: x - s, y: cy + s * 0.5)); p.addLine(to: .init(x: x, y: cy - s * 0.6)); p.addLine(to: .init(x: x + s, y: cy + s * 0.5)) }
+      else { p.move(to: .init(x: x - s, y: cy - s * 0.5)); p.addLine(to: .init(x: x, y: cy + s * 0.6)); p.addLine(to: .init(x: x + s, y: cy - s * 0.5)) }
+      g.stroke(p, with: .color(isUp ? col : .white), style: .init(lineWidth: max(3, a * 0.18), lineCap: .round, lineJoin: .round))
+    } else if bw < 5 {
+      // Thin candles: a 2-pt tick at the end of the move (top for up, bottom for down).
+      let t: CGFloat = 2.2
+      let yy = isUp ? high - t - 0.5 : low + t + 0.5
+      var p = Path()
+      if isUp { p.move(to: .init(x: x - t, y: yy + t)); p.addLine(to: .init(x: x, y: yy)); p.addLine(to: .init(x: x + t, y: yy + t)) }
+      else { p.move(to: .init(x: x - t, y: yy - t)); p.addLine(to: .init(x: x, y: yy)); p.addLine(to: .init(x: x + t, y: yy - t)) }
+      g.stroke(p, with: .color(col), style: .init(lineWidth: 1, lineCap: .round, lineJoin: .round))
+    }
   }
 }

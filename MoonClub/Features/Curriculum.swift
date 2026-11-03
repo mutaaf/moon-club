@@ -47,7 +47,7 @@ struct ReviewStopView: View {
     VStack(spacing: 16) {
       Spacer()
       Glyph("🔁", size: 96, style: .halo)
-      Text("All caught up!").font(.kHero).multilineTextAlignment(.center)
+      Text("All caught up!").font(.kHero).lineLimit(2).minimumScaleFactor(0.6).multilineTextAlignment(.center)
       Text("Questions you missed, and lessons from a few days ago, come back here. Play a lesson, then visit tomorrow.")
         .font(.kRead).multilineTextAlignment(.center).foregroundStyle(Palette.ink2)
       Spacer()

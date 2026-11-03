@@ -48,6 +48,17 @@ final class SyncTests: XCTestCase {
     if g.bool() { s.rankSeen = g.int(6) }
     // Party Moon (0.12): iPhone Duo use counts
     if g.bool() { for u in DuoUse.allCases where g.bool() { for _ in 0..<(1 + g.int(3)) { s.useDuo(u) } } }
+    // Moon Garden (0.13): plant/harvest events drawn from a small shared pool, so devices overlap and clash.
+    if g.bool() {
+      var ev: [GardenEvent] = []
+      for i in 0..<(1 + g.int(4)) {
+        let id = Garden.eventId(nowMillis: 1_000 + g.int(6), salt: UInt16(g.int(3)))
+        ev.append(GardenEvent(id: id, k: g.bool() ? .plant : .harvest, s: g.pick(Self.syms), d: g.pick(Self.at), pts: 10 * (1 + g.int(5)), u: 100_000 * (1 + g.int(5)), px: g.pick([50, 100, 120.5])))
+        _ = i
+      }
+      s.garden = ev
+    }
+    if g.bool() { s.setGardenLimit(g.pick([0, 25, 50, 100]), nowMillis: g.pick([1, 2, 3])) }
     return s
   }
 
@@ -61,6 +72,25 @@ final class SyncTests: XCTestCase {
       XCTAssertEqual(a.merged(with: b).merged(with: c), a.merged(with: b.merged(with: c)), "associative, seed \(seed)")
       XCTAssertEqual(a.merged(with: a), a.normalized(), "idempotent, seed \(seed)")
       XCTAssertEqual(a.merged(with: b).merged(with: b), a.merged(with: b), "re-merge is a no-op, seed \(seed)")
+    }
+  }
+
+  /// The garden's derived numbers depend only on the merged event set, so every device shows the same
+  /// holdings and wallet, and repeating a merge never adds a harvest or a planting twice.
+  func testGardenDerivedValuesConvergeAndNeverDoubleCount() {
+    for seed in 0..<300 {
+      var g = Gen(x: UInt64(10_000 + seed))
+      let a = randomState(&g, epoch: 0), b = randomState(&g, epoch: 0)
+      let ab = a.merged(with: b), ba = b.merged(with: a)
+      XCTAssertEqual(ab.gardenBook, ba.gardenBook, "seed \(seed)")
+      XCTAssertEqual(ab.merged(with: a).merged(with: b).gardenBook, ab.gardenBook, "re-merge, seed \(seed)")
+      let book = ab.gardenBook
+      // Payouts never exceed what the planted seeds could be worth at the best stored price.
+      let seeds = (ab.garden ?? []).filter { $0.k == .plant }.reduce(0) { $0 + $1.u }
+      let paid = book.harvests.reduce(0) { $0 + $1.paid }
+      XCTAssertLessThanOrEqual(paid, Garden.points(seeds, 120.5), "seed \(seed)")
+      XCTAssertGreaterThanOrEqual(book.principal, 0)
+      for p in book.plots.values { XCTAssertGreaterThan(p.micro, 0); XCTAssertGreaterThanOrEqual(p.principal, 0) }
     }
   }
 

@@ -229,7 +229,7 @@ struct LessonPlayer: View {
         if tucked {
           VStack(spacing: 14) {
             SleepyLuna(size: 110)
-            Text("Goodnight, Luna!").font(.kHero).multilineTextAlignment(.center)
+            Text("Goodnight, Luna!").font(.kHero).lineLimit(2).minimumScaleFactor(0.6).multilineTextAlignment(.center)
             Text("Luna is tucked in. See you tomorrow for the next one!").font(.kRead).multilineTextAlignment(.center)
           }
           .transition(.scale.combined(with: .opacity))

@@ -157,10 +157,10 @@ struct GameNightView: View {
     VStack(spacing: 18) {
       if let w = g.winner {
         Text(app.content.players[players[w]]).font(.system(size: 90))
-        Text("\(app.content.playerNames[players[w]]) wins!").font(.kHero)
+        Text("\(app.content.playerNames[players[w]]) wins!").font(.kHero).lineLimit(2).minimumScaleFactor(0.6)
       } else {
         Image(systemName: "hands.clap.fill").font(.system(size: 80, weight: .bold)).foregroundStyle(Hue.gold.color)
-        Text("It's a tie!").font(.kHero)
+        Text("It's a tie!").font(.kHero).lineLimit(1).minimumScaleFactor(0.6)
       }
       Text("\(g.scores[0]) to \(g.scores[1]). Even experts miss a lot, so everyone did great.").font(.kRead).multilineTextAlignment(.center)
       Button("Play again") { game = nil; setup() }.buttonStyle(PrimaryButtonStyle()).frame(maxWidth: 320)
@@ -236,7 +236,7 @@ struct TVBoard: View {
           VStack(spacing: 10) {
             Text("ROUND \(g.index + 1) OF \(g.rounds.count)").font(.kEyebrow).foregroundStyle(.white.opacity(0.7))
             Glyph(co?.emoji ?? "", size: 132, style: .halo)
-            Text(co?.nick ?? r.s).font(.system(size: 44, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+            Text(co?.nick ?? r.s).font(.system(size: 44, weight: .heavy, design: .rounded)).lineLimit(1).minimumScaleFactor(0.5).foregroundStyle(.white)
             if g.revealed, let a = g.answer {
               Text(a == .beat ? "BEAT! ⬆️" : "MISS! ⬇️").font(.system(size: 56, weight: .black, design: .rounded))
                 .foregroundStyle(a == .beat ? Palette.mint : Palette.peach)
@@ -251,7 +251,7 @@ struct TVBoard: View {
       } else {
         VStack(spacing: 16) {
           Luna(size: 140, wave: true)
-          Text("Moon Club Game Night").font(.system(size: 48, weight: .heavy, design: .rounded)).foregroundStyle(.white)
+          Text("Moon Club Game Night").font(.system(size: 48, weight: .heavy, design: .rounded)).lineLimit(2).minimumScaleFactor(0.6).foregroundStyle(.white)
           if let g = game, g.isOver, !g.rounds.isEmpty {
             Text(g.winner.map { "\(app.content.playerNames[players[$0]]) wins!" } ?? "It's a tie!").font(.largeTitle).foregroundStyle(Palette.moon)
           }

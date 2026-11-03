@@ -15,7 +15,7 @@ struct WordSheet: View {
       VStack(spacing: 18) {
         Glyph(t.emoji, size: 104, style: .halo)
           .accessibilityHidden(true)
-        Text(t.word).font(.kHero)
+        Text(t.word).font(.kHero).lineLimit(1).minimumScaleFactor(0.5)
         Text(t.means).font(.kRead).multilineTextAlignment(.center)
         Text(t.example).font(.system(.title3, design: .serif).italic()).foregroundStyle(Palette.ink2).multilineTextAlignment(.center)
         HStack(spacing: 10) {

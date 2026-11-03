@@ -19,7 +19,7 @@ struct MoonClubApp: App {
   var body: some Scene {
     WindowGroup {
       Group {
-        if let app { RootView().environment(app) }
+        if let app { RootView().environment(app).modifier(DebugWindow()) }
         else if let loadError { ContentErrorView(message: loadError) }
         else { Color(Palette.paper).ignoresSafeArea() }
       }
@@ -48,6 +48,8 @@ struct MoonClubApp: App {
         var seeded = args.contains("-fresh") ? KidsState() : Demo.seeded(today: clock.today())
         // Screenshots: -world mid|all seeds Market World progress (mid = three lands won; all = everything).
         if let i = args.firstIndex(of: "-world"), i + 1 < args.count { seeded = Demo.world(seeded, content: content, lands: args[i + 1] == "all" ? 99 : 3) }
+        // Screenshots: -garden seeds a Moon Garden (plantings, a harvest).
+        if args.contains("-garden") { seeded = Demo.garden(seeded, content: content, today: clock.today()) }
         // Screenshots never carry a stale badge toast: demo badges start seen (-toast keeps them fresh to film the toast).
         if !args.contains("-toast") {
           seeded.seeBadges(seeded.badges(content))

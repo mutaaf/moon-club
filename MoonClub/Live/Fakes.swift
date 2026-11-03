@@ -89,4 +89,24 @@ enum Demo {
     }
     return s
   }
+
+  /// A Moon Garden for screenshots: points banked, three companies planted over the last weeks at their
+  /// real closes from the bundled candles, and one harvest.
+  @MainActor static func garden(_ base: KidsState, content c: KidsContent, today: String) -> KidsState {
+    var s = base
+    s.bank(.game, "demo-garden", points: 260, today: Day.add(today, -20))
+    s.setGardenLimit(100, nowMillis: 1)
+    let plan: [(String, Int, Int)] = [("DIS", -16, 60), ("NKE", -12, 30), ("AAPL", -9, 40), ("KO", -15, 25)]
+    for (i, (sym, ago, pts)) in plan.enumerated() {
+      let d = Day.add(today, ago)
+      guard let px = Garden.close(AppModel.bundledCandles[sym], onOrBefore: d)?.c else { continue }
+      s.plant(sym, points: pts, price: px, today: d, id: Garden.eventId(nowMillis: 1_000 + i, salt: UInt16(i)), c)
+    }
+    if let px = Garden.close(AppModel.bundledCandles["KO"], onOrBefore: Day.add(today, -3))?.c {
+      s.harvest("KO", points: 999, price: px, today: Day.add(today, -3), id: Garden.eventId(nowMillis: 9_000, salt: 9))
+    }
+    s.setGardenLimit(50, nowMillis: 2)
+    return s
+  }
 }
+

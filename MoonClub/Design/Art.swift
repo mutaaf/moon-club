@@ -212,7 +212,10 @@ struct CandleMark: View {
       for (x, top, bot, hi, lo, a) in [(0.28, 0.32, 0.78, 0.12, 0.92, 1.0), (0.72, 0.18, 0.55, 0.04, 0.7, 0.55)] {
         let cx = sz.width * x
         g.stroke(Path { $0.move(to: .init(x: cx, y: sz.height * hi)); $0.addLine(to: .init(x: cx, y: sz.height * lo)) }, with: .color(color.opacity(a)), style: .init(lineWidth: lw, lineCap: .round))
-        g.fill(Path(roundedRect: CGRect(x: cx - w / 2, y: sz.height * top, width: w, height: sz.height * (bot - top)), cornerRadius: w * 0.2), with: .color(color.opacity(a)))
+        let r = CGRect(x: cx - w / 2, y: sz.height * top, width: w, height: sz.height * (bot - top))
+        // Like real candles: one filled, one hollow (direction never by colour alone).
+        if a < 1 { g.stroke(Path(roundedRect: r.insetBy(dx: lw / 2, dy: lw / 2), cornerRadius: w * 0.2), with: .color(color), lineWidth: lw) }
+        else { g.fill(Path(roundedRect: r, cornerRadius: w * 0.2), with: .color(color.opacity(a))) }
       }
     }
     .accessibilityHidden(true)

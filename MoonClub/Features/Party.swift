@@ -147,7 +147,7 @@ struct OpenWideReveal<Content: View>: View {
   private var waiting: some View {
     VStack(spacing: 16) {
       FoldArt(angle: 180).frame(height: 160)
-      Text("Open me wide!").font(.kHero).foregroundStyle(dark ? Color.white : Palette.ink)
+      Text("Open me wide!").font(.kHero).lineLimit(2).minimumScaleFactor(0.6).foregroundStyle(dark ? Color.white : Palette.ink)
       Text("Open your iPhone Duo all the way to see \(what).").font(.kRead).multilineTextAlignment(.center).foregroundStyle(dark ? Color.white.opacity(0.8) : Palette.ink2)
       DuoCallout(text: "Open wide to launch", dark: dark)
       Button("Or tap here") { reveal(byHinge: false) }.font(.kHeadline).foregroundStyle(dark ? Color.white : Palette.accent)
@@ -275,6 +275,7 @@ struct MysteryTag: View {
     .background(LinearGradient(colors: [Hue.lemon.color, Hue.gold.color], startPoint: .top, endPoint: .bottom), in: Capsule())
     .shadow(color: Hue.gold.color.opacity(0.7), radius: spin ? 8 : 3)
     .accessibilityLabel("Mystery stop, \(Mystery.points) bonus points today")
-    .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 0.9).repeatForever()) { spin = true } }
+    // A few wiggles, then it rests (an endless loop with an animated shadow kept the whole map redrawing).
+    .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 0.9).repeatCount(6)) { spin = true } }
   }
 }

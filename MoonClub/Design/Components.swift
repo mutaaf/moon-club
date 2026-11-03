@@ -15,6 +15,7 @@ struct Luna: View {
   @State private var blink = false
   @State private var bob = false
   var body: some View {
+    let _ = Perf.body("Luna")
     let s = size / 64
     ZStack {
       Circle().fill(RadialGradient(colors: [Color(hex: 0xFFF8DA), Palette.moon, Palette.moonShade.opacity(0.9)], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2 * s, endRadius: 40 * s))
@@ -139,11 +140,20 @@ struct Card<Content: View>: View {
   var fill = false
   @ViewBuilder var content: Content
   var body: some View {
+    let _ = Perf.body("Card")
     VStack(alignment: .leading, spacing: 14) { content }
       .padding(padding)
       .frame(maxWidth: .infinity, maxHeight: fill ? .infinity : nil, alignment: .topLeading)
       .moonGlass(radius: 28)
-      .shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10)
+      .modifier(CardShadow())
+  }
+}
+
+/// Liquid Glass draws its own depth; the soft 24 pt shadow is only for the pre-iOS 26 material look.
+/// (A blurred shadow under every glass card was one more offscreen pass per card per frame.)
+private struct CardShadow: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) { content } else { content.shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10) }
   }
 }
 

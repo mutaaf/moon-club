@@ -3,7 +3,7 @@
 // same wallet, and a sync merge can't inflate it:
 //   earned  = the web's points (pointsFor) + map stars + trophy tiers + mission chests + banked bonuses
 //   spent   = the price of every owned item (owned is a set; a set union can't double-spend one item)
-//   wallet  = earned − spent, never below 0
+//   wallet  = earned + Moon Garden harvest gains − spent − points planted now, never below 0 (Garden.swift)
 // Banked bonuses are a map "day|source|id" → points, merged by max, so replaying a game on the same day
 // keeps your best run instead of farming points. Nothing here is real money, and nothing can be bought.
 import Foundation
@@ -237,15 +237,24 @@ public enum Shop {
       return acc + (item(id)?.price ?? 0)
     }
   }
-  public static func wallet(_ s: KidsState, _ c: KidsContent) -> Int { max(0, s.points(c) - spent(s)) }
+  /// Points to spend or plant: the Moon Garden ledger (Garden.balance):
+  /// earned + harvest gains − shop costs − points planted right now.
+  public static func wallet(_ s: KidsState, _ c: KidsContent) -> Int {
+    let b = s.gardenBook
+    return Garden.balance(earned: s.points(c), gains: b.gains, spent: spent(s), planted: b.principal)
+  }
 
   public enum Lock: Hashable, Sendable { case rank(String), trophy(String), points(Int) }
   /// Why an item can't be bought yet (nil = it can, or it's owned).
   public static func lock(_ it: ShopItem, _ s: KidsState, _ c: KidsContent) -> Lock? {
+    lock(it, s, c, wallet: wallet(s, c), level: s.level(c).index, trophies: Trophies.progress(s, c))
+  }
+  /// The same, with the expensive derived values passed in (the app computes them once per state change).
+  public static func lock(_ it: ShopItem, _ s: KidsState, _ c: KidsContent, wallet w: Int, level: Int, trophies: [TrophyProgress]) -> Lock? {
     if it.slot != .freeze, owned(s).contains(it.id) { return nil }
-    if let r = it.rank, s.level(c).index < r { let ls = Ranks.levels(c); return .rank(r < ls.count ? ls[r].name : "a higher rank") }
-    if let t = it.trophy, (Trophies.progress(s, c).first { $0.trophy.id == t }?.tier ?? 0) < 1 { return .trophy(Trophies.all.first { $0.id == t }?.name ?? t) }
-    if wallet(s, c) < it.price { return .points(it.price - wallet(s, c)) }
+    if let r = it.rank, level < r { let ls = Ranks.levels(c); return .rank(r < ls.count ? ls[r].name : "a higher rank") }
+    if let t = it.trophy, (trophies.first { $0.trophy.id == t }?.tier ?? 0) < 1 { return .trophy(Trophies.all.first { $0.id == t }?.name ?? t) }
+    if w < it.price { return .points(it.price - w) }
     return nil
   }
 
@@ -269,7 +278,7 @@ public enum Shop {
 // MARK: - Trophies (tiered badges)
 
 public enum TrophyCategory: String, CaseIterable, Sendable {
-  case charts, lands, bosses, streaks, guesses, saver, curious, school, duo
+  case charts, lands, bosses, streaks, guesses, saver, curious, school, garden, duo
   public var title: String {
     switch self {
     case .charts: return "Chart Reader"
@@ -280,6 +289,7 @@ public enum TrophyCategory: String, CaseIterable, Sendable {
     case .saver: return "Saver"
     case .curious: return "Curious"
     case .school: return "Moon School"
+    case .garden: return "Moon Garden"
     case .duo: return "Made for iPhone Duo"
     }
   }
@@ -325,6 +335,9 @@ public enum Trophies {
     Trophy(id: "curious", name: "Curious Cat", category: .curious, symbol: "questionmark.bubble.fill", hue: "teal", unit: "questions for Luna", hint: "Ask Luna a money question."),
     Trophy(id: "bookworm", name: "Bookworm", category: .school, symbol: "book.fill", hue: "ink", unit: "lessons done", hint: "Finish a one-minute lesson."),
     Trophy(id: "mission-maker", name: "Mission Maker", category: .streaks, symbol: "shippingbox.fill", hue: "gold", unit: "chests opened", hint: "Finish all 3 of today's missions."),
+    // Moon Garden (0.13): good habits, never size or "winning".
+    Trophy(id: "spread-out", name: "Spread it out", category: .garden, symbol: "square.grid.2x2.fill", hue: "mint", unit: "companies growing at once", hint: "Plant Moon points in 3 different companies."),
+    Trophy(id: "patient-planter", name: "Patient planter", category: .garden, symbol: "hourglass", hue: "teal", unit: "days one planting grew", hint: "Let a planting grow for 7 days."),
     // iPhone Duo only: shown only on a device with a hinge (or once earned there). See `visible(hinge:)`.
     Trophy(id: "duo-book", name: "Storybook Reader", category: .duo, symbol: "book.pages.fill", hue: "ink", unit: "lessons read as a book", hint: "Open your iPhone Duo like a book and finish a lesson."),
     Trophy(id: "duo-tabletop", name: "Tabletop Trader", category: .duo, symbol: "laptopcomputer", hue: "teal", unit: "tabletop plays", hint: "Set your iPhone Duo down like a laptop and fight a Chart Time Machine boss."),
@@ -357,6 +370,7 @@ public enum Trophies {
     let regions = World.regions(c)
     let bosses = regions.flatMap(\.nodes).filter { if case .review = $0.kind { return true }; if case .timeMachine = $0.kind { return true }; return false }
     let lessons = max(1, c.lessons.count)
+    let book = s.gardenBook
     return all.map { t in
       let count: Int; let goals: [Int]
       switch t.id {
@@ -372,6 +386,8 @@ public enum Trophies {
       case "curious": count = (s.asked ?? [:]).values.reduce(0, +); goals = [1, 10, 30]
       case "bookworm": count = s.lessons.count; goals = [1, Int((Double(lessons) / 2).rounded(.up)), lessons]
       case "mission-maker": count = (s.chests ?? []).count; goals = [1, 7, 30]
+      case "spread-out": count = book.mostAtOnce; goals = [3, 5, 8]
+      case "patient-planter": count = s.lastActiveDay.map { book.longestHold(asOf: $0) } ?? 0; goals = [7, 30, 90]
       case "duo-book": count = s.duoCount(.book); goals = [1, 5, 15]
       case "duo-tabletop": count = s.duoCount(.tabletop) + s.duoCount(.night); goals = [1, 5, 15]
       case "duo-hinge": count = s.duoCount(.hinge); goals = [1, 5, 15]
