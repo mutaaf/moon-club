@@ -588,11 +588,16 @@ struct WorldHeader: View {
     let t = World.totalStars(app.state, app.content)
     let won = regions.filter { World.conquered($0, app.state, app.content) }.count
     let streak = Streak.play(app.state, today: app.today)
+    // The land you're on is named up here, so its banner on the map is never the only place to read it
+    // (it can sit under the tab bar while you scroll).
+    let here = regions.isEmpty ? nil : regions[safe: World.current(regions, app.state, app.content).region]
     HStack(spacing: 8) {
       VStack(alignment: .leading, spacing: 0) {
-        Text("Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
-        Label("\(won) of \(regions.count) lands", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+        Text(here?.name ?? "Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
+        Label("\(won) of \(regions.count) lands won", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
+          .lineLimit(1).minimumScaleFactor(0.8)
       }
+      .accessibilityElement(children: .combine)
       Spacer()
       Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
         .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
@@ -612,7 +617,13 @@ struct WorldHeader: View {
       .accessibilityLabel("All lessons")
     }
     .padding(.horizontal, 16).padding(.vertical, 8)
-    .background(.ultraThinMaterial)
+    // Solid, not glass: the map's stops and stars slide cleanly *under* the header instead of showing
+    // through it (which read as overlapping).
+    .background {
+      LinearGradient(colors: [Color(hex: 0xD8ECFA), Color(hex: 0xBFDDF4)], startPoint: .top, endPoint: .bottom)
+        .ignoresSafeArea(edges: .top)
+        .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+    }
   }
 }
 

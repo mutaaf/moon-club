@@ -41,17 +41,17 @@ enum Art {
     "✨": .init(symbol: "sparkles", hue: .gold), "🔭": .init(symbol: "binoculars.fill", hue: .grape),
     // money
     "💰": .init(symbol: "dollarsign.circle.fill", hue: .mint), "💵": .init(symbol: "banknote.fill", hue: .mint),
-    "🪙": .init(symbol: "centsign.circle.fill", hue: .gold), "🫙": .init(symbol: "archivebox.fill", hue: .teal),
+    "🪙": .init(symbol: "centsign.circle.fill", hue: .gold), "🫙": .init(symbol: "cylinder.fill", hue: .teal),
     "🐷": .init(symbol: "custom.piggy", hue: .berry), "🏦": .init(symbol: "building.columns.fill", hue: .slate),
     "🧾": .init(symbol: "doc.plaintext.fill", hue: .slate), "🏷️": .init(symbol: "tag.fill", hue: .coral),
     "➕": .init(symbol: "plus.circle.fill", hue: .mint), "🎁": .init(symbol: "gift.fill", hue: .coral),
     // growing
     "🌱": .init(symbol: "leaf.fill", hue: .mint), "🌳": .init(symbol: "tree.fill", hue: .mint), "🌻": .init(symbol: "camera.macro", hue: .lemon),
-    "🥚": .init(symbol: "oval.portrait.fill", hue: .orange), "🐄": .init(symbol: "pawprint.fill", hue: .choco), "🐢": .init(symbol: "tortoise.fill", hue: .teal),
+    "🥚": .init(symbol: "oval.portrait.fill", hue: .orange), "🐄": .init(symbol: "arrow.left.arrow.right.circle.fill", hue: .choco), "🐢": .init(symbol: "tortoise.fill", hue: .teal),
     // companies & work
     "🏪": .init(symbol: "storefront.fill", hue: .coral), "🏠": .init(symbol: "house.fill", hue: .orange), "🏡": .init(symbol: "house.fill", hue: .mint),
     "🧑‍🍳": .init(symbol: "frying.pan.fill", hue: .orange), "🧑‍💼": .init(symbol: "briefcase.fill", hue: .slate), "🔧": .init(symbol: "wrench.and.screwdriver.fill", hue: .slate),
-    "🤝": .init(symbol: "hands.clap.fill", hue: .orange), "🏟️": .init(symbol: "sportscourt.fill", hue: .teal), "👑": .init(symbol: "crown.fill", hue: .gold),
+    "🤝": .init(symbol: "arrow.left.and.right.circle.fill", hue: .orange), "🏟️": .init(symbol: "building.2.fill", hue: .teal), "👑": .init(symbol: "crown.fill", hue: .gold),
     "🍕": .init(symbol: "chart.pie.fill", hue: .orange), "🍰": .init(symbol: "birthday.cake.fill", hue: .berry), "🎂": .init(symbol: "birthday.cake.fill", hue: .coral),
     "🍋": .init(symbol: "custom.lemon", hue: .lemon), "🍎": .init(symbol: "fork.knife.circle.fill", hue: .coral), "🍭": .init(symbol: "birthday.cake.fill", hue: .berry),
     // charts & reports
@@ -59,14 +59,14 @@ enum Art {
     "📋": .init(symbol: "list.clipboard.fill", hue: .sky), "📅": .init(symbol: "calendar", hue: .coral), "🗓️": .init(symbol: "calendar", hue: .coral),
     "🔮": .init(symbol: "sparkle.magnifyingglass", hue: .grape), "🔍": .init(symbol: "magnifyingglass", hue: .sky), "🕵️": .init(symbol: "magnifyingglass.circle.fill", hue: .grape),
     "👍": .init(symbol: "hand.thumbsup.fill", hue: .mint), "👎": .init(symbol: "hand.thumbsdown.fill", hue: .coral), "✅": .init(symbol: "checkmark.circle.fill", hue: .mint),
-    "❓": .init(symbol: "questionmark.circle.fill", hue: .grape), "🎢": .init(symbol: "chart.line.uptrend.xyaxis", hue: .berry), "🚩": .init(symbol: "flag.fill", hue: .coral),
+    "❓": .init(symbol: "questionmark.circle.fill", hue: .grape), "🎢": .init(symbol: "waveform.path.ecg", hue: .berry), "🚩": .init(symbol: "flag.fill", hue: .coral),
     "🗳️": .init(symbol: "checkmark.rectangle.stack.fill", hue: .sky), "📣": .init(symbol: "megaphone.fill", hue: .orange), "🔔": .init(symbol: "bell.fill", hue: .gold),
     "🔤": .init(symbol: "textformat.abc", hue: .sky),
     // feelings & people
     "🧠": .init(symbol: "brain.head.profile", hue: .berry), "🤔": .init(symbol: "questionmark.bubble.fill", hue: .grape), "😮": .init(symbol: "exclamationmark.bubble.fill", hue: .orange),
     "🤷": .init(symbol: "questionmark.circle.fill", hue: .slate), "🤞": .init(symbol: "hands.sparkles.fill", hue: .grape), "🙋": .init(symbol: "hand.raised.fill", hue: .orange),
     "👀": .init(symbol: "eye.fill", hue: .sky), "🎉": .init(symbol: "party.popper.fill", hue: .berry), "🎭": .init(symbol: "theatermasks.fill", hue: .grape),
-    "🃏": .init(symbol: "suit.club.fill", hue: .slate),
+    "🃏": .init(symbol: "rectangle.stack.fill", hue: .grape),
     // things kids know
     "🎒": .init(symbol: "backpack.fill", hue: .coral), "🎓": .init(symbol: "graduationcap.fill", hue: .ink), "🧥": .init(symbol: "tshirt.fill", hue: .sky),
     "👟": .init(symbol: "shoeprints.fill", hue: .coral), "🚲": .init(symbol: "bicycle", hue: .teal), "🚗": .init(symbol: "car.fill", hue: .coral),
@@ -99,7 +99,14 @@ enum Art {
   /// For review: every emoji key and what it's drawn as ("🍋 → custom.lemon (lemon)"), sorted.
   static var reviewList: [String] { map.map { "\($0.key) → \($0.value.symbol) (\($0.value.hue))" }.sorted() }
   /// Pairs a reviewer flagged as misleading; a test keeps them from coming back.
-  static let neverAgain: [String: String] = ["🐄": "drop.fill", "🍋": "drop.circle.fill", "🌻": "sun.min.fill", "🏰": "wand.and.stars", "💰": "drop.fill"]
+  static let neverAgain: [String: [String]] = [
+    "🐄": ["drop.fill", "pawprint.fill"],      // "a cow for some bread" is a trade, not a pet
+    "🍋": ["drop.circle.fill", "drop.fill"], "🌻": ["sun.min.fill"], "🏰": ["wand.and.stars"], "💰": ["drop.fill"],
+    "🏟️": ["sportscourt.fill"],                 // the stock market, not a ball game
+    "🤝": ["hands.clap.fill"],                  // tug-of-war and "do both", not applause
+    "🎢": ["chart.line.uptrend.xyaxis"],        // also used for "the trend goes down" and breakdowns
+    "🃏": ["suit.club.fill"],                   // trading cards, not a casino
+  ]
   /// For tests: every key whose symbol must exist.
   static var allSymbols: [String] { Array(Set(map.values.map(\.symbol) + [fallback.symbol])).filter { !$0.hasPrefix("custom.") } }
 }
