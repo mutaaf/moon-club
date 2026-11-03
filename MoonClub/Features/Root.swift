@@ -30,9 +30,17 @@ struct RootView: View {
   @State private var duoCoach = false
   @State private var sleepy = false
   @State private var bedtime = BedtimeClock.shared
+  /// iPad sidebar: shown or hidden (debug `-sidebar hidden` for screenshots).
+  @State private var columns: NavigationSplitViewVisibility = {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-sidebar"), ProcessInfo.processInfo.arguments.contains("hidden") { return .detailOnly }
+    #endif
+    return .automatic
+  }()
   @Environment(\.scenePhase) private var phase
 
   var body: some View {
+    let _ = Perf.body("RootView")
     Group {
       if hSize == .regular { split } else { tabs }
     }
@@ -79,6 +87,7 @@ struct RootView: View {
     .environment(\.openTab, OpenTab { t in withAnimation(Motion.page) { tab = t } })
     .task { await app.loadMarket() }
     .task { app.checkIn(); celebrateStreak() }
+    .task { await bench() }
     .onAppear {
       let args = ProcessInfo.processInfo.arguments
       if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
@@ -92,6 +101,11 @@ struct RootView: View {
       // Party Moon screenshots: -sleepy (goodnight sheet), -duocoach (iPhone Duo coach), -party small|medium|large.
       if args.contains("-demo") && args.contains("-sleepy") { Task { try? await Task.sleep(for: .seconds(1)); sleepy = true } }
       if args.contains("-demo") && args.contains("-duocoach") { duoCoach = true }
+      // iPad screenshots: -orient landscape|portrait rotates the window scene (the simulator has no rotate command).
+      if let i = args.firstIndex(of: "-orient"), i + 1 < args.count {
+        let mask: UIInterfaceOrientationMask = args[i + 1] == "landscape" ? .landscapeRight : .portrait
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
+      }
       if args.contains("-demo"), let i = args.firstIndex(of: "-party"), i + 1 < args.count {
         let m: PartyMoment = ["small": .right, "medium": .perfectRound, "large": .landWon][args[i + 1]] ?? .landWon
         Task { for _ in 0..<3 { try? await Task.sleep(for: .seconds(1.2)); PartyCenter.shared.fire(m, title: "Land won!") ; try? await Task.sleep(for: .seconds(3)) } }
@@ -101,6 +115,31 @@ struct RootView: View {
     .onOpenURL { url in if let t = app.open(url) { tab = t } }
     .tint(Palette.accent)
     .modifier(TracksHinge(duo: duo))
+  }
+
+  /// Debug `-bench`: one fixed script so performance can be compared before and after a change.
+  /// Each phase prints body re-evaluations per view and frame/hitch stats (see Design/Perf.swift).
+  private func bench() async {
+    #if DEBUG
+    guard Perf.on else { return }
+    let mon = FrameMonitor()
+    try? await Task.sleep(for: .seconds(4))
+    func phase(_ name: String, _ work: () async -> Void) async {
+      Perf.reset(); mon.start()
+      await work()
+      mon.stop(); print(Perf.report(name) + " " + mon.summary); fflush(stdout)
+    }
+    await phase("idle3s") { try? await Task.sleep(for: .seconds(3)) }
+    await phase("tabs") {
+      for t in [Tab.guess, .piggy, .school, .luna, .story] { withAnimation(Motion.page) { tab = t }; try? await Task.sleep(for: .seconds(1.5)) }
+    }
+    await phase("bank10") {
+      for i in 0..<10 { app.mutate { $0.bank(.game, "bench\(i)", points: 3, today: app.today) }; try? await Task.sleep(for: .milliseconds(250)) }
+    }
+    await phase("piggyIdle3s") { tab = .piggy; try? await Task.sleep(for: .seconds(3)) }
+    await phase("worldIdle3s") { tab = .school; try? await Task.sleep(for: .seconds(3)) }
+    print("BENCH done"); fflush(stdout)
+    #endif
   }
 
   private func showDuoCoach(_ has: Bool) {
@@ -133,7 +172,7 @@ struct RootView: View {
   }
 
   private var split: some View {
-    NavigationSplitView {
+    NavigationSplitView(columnVisibility: $columns) {
       List(selection: Binding(get: { tab }, set: { if let v = $0 { tab = v } })) {
         Section { LevelRow().listRowBackground(Color.clear) }
         Section("Club") { ForEach(Tab.allCases) { t in Label(t.title, systemImage: t.icon).tag(t).font(.kHeadline).padding(.vertical, 6) } }
@@ -204,6 +243,7 @@ struct LevelPill: View {
   @Environment(\.toolbarVertical) private var vertical
   @Environment(\.openLocker) private var openLocker
   var body: some View {
+    let _ = Perf.body("LevelPill")
     let l = app.level
     Button { openLocker(.badges) } label: {
       HStack(spacing: 8) {
@@ -232,6 +272,7 @@ struct LevelPill: View {
 struct LevelRow: View {
   @Environment(AppModel.self) private var app
   var body: some View {
+    let _ = Perf.body("LevelRow")
     let l = app.level
     HStack(spacing: 14) {
       Luna(size: 48, wave: true)

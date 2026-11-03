@@ -50,6 +50,10 @@ public struct KidsState: Codable, Hashable, Sendable {
   /// Spaced review (Review.swift): question id "<lesson>#<step>" -> "yyyy-MM-dd|box". Optional so older saves
   /// decode; merge = max per key (the later day wins, then the higher box).
   public var review: [String: String]?
+  /// Moon Garden (0.13): plant and harvest events (merge: union by value; holdings are replayed, never stored).
+  public var garden: [GardenEvent]?
+  /// The grown-up's daily planting limit, "<15-digit millis>|<percent>" (merge: max, so the later pick wins).
+  public var gardenLimit: String?
   public init() {}
 
   // MARK: Intents (pure reducers)
@@ -129,9 +133,38 @@ public struct KidsState: Codable, Hashable, Sendable {
   /// Counts a question for the Curious trophy (only the number, never what was asked).
   public mutating func askLuna(today: String) { var a = asked ?? [:]; a[today] = (a[today] ?? 0) + 1; asked = a }
   public mutating func seeRank(_ i: Int) { rankSeen = max(rankSeen ?? 0, i) }
+  /// Plants Moon points in a company at today's price. Returns false (and changes nothing) if it isn't allowed:
+  /// too few points, more than today's planting allowance, or no price.
+  @discardableResult public mutating func plant(_ sym: String, points: Int, price: Double, today: String, id: String, _ c: KidsContent) -> Bool {
+    let u = Garden.seeds(points: points, price: price)
+    guard points >= Garden.minPlant, u > 0, points <= gardenAllowance(c, today: today), c.companyBySymbol[sym] != nil else { return false }
+    var g = garden ?? []; g.append(GardenEvent(id: id, k: .plant, s: sym, d: today, pts: points, u: u, px: price)); garden = g.sorted(by: GardenEvent.before)
+    return true
+  }
+  /// Harvests `points` worth of a patch at today's price (all of it when `points` covers the whole patch).
+  @discardableResult public mutating func harvest(_ sym: String, points: Int, price: Double, today: String, id: String) -> Bool {
+    guard price > 0, points > 0, let p = gardenBook.plots[sym] else { return false }
+    let all = points >= p.value(price)
+    let u = all ? p.micro : min(p.micro, Int((Double(points) * Double(Garden.micro) / price).rounded(.up)))
+    guard u > 0 else { return false }
+    var g = garden ?? []; g.append(GardenEvent(id: id, k: .harvest, s: sym, d: today, pts: all ? p.value(price) : points, u: u, px: price)); garden = g.sorted(by: GardenEvent.before)
+    return true
+  }
+  public mutating func setGardenLimit(_ pct: Int, nowMillis: Int) { gardenLimit = String(format: "%015d|%d", nowMillis, max(0, min(100, pct))) }
+
   public mutating func earn(_ node: String, stars n: Int) { var m = stars ?? [:]; m[node] = max(m[node] ?? 0, min(3, max(0, n))); stars = m }
 
   // MARK: Derived
+  /// The garden replayed from its events (see Garden.swift).
+  public var gardenBook: GardenBook { Garden.book(garden ?? []) }
+  /// The daily planting limit in percent (a grown-up can change it; default 50).
+  public var gardenLimitPct: Int { gardenLimit.flatMap { $0.split(separator: "|").last }.flatMap { Int($0) } ?? Garden.defaultLimit }
+  /// Points that may still be planted today.
+  public func gardenAllowance(_ c: KidsContent, today: String) -> Int {
+    Garden.allowance(balance: Shop.wallet(self, c), plantedToday: gardenBook.plantedOn[today] ?? 0, limit: gardenLimitPct)
+  }
+  /// The latest day this state knows about (visits, plays, garden): "today" for derived things like Patient planter.
+  public var lastActiveDay: String? { (Streak.activeDays(self) + (garden ?? []).map(\.d)).max() }
   /// Family League players to show: everyone imported, minus this device's own player (after a sync merge,
   /// "me" can also arrive as an imported player from another device).
   public var leaguePlayers: [LeaguePlayer] { league.filter { $0.emoji != me } }

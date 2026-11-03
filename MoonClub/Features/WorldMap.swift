@@ -28,6 +28,7 @@ struct WorldView: View {
   @State private var rocketTilt: Double = 0
 
   var body: some View {
+    let _ = Perf.body("WorldView")
     let regions = World.regions(app.content)
     let cur = World.current(regions, app.state, app.content)
     let currentNode = regions.isEmpty ? nil : regions[cur.region].nodes[cur.node]
@@ -328,6 +329,7 @@ struct MapCanvas: View, Equatable {
   static func == (a: MapCanvas, b: MapCanvas) -> Bool { a.layout.width == b.layout.width && a.state == b.state && a.regions == b.regions }
 
   var body: some View {
+    let _ = Perf.body("MapCanvas")
     Canvas { g, size in
       // Sea: deep at the top (the far lands), bright near the coast, with soft wave lines.
       g.fill(Path(CGRect(origin: .zero, size: size)), with: .linearGradient(Gradient(colors: [Color(hex: 0x3A5BC7), Color(hex: 0x4E9FDB), Color(hex: 0x86D3E8)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
@@ -375,6 +377,7 @@ struct MapCanvas: View, Equatable {
 struct RegionBanner: View {
   let region: Region, open: Bool, conquered: Bool
   var body: some View {
+    let _ = Perf.body("RegionBanner")
     HStack(spacing: 8) {
       Glyph(region.art, size: 26)
       VStack(alignment: .leading, spacing: 0) {
@@ -402,6 +405,7 @@ struct NodeButton: View {
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var pulse = false
   var body: some View {
+    let _ = Perf.body("NodeButton")
     let d = MapLayout.diameter(node)
     Button { if held { held = false } else { tap() } } label: {
       // The circle IS the stop's frame (placed at its center); the star pill hangs below as an overlay,
@@ -596,6 +600,7 @@ struct WorldHeader: View {
   @Environment(AppModel.self) private var app
   @State private var hangar = false
   var body: some View {
+    let _ = Perf.body("WorldHeader")
     let t = World.totalStars(app.state, app.content)
     let won = regions.filter { World.conquered($0, app.state, app.content) }.count
     let streak = Streak.play(app.state, today: app.today)

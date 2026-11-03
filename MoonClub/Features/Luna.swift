@@ -19,6 +19,7 @@ struct AskLunaView: View {
   static let chips = ["What is a share?", "Why do prices go up and down?", "What is a company's report card?", "What does Disney sell?", "Is the market sunny today?", "Why shouldn't I put all my eggs in one basket?"]
 
   var body: some View {
+    let _ = Perf.body("AskLunaView")
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         Hero(eyebrow: "Your money helper", title: "Ask", accent: "Luna")

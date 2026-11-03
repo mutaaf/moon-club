@@ -28,6 +28,7 @@ struct StoryView: View {
   }
 
   var body: some View {
+    let _ = Perf.body("StoryView")
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Hero(eyebrow: Day.en("EEEE, MMMM d", app.today), title: "Today's", accent: "Market Story")
@@ -139,6 +140,7 @@ struct StoryCard: View {
   let card: StoryView.Card
   @Environment(AppModel.self) private var app
   var body: some View {
+    let _ = Perf.body("StoryCard")
     Card {
       switch card {
       case .recap: if let r = app.recap { RecapCard(recap: r) }
@@ -260,6 +262,7 @@ struct StartHere: View {
   @Environment(AppModel.self) private var app
   @Environment(\.openQuest) private var openQuest
   var body: some View {
+    let _ = Perf.body("StartHere")
     let chapters = app.content.questChapters?.CHAPTERS ?? []
     if let next = chapters.first(where: { !app.chaptersDone.contains($0.id) }) ?? (app.state.questDone ? nil : chapters.first) {
       Button { openQuest(next.id) } label: {

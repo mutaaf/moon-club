@@ -22,6 +22,7 @@ struct TodaysMissions: View {
   @State private var lastHinge: HingeReading?
 
   var body: some View {
+    let _ = Perf.body("TodaysMissions")
     let ms = Missions.today(app.today, app.state, app.content)
     let done = ms.filter(\.done).count
     let ready = Missions.chestReady(app.today, app.state, app.content)

@@ -11,6 +11,7 @@ struct GuessView: View {
   @State private var showWords = false
 
   var body: some View {
+    let _ = Perf.body("GuessView")
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
         Hero(eyebrow: "A guessing game", title: "Guess the", accent: "Report Card", emoji: "🎯")

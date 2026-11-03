@@ -6,6 +6,7 @@ import MoonClubCore
 struct PiggyView: View {
   @Environment(AppModel.self) private var app
   var body: some View {
+    let _ = Perf.body("PiggyView")
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Hero(eyebrow: "Practice with pretend coins", title: "Pretend", accent: "Piggy Bank", piggy: true)
@@ -93,6 +94,7 @@ struct PiggyBank: View {
   /// Times the bank was opened today (device-only count) for Luna's "don't peek every minute" tip.
   @State private var peeks = 0
   var body: some View {
+    let _ = Perf.body("PiggyBank")
     // The piggy can disappear while this view is still on screen (start over, reset, an iCloud merge):
     // never force-unwrap it. That was the 0.8.0 TestFlight crash (EXC_BREAKPOINT in PiggyBank.body).
     if let p = app.state.piggy { bank(p) } else { PiggySetup() }
