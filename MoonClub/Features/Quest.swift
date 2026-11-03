@@ -8,6 +8,20 @@ import MoonClubCore
 /// ("shares", "save:tree", "dividends:payout") from a tap-a-word "Play it".
 struct QuestView: View {
   let start: String
+  /// Tests measure the page without its ScrollView (a ScrollView reports no height of its own).
+  var scrolls = true
+  init(start: String, scrolls: Bool = true) {
+    self.start = start; self.scrolls = scrolls
+    let r = Self.routed(start)
+    _chapter = State(initialValue: r.chapter); _stage = State(initialValue: r.stage)
+  }
+  /// "lemonade" → (lemonade, intro); "shares" → (lemonade, shares); "save:tree" → (save, tree).
+  static func routed(_ start: String) -> (chapter: String, stage: String) {
+    let parts = start.split(separator: ":").map(String.init)
+    if parts.count == 2 { return (parts[0], parts[1]) }
+    if lemonade.contains(start) { return ("lemonade", start) }
+    return (start, "intro")
+  }
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
   @State private var chapter = "lemonade"
@@ -22,38 +36,35 @@ struct QuestView: View {
   var meta: ChapterMeta? { chapters.first { $0.id == chapter } }
 
   var body: some View {
+    if !scrolls {
+      // What CardFitTests measures: the HUD plus the page, at their natural height (no NavigationStack
+      // or ScrollView, which would just report the size they're offered).
+      VStack(spacing: 0) { hud; page }
+    } else {
+      screen
+    }
+  }
+
+  private var hud: some View {
+    HStack(alignment: .top, spacing: 10) {
+      GameHUD(run: run, title: meta?.title ?? "Quest", done: stageIndex, total: max(stages.count, 1)) { dismiss() }
+      Menu { ForEach(chapters) { c in Button(c.title) { go(c.id, "intro") } } } label: {
+        Image(systemName: "books.vertical.fill").font(.system(size: 16, weight: .heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle())
+      }
+      .padding(.top, 6)
+      .accessibilityLabel("Chapters")
+    }
+    .padding(.horizontal, 20).padding(.bottom, 6)
+    .readable(820)
+  }
+
+  private var screen: some View {
     NavigationStack {
-      ScrollView {
-        // Opened wide (iPhone Duo, iPad): the chapter's story and progress on the left page, the thing
-        // you play on the right — a picture book, never across the fold. One column on a phone.
-        Storybook(minPage: 300) {
-          VStack(alignment: .leading, spacing: 18) { hero; stepper; stageCard }
-        } first: {
-          hero; stepper
-          HStack(alignment: .top, spacing: 12) {
-            Luna(size: 54, wave: true)
-            Text(meta?.blurb ?? "").font(.kRead).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
-          }
-          .padding(16).background(Palette.moon.opacity(0.35), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        } second: {
-          stageCard
-        }
-        .padding(20).readable(820)
-        .animation(.spring(response: 0.5, dampingFraction: 0.86), value: "\(chapter):\(stage)")
-      }
+      // The page only scrolls if a reader's big text needs it; CardFitTests checks every stage fits an
+      // iPhone SE and 17 at standard text.
+      ScrollView { page }
       .scrollBounceBehavior(.basedOnSize)
-      .safeAreaInset(edge: .top) {
-        HStack(alignment: .top, spacing: 10) {
-          GameHUD(run: run, title: meta?.title ?? "Quest", done: stageIndex, total: max(stages.count, 1)) { dismiss() }
-          Menu { ForEach(chapters) { c in Button(c.title) { go(c.id, "intro") } } } label: {
-            Image(systemName: "books.vertical.fill").font(.system(size: 16, weight: .heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle())
-          }
-          .padding(.top, 6)
-          .accessibilityLabel("Chapters")
-        }
-        .padding(.horizontal, 20).padding(.bottom, 6)
-        .readable(820)
-      }
+      .safeAreaInset(edge: .top) { hud }
       .background(AuroraField(surface: .quest))
       .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
       .overlay(Celebrate(trigger: burst))
@@ -62,23 +73,49 @@ struct QuestView: View {
     .onAppear(perform: route)
   }
 
+  private var page: some View {
+    // Opened wide (iPhone Duo, iPad): the chapter's story and progress on the left page, the thing
+    // you play on the right — a picture book, never across the fold. One column on a phone.
+    Storybook(minPage: 300) {
+      // A phone is a play screen: one title line, the stepper, the stage (no big hero eating the room).
+      VStack(alignment: .leading, spacing: 10) { stepper; stageCard }
+    } first: {
+      hero; stepper
+      HStack(alignment: .top, spacing: 12) {
+        Luna(size: 54, wave: true)
+        Text(meta?.blurb ?? "").font(.kRead).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
+      }
+      .padding(16).background(Palette.moon.opacity(0.35), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    } second: {
+      stageCard
+    }
+    .padding(.horizontal, 20).padding(.top, 2).padding(.bottom, 8).readable(820)
+    .animation(.spring(response: 0.5, dampingFraction: 0.86), value: "\(chapter):\(stage)")
+  }
+
+  private var compactTitle: some View {
+    HStack(spacing: 10) {
+      Glyph(meta?.emoji ?? "🍋", size: 36)
+      VStack(alignment: .leading, spacing: 0) {
+        Text("Chapter \((chapters.firstIndex { $0.id == chapter } ?? 0) + 1)".uppercased()).font(.kEyebrow).foregroundStyle(Palette.accent)
+        Text(meta?.title ?? "").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.75)
+      }
+    }
+    .accessibilityElement(children: .combine)
+  }
+
   private var hero: some View {
     Hero(eyebrow: "Learn by doing · Chapter \((chapters.firstIndex { $0.id == chapter } ?? 0) + 1)", title: meta?.title ?? "", emoji: meta?.emoji)
   }
   private var stageCard: some View {
-    VStack(alignment: .leading, spacing: 16) { content }
-      .padding(22)
+    VStack(alignment: .leading, spacing: 12) { content }
+      .padding(16)
       .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
       .id("\(chapter):\(stage)")
       .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
   }
 
-  private func route() {
-    let parts = start.split(separator: ":").map(String.init)
-    if parts.count == 2 { chapter = parts[0]; stage = parts[1]; return }
-    if Self.lemonade.contains(start) { chapter = "lemonade"; stage = start; return }
-    chapter = start; stage = "intro"
-  }
+  private func route() { let r = Self.routed(start); chapter = r.chapter; stage = r.stage }
   private func go(_ c: String, _ s: String) { chapter = c; stage = s }
   private var stageIndex: Int { stage == "done" ? stages.count : stages.firstIndex(of: stage) ?? 0 }
   private func finish(_ s: String) {
@@ -92,7 +129,7 @@ struct QuestView: View {
   /// instead of four word-chips that wrapped to two lines on a phone.
   private var stepper: some View {
     let cur = stages.firstIndex(of: stage) ?? (stage == "done" ? stages.count : -1)
-    return VStack(alignment: .leading, spacing: 8) {
+    return VStack(alignment: .leading, spacing: 2) {
       HStack(spacing: 0) {
         ForEach(Array(stages.enumerated()), id: \.element) { i, s in
           let did = app.state.quest.contains(chapter == "lemonade" ? s : "\(chapter):\(s)")
@@ -104,14 +141,17 @@ struct QuestView: View {
               if did && i != cur { Image(systemName: "checkmark").font(.caption.weight(.heavy)).foregroundStyle(.white) }
               else { Text("\(i + 1)").font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(i == cur ? .white : Palette.ink) }
             }
-            .frame(width: 44, height: 44).contentShape(Rectangle())
+            .frame(width: 44, height: 40).contentShape(Rectangle())
           }
           .buttonStyle(PressStyle())
           .accessibilityLabel("Step \(i + 1): \(title(s))\(did ? ", done" : "")")
         }
       }
-      if cur >= 0 && cur < stages.count {
-        Text("Step \(cur + 1) of \(stages.count) · \(title(stages[cur]))").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink2).lineLimit(1).minimumScaleFactor(0.8)
+      // One caption line names the chapter and the step (the phone has no big title above it).
+      HStack(spacing: 6) {
+        Glyph(meta?.emoji ?? "🍋", size: 20, style: .plain)
+        Text(cur >= 0 && cur < stages.count ? "\(meta?.title ?? "") · Step \(cur + 1): \(title(stages[cur]))" : meta?.title ?? "")
+          .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink2).lineLimit(1).minimumScaleFactor(0.7)
       }
     }
   }
@@ -159,13 +199,14 @@ struct QuestView: View {
 struct Speech: View {
   let text: String
   var body: some View {
-    HStack(alignment: .top, spacing: 12) {
-      Luna(size: 52, wave: true)
-      VStack(alignment: .leading, spacing: 10) {
+    HStack(alignment: .top, spacing: 10) {
+      Luna(size: 40, wave: true)
+      HStack(alignment: .top, spacing: 8) {
         Text(text).font(.kRead).fixedSize(horizontal: false, vertical: true)
-        ReadAloud(source: .appCopy(text))
+        Spacer(minLength: 0)
+        SpeakButton(source: .appCopy(text))
       }
-      .padding(16)
+      .padding(10)
       .background(Palette.lavender.opacity(0.8), in: UnevenRoundedRectangle(topLeadingRadius: 6, bottomLeadingRadius: 22, bottomTrailingRadius: 22, topTrailingRadius: 22, style: .continuous))
       .foregroundStyle(Palette.midnight)
     }
@@ -191,7 +232,7 @@ struct CompanyStage: View {
       Button { if !done { cups += 1; pop += 1 } } label: {
         ZStack(alignment: .topTrailing) {
           VStack(spacing: 6) { Glyph("🍋", size: 76, style: .halo); Text(done ? "Sold out!" : "Sell a cup").font(.kHeadline) }
-            .frame(width: 180, height: 180)
+            .frame(width: 140, height: 140)
             .background(RadialGradient(colors: [Color(hex: 0xFFF8C8), Color(hex: 0xFFD84D)], center: .init(x: 0.35, y: 0.3), startRadius: 4, endRadius: 120), in: Circle())
             .overlay(Circle().strokeBorder(Palette.midnight, lineWidth: 3))
             .shadow(color: Palette.midnight, radius: 0, y: 7)
@@ -204,16 +245,21 @@ struct CompanyStage: View {
       .accessibilityLabel("Sell a cup of lemonade. \(cups) of 10 sold")
       HStack(spacing: 3) { ForEach(0..<10, id: \.self) { i in Glyph("🍋", size: 26, style: .plain).opacity(i < cups ? 1 : 0.2).scaleEffect(i < cups ? 1.1 : 0.9) } }.animation(.spring, value: cups)
     }.frame(maxWidth: .infinity)
-    VStack(spacing: 6) {
-      row("💵 Money in", Double(cups), Palette.lavender)
-      row("🍋 Lemons cost", -Double(cups) * 0.4, Palette.lavender)
-      row("Profit", Double(cups) * 0.6, Palette.mint)
+    // Money in − lemons = profit, as one row of three tiles (a column of three rows didn't fit a phone).
+    HStack(spacing: 6) {
+      tile("Money in", Double(cups), Palette.lavender)
+      tile("Lemons", -Double(cups) * 0.4, Palette.lavender)
+      tile("Profit", Double(cups) * 0.6, Palette.mint)
     }
-    if done { NextButton(title: "Next: cut it into shares 🍕", action: next) }
+    if done { NextButton(title: "Next: cut it into shares", action: next) }
   }
-  func row(_ l: String, _ v: Double, _ bg: Color) -> some View {
-    HStack { Text(l).font(.kHeadline); Spacer(); Ticker(value: v, format: { ($0 < 0 ? "−$" : "$") + toFixed(abs($0), 2) }, font: .system(.title3, design: .monospaced).weight(.bold)) }
-      .foregroundStyle(Palette.midnight).padding(12).background(bg, in: RoundedRectangle(cornerRadius: 14))
+  func tile(_ l: String, _ v: Double, _ bg: Color) -> some View {
+    VStack(spacing: 2) {
+      Text(l).font(.caption.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
+      Ticker(value: v, format: { ($0 < 0 ? "−$" : "$") + toFixed(abs($0), 2) }, font: .system(.headline, design: .rounded).weight(.heavy))
+    }
+    .frame(maxWidth: .infinity).padding(.vertical, 10)
+    .foregroundStyle(Palette.midnight).background(bg, in: RoundedRectangle(cornerRadius: 14))
   }
 }
 
@@ -230,25 +276,25 @@ struct SharesStage: View {
           .overlay(SliceShape(index: i).stroke(Palette.midnight, lineWidth: 3))
           .scaleEffect(owners[i] != nil ? 0.94 : 1)
           .offset(x: owners[i] != nil ? cos(Double(i) * .pi / 2 - .pi / 4) * 10 : 0, y: owners[i] != nil ? sin(Double(i) * .pi / 2 - .pi / 4) * 10 : 0)
-        Glyph(owners[i].map { Self.friends[$0].0 } ?? (i == 0 ? "🙋" : "🍋"), size: 34)
-          .offset(x: cos(Double(i) * .pi / 2 - .pi / 4) * 46, y: sin(Double(i) * .pi / 2 - .pi / 4) * 46)
+        Glyph(owners[i].map { Self.friends[$0].0 } ?? (i == 0 ? "🙋" : "🍋"), size: 28)
+          .offset(x: cos(Double(i) * .pi / 2 - .pi / 4) * 30, y: sin(Double(i) * .pi / 2 - .pi / 4) * 30)
       }
     }
-    .frame(width: 190, height: 190).frame(maxWidth: .infinity)
+    .frame(width: 116, height: 116).frame(maxWidth: .infinity)
     .animation(.spring(response: 0.45, dampingFraction: 0.6), value: owners)
     .accessibilityElement().accessibilityLabel("Your stand, cut into 4 shares. You own \(4 - sold), friends own \(sold).")
     HStack(spacing: 10) {
       ForEach(Self.friends.indices, id: \.self) { f in
         let got = owners.contains(f)
         Button { if let i = owners.indices.first(where: { owners[$0] == nil && $0 > 0 }) { owners[i] = f } } label: {
-          VStack(spacing: 2) { Glyph(Self.friends[f].0, size: 40); Text(Self.friends[f].1).font(.kHeadline); Text(got ? "owns a share!" : "pays $5").font(.caption) }
-            .frame(maxWidth: .infinity, minHeight: 100).foregroundStyle(Palette.midnight)
+          VStack(spacing: 2) { Glyph(Self.friends[f].0, size: 32); Text(Self.friends[f].1).font(.kHeadline); Text(got ? "owns a share!" : "pays $5").font(.caption) }
+            .frame(maxWidth: .infinity, minHeight: 76).foregroundStyle(Palette.midnight)
             .background(got ? Palette.mint : Color.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 18))
         }.buttonStyle(.plain).disabled(got).sensoryFeedback(.success, trigger: got).accessibilityLabel("Sell \(Self.friends[f].1) a share for $5")
       }
     }
     Text("You own **\(4 - sold)** of 4 shares · you got **$\(sold * 5)**").font(.callout).frame(maxWidth: .infinity)
-    if sold >= 3 { NextButton(title: "Next: watch the price 🏷️", action: next) }
+    if sold >= 3 { NextButton(title: "Next: watch the price", action: next) }
   }
 }
 struct SliceShape: Shape {
@@ -271,7 +317,7 @@ struct PriceStage: View {
     Speech(text: (up && down ? t.done : t.ask) ?? "")
     VStack(spacing: 4) {
       Text("Price of 1 share").font(.caption).foregroundStyle(.secondary)
-      Ticker(value: price, format: { "$\(Int($0))" }, font: .system(size: 60, weight: .heavy, design: .rounded))
+      Ticker(value: price, format: { "$\(Int($0))" }, font: .system(size: 40, weight: .heavy, design: .rounded))
         .foregroundStyle(hist.count > 1 ? (price >= hist[hist.count - 2] ? Palette.good : Palette.bad) : Palette.ink)
     }.frame(maxWidth: .infinity)
     Chart {
@@ -279,17 +325,17 @@ struct PriceStage: View {
       RuleMark(y: .value("goal", 8)).foregroundStyle(Palette.line).lineStyle(.init(dash: [6, 6]))
       RuleMark(y: .value("goal", 4)).foregroundStyle(Palette.line).lineStyle(.init(dash: [6, 6]))
     }
-    .chartYScale(domain: 0...12).chartXAxis(.hidden).chartYAxis(.hidden).frame(height: 110)
+    .chartYScale(domain: 0...12).chartXAxis(.hidden).chartYAxis(.hidden).frame(height: 56)
     .animation(.snappy, value: hist)
     HStack(spacing: 10) {
-      Button("🙋 Buyer") { move(1) }.buttonStyle(PrimaryButtonStyle(tint: Palette.good)).accessibilityLabel("A buyer wants it: price up")
-      Button("🙅 Seller") { move(-1) }.buttonStyle(PrimaryButtonStyle(tint: Palette.bad)).accessibilityLabel("A seller wants out: price down")
+      Button { move(1) } label: { Label("Buyer", systemImage: "hand.raised.fill") }.buttonStyle(PrimaryButtonStyle(tint: Palette.good)).accessibilityLabel("A buyer wants it: price up")
+      Button { move(-1) } label: { Label("Seller", systemImage: "hand.wave.fill") }.buttonStyle(PrimaryButtonStyle(tint: Palette.bad)).accessibilityLabel("A seller wants out: price down")
     }
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: 2) {
       Label(t.up ?? "", systemImage: up ? "checkmark.circle.fill" : "circle").foregroundStyle(up ? Palette.good : Palette.ink)
       Label(t.down ?? "", systemImage: down ? "checkmark.circle.fill" : "circle").foregroundStyle(down ? Palette.good : Palette.ink)
     }.font(.kHeadline)
-    if up && down { NextButton(title: "Next: report card day 📝", action: next) }
+    if up && down { NextButton(title: "Next: report card day", action: next) }
   }
   func move(_ d: Double) {
     let n = max(1, min(12, price + d)); hist = Array((hist + [n]).suffix(20))
@@ -354,7 +400,7 @@ struct GrowStage: View {
     }
     .chartYAxis(.hidden)
     .chartXAxis { AxisMarks(values: .stride(by: tree ? 5 : 1)) { v in AxisValueLabel { Text("Year \(v.as(Int.self) ?? 0)").font(.caption2) } } }
-    .chartXScale(domain: 0...max).chartYScale(domain: .automatic(includesZero: false)).frame(height: 140)
+    .chartXScale(domain: 0...max).chartYScale(domain: .automatic(includesZero: false)).frame(height: 68)
     .chartLegend(.hidden).animation(.snappy, value: years)
     if years < max {
       Button(t.tap ?? "A year goes by") { years += 1 }.buttonStyle(ChunkyPrimary()).sensoryFeedback(lastDown ? .warning : .impact(flexibility: .soft), trigger: years)
@@ -366,7 +412,7 @@ struct GrowStage: View {
   func treePart(_ p: [Double]) -> [Double] { p }
   func box(_ l: String, _ v: Double, _ bg: Color) -> some View {
     VStack(spacing: 2) { Text(l).font(.kHeadline); Ticker(value: v, format: { "$" + toFixed($0, 2) }, font: .system(.title, design: .rounded).weight(.heavy)) }
-      .foregroundStyle(Palette.midnight).frame(maxWidth: .infinity, minHeight: 84).background(bg, in: RoundedRectangle(cornerRadius: 18))
+      .foregroundStyle(Palette.midnight).frame(maxWidth: .infinity, minHeight: 56).background(bg, in: RoundedRectangle(cornerRadius: 18))
   }
 }
 
@@ -376,32 +422,53 @@ struct ChooseStage: View {
   @State private var picks: [String: String] = [:]
   var items: [ChapterSortItem] { app.content.questChapters!.SORT_ITEMS }
   var body: some View {
+    // A deck, one money goal at a time (a list of every goal was three screens tall on a phone). The
+    // last answer's "why" stays up while you pick the next one.
     let all = items.allSatisfy { picks[$0.id] != nil }
+    let cur = items.first { picks[$0.id] == nil }
+    let last = items.last { picks[$0.id] != nil }
     Speech(text: (all ? t.done : t.ask) ?? "")
-    ForEach(items) { it in
-      let p = picks[it.id]
-      VStack(alignment: .leading, spacing: 8) {
-        HStack { Glyph(it.emoji, size: 36); Text(it.text).font(.kHeadline); Spacer() }
-        HStack(spacing: 8) {
-          Button("🫙 Save") { withAnimation(.spring) { picks[it.id] = "save" } }.buttonStyle(SoftButtonStyle(selected: p == "save"))
-          Button("🌳 Invest") { withAnimation(.spring) { picks[it.id] = "invest" } }.buttonStyle(SoftButtonStyle(selected: p == "invest"))
+    if let it = cur {
+      VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 10) {
+          Glyph(it.emoji, size: 44); Text(it.text).font(.kHeadline).fixedSize(horizontal: false, vertical: true); Spacer(minLength: 0)
+          Text("\(picks.count + 1)/\(items.count)").font(.caption.monospacedDigit().weight(.semibold)).foregroundStyle(.secondary)
         }
-        if let p { Text((p == it.answer ? "Right! " : "Not quite: ") + it.why).font(.subheadline) }
+        HStack(spacing: 8) {
+          Button { withAnimation(.spring) { picks[it.id] = "save" } } label: { Label("Save it", systemImage: "cylinder.fill") }.buttonStyle(PrimaryButtonStyle(tint: Hue.sky.color))
+          Button { withAnimation(.spring) { picks[it.id] = "invest" } } label: { Label("Invest it", systemImage: "tree.fill") }.buttonStyle(PrimaryButtonStyle(tint: Palette.good))
+        }
       }
-      .padding(12).background(p == nil ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(p == it.answer ? Palette.mint : Palette.peach), in: RoundedRectangle(cornerRadius: 18))
-      .foregroundStyle(p == nil ? Palette.ink : Palette.midnight)
+      .padding(12).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+      .id(it.id).transition(.asymmetric(insertion: .scale(scale: 0.92).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
     }
-    if all { NextButton(title: "Next →", action: next) }
+    if let it = last, let p = picks[it.id] {
+      Text((p == it.answer ? "Right! " : "Not quite: ") + it.why).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(p == it.answer ? Palette.mint : Palette.peach, in: RoundedRectangle(cornerRadius: 16)).foregroundStyle(Palette.midnight)
+        .id("why-\(it.id)").transition(.opacity)
+    }
+    if all { NextButton(title: "Next", action: next) }
   }
 }
 
 struct ChecksStage: View {
   let t: StageText; let checks: [Check]; let next: () -> Void
   @State private var answers: [Int: Int] = [:]
+  /// One question at a time (two stacked didn't fit a phone).
+  @State private var shown = 0
   var body: some View {
+    let i = min(shown, max(checks.count - 1, 0))
     Speech(text: answers.count == checks.count ? (t.done ?? "") : "Two quick questions. You've got this!")
-    ForEach(checks.indices, id: \.self) { i in CheckView(check: checks[i], seed: i + 2, picked: Binding(get: { answers[i] }, set: { answers[i] = $0 })) }
-    if answers.count == checks.count { NextButton(title: "Finish the chapter", action: next) }
+    if checks.indices.contains(i) {
+      CheckView(check: checks[i], seed: i + 2, picked: Binding(get: { answers[i] }, set: { answers[i] = $0 }))
+        .id(i).transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+    if answers[i] != nil && i + 1 < checks.count {
+      NextButton(title: "Next question") { withAnimation(.spring) { shown = i + 1 } }
+    } else if answers.count == checks.count {
+      NextButton(title: "Finish the chapter", action: next)
+    }
   }
 }
 
@@ -442,9 +509,9 @@ struct SnowballStage: View {
     Speech(text: (season >= q.SEASONS ? t.done : t.ask) ?? "")
     HStack(spacing: 12) {
       VStack(spacing: 4) { Text("Spend").font(.kHeadline); Ticker(value: sb.spend[season].spent, format: { "$\(Int($0)) spent" }, font: .kTitle); Text("\(Int(sb.spend[season].slices)) slices").font(.caption) }
-        .frame(maxWidth: .infinity, minHeight: 110).background(Palette.peach, in: RoundedRectangle(cornerRadius: 18))
+        .frame(maxWidth: .infinity, minHeight: 88).background(Palette.peach, in: RoundedRectangle(cornerRadius: 18))
       VStack(spacing: 4) { Text("Replant").font(.kHeadline); Ticker(value: sb.replant[season].slices, format: { toFixed($0, 2) + " slices" }, font: .kTitle); Text("pays $\(toFixed(sb.replant[season].pay, 2))").font(.caption) }
-        .frame(maxWidth: .infinity, minHeight: 110).background(Palette.mint, in: RoundedRectangle(cornerRadius: 18))
+        .frame(maxWidth: .infinity, minHeight: 88).background(Palette.mint, in: RoundedRectangle(cornerRadius: 18))
     }.foregroundStyle(Palette.midnight)
     if season < q.SEASONS { Button("⏭️ \(t.tap ?? "Next season") (\(season + 1) of \(q.SEASONS))") { season += 1 }.buttonStyle(ChunkyPrimary()).sensoryFeedback(.impact(flexibility: .soft), trigger: season) }
     else {
@@ -459,33 +526,47 @@ struct RealStage: View {
   @Environment(AppModel.self) private var app
   @State private var guesses: [String: Bool] = [:]
   @State private var flipped: Set<String> = []
+  @State private var at = 0
   var body: some View {
-    let cards = app.content.questChapters!.DIV_CARDS
+    // A deck: one company card at a time, guess, flip, then the next (a grid of every card was more than
+    // two screens tall on a phone). A strip of dots shows the deck.
+    let cards = app.content.questChapters?.DIV_CARDS ?? []
+    let i = min(at, max(cards.count - 1, 0))
     Speech(text: (flipped.count == cards.count ? t.done : t.ask) ?? "")
-    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
-      ForEach(cards, id: \.s) { c in
-        let co = app.companies[c.s]
-        let isFlipped = flipped.contains(c.s)
-        VStack(spacing: 8) {
-          Glyph(co?.emoji ?? "", size: 40); Text(co?.nick ?? c.s).font(.kHeadline)
-          if isFlipped {
-            Text(c.pays ? "Pays dividends" : "Grows instead").font(.subheadline.weight(.bold))
-            Text("\(co?.nick ?? c.s) \((c.pays ? t.yes : t.no) ?? "")").font(.caption).multilineTextAlignment(.center)
-            if let g = guesses[c.s] { Text(g == c.pays ? "✅ You were right!" : "Now you know!").font(.caption.weight(.semibold)) }
-          } else {
-            VStack(spacing: 6) {
-              Button { flip(c.s, true) } label: { Text("Pays").frame(maxWidth: .infinity) }.buttonStyle(SoftButtonStyle()).accessibilityLabel("\(co?.nick ?? c.s) pays dividends")
-              Button { flip(c.s, false) } label: { Text("Grows").frame(maxWidth: .infinity) }.buttonStyle(SoftButtonStyle()).accessibilityLabel("\(co?.nick ?? c.s) grows instead")
-            }.lineLimit(1)
-          }
+    if cards.indices.contains(i) {
+      let c = cards[i]
+      let co = app.companies[c.s]
+      let isFlipped = flipped.contains(c.s)
+      VStack(spacing: 8) {
+        HStack(spacing: 10) {
+          Glyph(co?.emoji ?? "", size: 44); Text(co?.nick ?? c.s).font(.kTitle); Spacer(minLength: 0)
+          Text("\(i + 1)/\(cards.count)").font(.caption.monospacedDigit().weight(.semibold)).foregroundStyle(.secondary)
         }
-        .padding(12).frame(maxWidth: .infinity, minHeight: 170).foregroundStyle(Palette.midnight)
-        .background(isFlipped ? (c.pays ? Palette.moon : Palette.sky) : Color.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 18))
-        .rotation3DEffect(.degrees(isFlipped ? 360 : 0), axis: (0, 1, 0))
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: isFlipped)
+        if isFlipped {
+          Text(c.pays ? "Pays dividends" : "Grows instead").font(.headline.weight(.heavy)).frame(maxWidth: .infinity, alignment: .leading)
+          Text("\(co?.nick ?? c.s) \((c.pays ? t.yes : t.no) ?? "")").font(.callout).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+          if let g = guesses[c.s] { Label(g == c.pays ? "You were right!" : "Now you know!", systemImage: g == c.pays ? "checkmark.circle.fill" : "lightbulb.fill").font(.callout.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading) }
+        } else {
+          HStack(spacing: 8) {
+            Button { flip(c.s, true) } label: { Label("Pays", systemImage: "centsign.circle.fill") }.buttonStyle(PrimaryButtonStyle(tint: Hue.gold.color)).accessibilityLabel("\(co?.nick ?? c.s) pays dividends")
+            Button { flip(c.s, false) } label: { Label("Grows", systemImage: "leaf.fill") }.buttonStyle(PrimaryButtonStyle(tint: Palette.good)).accessibilityLabel("\(co?.nick ?? c.s) grows instead")
+          }.lineLimit(1)
+        }
+      }
+      .padding(14).foregroundStyle(Palette.midnight)
+      .background(isFlipped ? (c.pays ? Palette.moon : Palette.sky) : Color.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 18))
+      .rotation3DEffect(.degrees(isFlipped ? 360 : 0), axis: (0, 1, 0))
+      .animation(.spring(response: 0.6, dampingFraction: 0.8), value: isFlipped)
+      .id(c.s).transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+      HStack(spacing: 6) {
+        ForEach(cards.indices, id: \.self) { k in Circle().fill(flipped.contains(cards[k].s) ? Palette.good : k == i ? Palette.accent : Palette.line).frame(width: 8, height: 8) }
+      }
+      .frame(maxWidth: .infinity).accessibilityHidden(true)
+      if isFlipped && i + 1 < cards.count {
+        NextButton(title: "Next company") { withAnimation(.spring) { at = i + 1 } }
       }
     }
-    if flipped.count == cards.count { NextButton(title: "Next →", action: next) }
+    if !cards.isEmpty && flipped.count == cards.count { NextButton(title: "Next", action: next) }
   }
   func flip(_ s: String, _ g: Bool) { guesses[s] = g; flipped.insert(s) }
 }

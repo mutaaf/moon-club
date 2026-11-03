@@ -163,7 +163,7 @@ struct ReviewBoss: View {
   var body: some View {
     let checks = Self.pick(World.lessons(of: region, app.content), seed: region.id.count)
     GameShell(node: node, rounds: checks.count, intro: "Five quick questions from this land. Win them to plant your flag!",
-              boss: BossInfo(name: node.title, art: node.art), timed: false, onFinish: onFinish) { i, answer, answered in
+              boss: BossInfo(name: node.title, art: node.art), timed: false, arena: true, onFinish: onFinish) { i, answer, answered in
       ReviewRound(check: checks[i], seed: i, answer: answer, answered: answered)
     }
   }
@@ -182,8 +182,7 @@ struct ReviewRound: View {
   var body: some View {
     var g = Seeded(seed &+ check.q.count)
     let order = Array(check.options.indices).shuffled(using: &g)
-    return VStack(spacing: 16) {
-      Spacer(minLength: 0)
+    return VStack(spacing: 14) {
       Text(check.q).font(.kTitle).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
       VStack(spacing: 6) {
         ForEach(Array(order.enumerated()), id: \.element) { k, i in
@@ -193,7 +192,6 @@ struct ReviewRound: View {
           .disabled(answered != nil)
         }
       }
-      Spacer(minLength: 0)
     }
   }
 }

@@ -22,6 +22,8 @@ Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`
 - Today's missions, chest, play streak and rocket skins are pure in MoonClubCore `Missions.swift`. State fields `played` / `chests` (union) and `skin` ("<millis>|<id>", max wins) are optional. Log plays with `state.play(kind, id, today:)`; kinds are lesson, game, boss, node, quest, guess.
 - On the map a tap plays an open stop directly. Long-press (or the VoiceOver action) opens the info sheet.
 - `Art.neverAgain` lists emoji→symbol pairs that were misleading (cow/lemon drawn as water drops). The art test keeps them out, and prints `Art.reviewList` for review.
+- Lesson quiz steps (check/sort) put the last "say" picture in a spare-room `ArtPanel` (min 0, hides under 72 pt) above the question, so answers sit low and the card never has a dead band. Quiz bosses (`GameShell(arena: true)`) show `BossArena` above a compact dark question card.
+- Quests are play screens too: on a phone, the stepper caption names the chapter (no big hero). Long stages are decks (one goal, card or question at a time). `CardFitTests.testEveryQuestStageFitsWithoutScrolling` measures `QuestView(start:, scrolls: false)` for every stage on SE and 17. **Don't measure through a NavigationStack or ScrollView**: `sizeThatFits` just returns the proposed height, so the first version of the quest test passed while every stage overflowed.
 - `-play <node id>` goes through the same `play(_:)` as a tap. Setting `playing` directly rendered lessons, units and quests blank.
 
 ## iPhone Duo

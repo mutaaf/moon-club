@@ -16,6 +16,8 @@ struct GameShell<Round: View>: View {
   var boss: BossInfo? = nil
   /// Games get the speed ring (unless a grown-up picked relaxed play); bosses don't.
   var timed = true
+  /// Quiz bosses show the boss big above a compact question card (the chart bosses' chart fills instead).
+  var arena = false
   var onFinish: (Int) -> Void
   @ViewBuilder let round: (_ index: Int, _ answer: @escaping (RoundResult) -> Void, _ answered: RoundResult?) -> Round
 
@@ -51,6 +53,21 @@ struct GameShell<Round: View>: View {
             .padding(20)
             .background(Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
             .transition(.scale(scale: 0.92).combined(with: .opacity))
+        } else if arena, let boss {
+          // Quiz bosses: the boss fills the top of the stage; the question card shrinks to its content
+          // and sits low, dark like the stage around it.
+          VStack(spacing: 14) {
+            BossArena(boss: boss, run: run).frame(maxHeight: .infinity)
+            round(index, answer, result)
+              .padding(16)
+              .background {
+                RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color.white.opacity(0.09))
+                  .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Hue.lemon.color.opacity(0.35), lineWidth: 1))
+              }
+              .foregroundStyle(.white)
+              .id("\(attempt)-\(index)")
+              .transition(rm ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+          }
         } else {
           round(index, answer, result)
             .padding(dark ? 16 : 0)

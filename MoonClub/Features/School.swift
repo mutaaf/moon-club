@@ -306,7 +306,7 @@ struct LessonPlayer: View {
   func stepView(_ s: Step, art: Bool = true) -> some View {
     StepContent(step: s, art: art, seed: step + lesson.id.count,
                 picked: Binding(get: { answers[step] }, set: { if answers[step] == nil { answers[step] = $0 } }),
-                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }))
+                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), stageKey: lastSay?.emoji)
   }
 }
 
@@ -320,6 +320,11 @@ struct StepContent: View {
   @Binding var picks: [Int: Int]
   /// The art stage grows into spare room up to this height (CardFitTests measures at its minimum).
   var artMax: CGFloat = 420
+  /// The picture a quiz step shows up top (the last thing Luna said); "❓" when there's none.
+  var stageKey: String? = nil
+  /// The quiz stage's biggest height (0 = none; CardFitTests measures quiz steps without it, since it
+  /// only ever takes room the words and answers leave).
+  var quizArtMax: CGFloat = 360
   var body: some View {
     switch step {
     case let .say(emoji, text):
@@ -328,10 +333,19 @@ struct StepContent: View {
         Text(text).font(.system(.title2, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }
+    // Quiz steps: the picture from what Luna just said takes the spare room up top (Luna thinking), so
+    // the question and answers sit low, near the thumb, instead of floating over an empty card.
+    // The stage is spare-room only: it collapses to nothing when big text needs the space.
     case let .check(c):
-      CheckView(check: c, seed: seed, picked: $picked)
+      VStack(spacing: 0) {
+        if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "❓", maxHeight: quizArtMax, minHeight: 0, mood: .thinking).padding(.bottom, 16) }
+        CheckView(check: c, seed: seed, picked: $picked)
+      }
     case let .sort(q, buckets, items, why):
-      SortView(q: q, buckets: buckets, items: items, why: why, picks: $picks)
+      VStack(spacing: 0) {
+        if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "🤔", maxHeight: quizArtMax, minHeight: 0, mood: .thinking).padding(.bottom, 16) }
+        SortView(q: q, buckets: buckets, items: items, why: why, picks: $picks)
+      }
     }
   }
 }
@@ -341,8 +355,12 @@ struct StepContent: View {
 struct ArtPanel: View {
   let key: String
   var maxHeight: CGFloat = 420
+  var minHeight: CGFloat = 150
+  var mood: Luna.Mood = .happy
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var float = false
+  /// Squeezed below this, the stage hides instead of showing a sliver.
+  @State private var tooSmall = false
   var body: some View {
     let spec = Art.spec(key)
     ZStack(alignment: .bottomTrailing) {
@@ -358,12 +376,19 @@ struct ArtPanel: View {
           g.fill(Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)), with: .color(spec.hue.color.opacity(0.18)))
         }
       }
-      Glyph(key, size: 132, style: .halo)
-        .offset(y: float && !rm ? -6 : 0)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-      Luna(size: 46, wave: true, mood: .happy).padding(12)
+      // The picture scales with its stage: big on a roomy card, smaller on a short one.
+      ViewThatFits(in: .vertical) {
+        Glyph(key, size: 132, style: .halo).frame(height: 190)
+        Glyph(key, size: 96, style: .halo).frame(height: 140)
+        Glyph(key, size: 56, style: .halo).frame(height: 80)
+      }
+      .offset(y: float && !rm ? -6 : 0)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      Luna(size: 46, wave: true, mood: mood).padding(12)
     }
-    .frame(minHeight: min(150, maxHeight), maxHeight: maxHeight)
+    .opacity(tooSmall ? 0 : 1)
+    .frame(minHeight: min(minHeight, maxHeight), maxHeight: maxHeight)
+    .onGeometryChange(for: Bool.self) { $0.size.height < 72 } action: { tooSmall = $0 }
     .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
     .accessibilityHidden(true)
     .task { guard !rm else { return }; withAnimation(Motion.gentle.repeatForever()) { float = true } }

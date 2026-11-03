@@ -48,7 +48,8 @@ final class CardFitTests: XCTestCase {
       for l in c.lessons {
         for (i, s) in l.steps.enumerated() {
           // The art stage grows into spare room; what must fit is the card at its smallest art.
-          let v = StepContent(step: s, art: true, seed: i, picked: .constant(nil), picks: .constant([:]), artMax: 150)
+          // Quiz steps' picture stage is spare-room only (it collapses to nothing), so it's left out here.
+          let v = StepContent(step: s, art: true, seed: i, picked: .constant(nil), picks: .constant([:]), artMax: 150, quizArtMax: 0)
           let h = height(v, width: cardWidth, type: d.name == "iPhone SE" ? .xxLarge : .xxxLarge, app: app)
           if h > room { misfits.append("\(d.name) \(l.id)#\(i): \(Int(h)) > \(Int(room))") }
         }
@@ -84,10 +85,30 @@ final class CardFitTests: XCTestCase {
     XCTAssertTrue(misfits.isEmpty, "Play screens that would need scrolling:\n" + misfits.joined(separator: "\n"))
   }
 
+  /// Every quest stage (intro, each stage of every chapter, done) fits the screen at standard text on
+  /// iPhone SE and iPhone 17 — HUD, title, stepper and stage card — with no page scroll.
+  func testEveryQuestStageFitsWithoutScrolling() throws {
+    let c = try content(), app = model(c)
+    var starts = ["lemonade"] + QuestView.lemonade + ["lemonade:done"]
+    for (ch, stages) in c.questChapters?.CH_STAGES ?? [:] { starts += [ch] + stages.map { "\(ch):\($0)" } + ["\(ch):done"] }
+    var misfits: [String] = []
+    for d in Self.screens {
+      let room = d.height - d.chrome
+      for s in starts {
+        let host = UIHostingController(rootView: QuestView(start: s, scrolls: false).environment(app).environment(\.dynamicTypeSize, .large))
+        let h = host.sizeThatFits(in: CGSize(width: d.width, height: 1)).height
+        if h > room { misfits.append("\(d.name) quest \(s): \(Int(h)) > \(Int(room))") }
+      }
+    }
+    XCTAssertGreaterThan(starts.count, 10)
+    XCTAssertTrue(misfits.isEmpty, "Quest stages that would need scrolling:\n" + misfits.joined(separator: "\n"))
+  }
+
   func testArtReviewListAndNoMisleadingPictures() {
     // The whole emoji → picture map, for a human to skim (printed in the test log).
     print("ART REVIEW\n" + Art.reviewList.joined(separator: "\n"))
-    for (k, bad) in Art.neverAgain { XCTAssertNotEqual(Art.spec(k).symbol, bad, "\(k) must not be drawn as \(bad)") }
+    for (k, bad) in Art.neverAgain { XCTAssertFalse(bad.contains(Art.spec(k).symbol), "\(k) must not be drawn as \(Art.spec(k).symbol)") }
+    XCTAssertEqual(Art.spec("🐄").symbol, "arrow.left.arrow.right.circle.fill") // barter = a trade
     XCTAssertEqual(Art.spec("💰").symbol, "dollarsign.circle.fill")
     XCTAssertEqual(Art.spec("🍋").symbol, "custom.lemon")
   }

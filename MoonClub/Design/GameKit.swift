@@ -633,3 +633,59 @@ struct BossBackdrop: View {
     .accessibilityHidden(true)
   }
 }
+
+/// The boss itself, big, between the HUD and the question: it flinches and flashes when a right answer
+/// lands, gloats a little on a miss, and wobbles on its last hit points. It takes the room the question
+/// leaves, so a boss quiz never floats over an empty card. (The HP bar stays in the HUD, right above.)
+struct BossArena: View {
+  let boss: BossInfo
+  @Bindable var run: RunModel
+  @Environment(\.accessibilityReduceMotion) private var rm
+  @State private var breathe = false
+  @State private var flash = false
+  @State private var last: Bool?
+  var body: some View {
+    GeometryReader { g in
+      let d = max(56, min(g.size.height - 40, g.size.width * 0.55, 210))
+      VStack(spacing: 10) {
+        ZStack {
+          Circle().fill(RadialGradient(colors: [Hue.berry.color.opacity(0.55), Hue.grape.color.opacity(0.18), .clear], center: .center, startRadius: 4, endRadius: d * 0.8))
+            .frame(width: d * 1.6, height: d * 1.6)
+            .scaleEffect(breathe && !rm ? 1.06 : 0.96)
+          Circle().fill(RadialGradient(colors: [Hue.berry.color, Color(hex: 0x2A1145)], center: .center, startRadius: 2, endRadius: d * 0.55))
+            .frame(width: d, height: d)
+            .overlay(Circle().strokeBorder(Hue.lemon.color.opacity(0.85), lineWidth: 3))
+            .shadow(color: Hue.berry.color.opacity(0.6), radius: 24)
+          Glyph(boss.art, size: d * 0.5, style: .plain)
+            .colorMultiply(Hue.lemon.color).brightness(0.25)
+          if flash { Circle().fill(.white.opacity(0.7)).frame(width: d, height: d).transition(.opacity) }
+        }
+        .frame(height: d)
+        .modifier(Shake(amount: rm ? 0 : 12, tick: run.coinTick))
+        .rotationEffect(.degrees(run.bossHP < 0.3 && !rm && breathe ? 3 : 0))
+        Text(line).font(.system(.headline, design: .rounded).weight(.heavy)).foregroundStyle(.white)
+          .lineLimit(1).minimumScaleFactor(0.8)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    .frame(minHeight: 100)
+    .onChange(of: run.coinTick) { _, _ in
+      last = true
+      guard !rm else { return }
+      withAnimation(.easeOut(duration: 0.08)) { flash = true }
+      withAnimation(.easeIn(duration: 0.3).delay(0.1)) { flash = false }
+    }
+    .onChange(of: run.crackTick) { _, _ in last = false }
+    .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 1.6).repeatForever()) { breathe = true } }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(boss.name). \(line)")
+  }
+  private var line: String {
+    if run.bossHP <= 0 { return "\(boss.name) is beaten!" }
+    switch last {
+    case .some(true): return run.bossHP < 0.3 ? "One more hit!" : "Ouch! Keep going!"
+    case .some(false): return "Ha! Try the next one!"
+    case .none: return "\(boss.name) blocks the way!"
+    }
+  }
+}
