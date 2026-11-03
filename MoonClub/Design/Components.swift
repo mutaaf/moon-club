@@ -145,7 +145,15 @@ struct Card<Content: View>: View {
       .padding(padding)
       .frame(maxWidth: .infinity, maxHeight: fill ? .infinity : nil, alignment: .topLeading)
       .moonGlass(radius: 28)
-      .shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10)
+      .modifier(CardShadow())
+  }
+}
+
+/// Liquid Glass draws its own depth; the soft 24 pt shadow is only for the pre-iOS 26 material look.
+/// (A blurred shadow under every glass card was one more offscreen pass per card per frame.)
+private struct CardShadow: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) { content } else { content.shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10) }
   }
 }
 

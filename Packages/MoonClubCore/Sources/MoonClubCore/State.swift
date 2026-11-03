@@ -118,7 +118,7 @@ public struct KidsState: Codable, Hashable, Sendable {
   /// Puts on an owned item (the later pick wins across devices).
   public mutating func equip(_ id: String, nowMillis: Int) {
     guard let it = Shop.item(id), it.slot != .freeze, Shop.owned(self).contains(id) else { return }
-    var e = equipped ?? [:]; e[it.slot.rawValue] = "\(String(format: "%015d", nowMillis))|\(id)"; equipped = e
+    var e = equipped ?? [:]; e[it.slot.rawValue] = "\(String(format: "%015ld", nowMillis))|\(id)"; equipped = e
   }
   /// The app opened today: logs the visit, lets a streak saver cover yesterday if needed, banks the daily bonus.
   public mutating func checkIn(today: String) {
@@ -150,7 +150,7 @@ public struct KidsState: Codable, Hashable, Sendable {
     var g = garden ?? []; g.append(GardenEvent(id: id, k: .harvest, s: sym, d: today, pts: all ? p.value(price) : points, u: u, px: price)); garden = g.sorted(by: GardenEvent.before)
     return true
   }
-  public mutating func setGardenLimit(_ pct: Int, nowMillis: Int) { gardenLimit = String(format: "%015d|%d", nowMillis, max(0, min(100, pct))) }
+  public mutating func setGardenLimit(_ pct: Int, nowMillis: Int) { gardenLimit = String(format: "%015ld|%d", nowMillis, max(0, min(100, pct))) }
 
   public mutating func earn(_ node: String, stars n: Int) { var m = stars ?? [:]; m[node] = max(m[node] ?? 0, min(3, max(0, n))); stars = m }
 

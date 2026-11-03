@@ -5,12 +5,27 @@ import MoonClubCore
 /// Pretend Piggy Bank: 🌙 $1,000 pretend coins across up to 5 companies, following real prices.
 struct PiggyView: View {
   @Environment(AppModel.self) private var app
+  @AppStorage("moonclub.piggySide") private var side: PiggySide = {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-coins") { return .coins }
+    #endif
+    return .garden
+  }()
   var body: some View {
     let _ = Perf.body("PiggyView")
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        Hero(eyebrow: "Practice with pretend coins", title: "Pretend", accent: "Piggy Bank", piggy: true)
-        if app.state.piggy == nil { PiggySetup() } else { PiggyBank() }
+        Hero(eyebrow: side == .garden ? "Grow your Moon points" : "Practice with pretend coins", title: side == .garden ? "Moon" : "Pretend", accent: side == .garden ? "Garden" : "Piggy Bank", emoji: side == .garden ? "🌱" : nil, piggy: side == .coins)
+        // Two things live here, kept apart so the currencies never mix: Moon points grow in the garden,
+        // pretend coins stay in the practice piggy.
+        Picker("Show", selection: $side) {
+          ForEach(PiggySide.allCases) { s in Label(s.title, systemImage: s.icon).tag(s) }
+        }
+        .pickerStyle(.segmented)
+        switch side {
+        case .garden: MoonGarden()
+        case .coins: if app.state.piggy == nil { PiggySetup() } else { PiggyBank() }
+        }
       }
       .padding(20).readable()
     }
@@ -54,7 +69,7 @@ struct PiggySetup: View {
         HStack { Text("Split your coins").font(.kTitle); Spacer(); PretendPill() }
         ForEach(picks, id: \.self) { s in
           HStack {
-            Glyph(app.company(s).emoji, size: 30); Text(app.company(s).nick).font(.kHeadline)
+            Glyph(app.company(s).emoji, size: 30); Text(app.company(s).nick).font(.kHeadline).lineLimit(1).minimumScaleFactor(0.7)
             Spacer()
             Button { bump(s, -100) } label: { Image(systemName: "minus.circle.fill").font(.title) }.accessibilityLabel("100 fewer coins for \(app.company(s).nick)")
             Ticker(value: Double(split[s] ?? 0), format: { coins($0) }, font: .kHeadline).frame(minWidth: 70)

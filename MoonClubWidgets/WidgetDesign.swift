@@ -90,7 +90,9 @@ struct Sparkline: View {
             .stroke(up ? Palette.goodInk : Palette.badInk, style: .init(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
             .widgetAccentable()
           let last = pt(values.count - 1, values.last ?? 0)
-          Circle().fill(up ? Palette.goodInk : Palette.badInk).frame(width: 6, height: 6).position(last).widgetAccentable()
+          // The end mark points the way it went, so up/down never relies on green/red alone (colour-blind safe).
+          Image(systemName: up ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill").font(.system(size: 7, weight: .black))
+            .foregroundStyle(up ? Palette.goodInk : Palette.badInk).position(last).widgetAccentable()
         }
       }
     }

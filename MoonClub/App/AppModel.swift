@@ -75,14 +75,33 @@ final class AppModel {
   func company(_ s: String) -> KidCo { companies[s] ?? KidCo(s: s, nick: s, hook: "", emoji: "🏢") }
 
   // MARK: Derived
-  var points: Int { state.points(content) }
-  var level: LevelInfo { state.level(content) }
+  /// Everything expensive that is derived from `state`, computed once per state change (not once per view
+  /// per render: before 0.13 each body re-walked the map, every trophy and the garden on its own).
+  /// Reading it still reads `state`, so views stay observed exactly as before.
+  struct Derived {
+    let points: Int, level: LevelInfo, wallet: Int, trophies: [TrophyProgress], earnedCount: Int, garden: GardenBook
+  }
+  @ObservationIgnored private var memo: (version: Int, value: Derived)?
+  @ObservationIgnored private var version = 0
+  var derived: Derived {
+    _ = state  // register observation of state
+    if let m = memo, m.version == version { return m.value }
+    let book = state.gardenBook
+    let pts = state.points(content)
+    let d = Derived(points: pts, level: levelFor(pts, levels: Ranks.levels(content)),
+                    wallet: Garden.balance(earned: pts, gains: book.gains, spent: Shop.spent(state), planted: book.principal),
+                    trophies: Trophies.progress(state, content), earnedCount: Trophies.earnedCount(state, content), garden: book)
+    memo = (version, d)
+    return d
+  }
+  var points: Int { derived.points }
+  var level: LevelInfo { derived.level }
   var freshBadges: [Badge] { state.freshBadges(content).compactMap { id in content.badges.first { $0.id == id } } }
   // Points that matter (0.11): see MoonClubCore/Rewards.swift.
   /// Moon points left to spend (earned minus the Moon Shop).
-  var wallet: Int { Shop.wallet(state, content) }
-  var trophies: [TrophyProgress] { Trophies.progress(state, content) }
-  var earnedCount: Int { Trophies.earnedCount(state, content) }
+  var wallet: Int { derived.wallet }
+  var trophies: [TrophyProgress] { derived.trophies }
+  var earnedCount: Int { derived.earnedCount }
   var nextRankName: String? { let ls = Ranks.levels(content), i = level.index + 1; return i < ls.count ? ls[i].name : nil }
   /// Web badges, then trophy tiers, not celebrated yet.
   var freshRewards: [RewardNews] { freshBadges.map(RewardNews.badge) + Trophies.fresh(state, content).map { RewardNews.trophy($0.0, $0.1) } }
@@ -132,6 +151,7 @@ final class AppModel {
 
   /// The one place state is replaced: save locally, tell iCloud (if on), refresh anything derived.
   private func commit(_ s: KidsState, push: Bool) {
+    version &+= 1
     state = s
     store.save(s)
     if push, sync.isOn { sync.push(s) }

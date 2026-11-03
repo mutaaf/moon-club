@@ -29,11 +29,11 @@ final class GardenTests: XCTestCase {
     XCTAssertEqual(s.points(content), rich().points(content), "planting never changes what was earned")
     // The price grows 10%: harvest everything at 110.
     let value = s.gardenBook.plots["DIS"]?.value(110) ?? 0
-    XCTAssertEqual(value, 109, "100 points / 100 × 110, whole points rounded down (seeds round down too)")
+    XCTAssertEqual(value, 110, "100 points at 100 grow to 110 points at 110")
     XCTAssertTrue(s.harvest("DIS", points: value, price: 110, today: Day.add(day, 8), id: eid(2)))
     XCTAssertTrue(s.gardenBook.plots.isEmpty)
-    XCTAssertEqual(s.gardenBook.gains, 9)
-    XCTAssertEqual(Shop.wallet(s, content), before + 9)
+    XCTAssertEqual(s.gardenBook.gains, 10)
+    XCTAssertEqual(Shop.wallet(s, content), before + 10 + 10, "the gain, plus Patient planter bronze for 8 days of growing")
   }
 
   func testPartialHarvestTakesPrincipalInProportion() {
@@ -42,9 +42,9 @@ final class GardenTests: XCTestCase {
     XCTAssertTrue(s.harvest("KO", points: 40, price: 40, today: day, id: eid(2)))   // price fell 20%: 80 left in value
     let b = s.gardenBook
     XCTAssertEqual(b.harvests.first?.paid, 40)
-    XCTAssertEqual(b.harvests.first?.released, 49, "half the seeds (rounded up to cover 40 points) take ~half the principal")
-    XCTAssertEqual(b.principal, 51)
-    XCTAssertEqual(b.gains, -9, "harvesting in a dip is a small real loss")
+    XCTAssertEqual(b.harvests.first?.released, 50, "half the seeds take half the planted points")
+    XCTAssertEqual(b.principal, 50)
+    XCTAssertEqual(b.gains, -10, "harvesting in a dip is a small real loss")
   }
 
   // MARK: Guardrails
@@ -101,8 +101,8 @@ final class GardenTests: XCTestCase {
     XCTAssertEqual(m, b.merged(with: a))
     let book = m.gardenBook
     XCTAssertEqual(book.harvests.count, 1, "the second harvest finds nothing growing")
-    XCTAssertEqual(book.harvests.first?.paid, 119, "the earlier event (by id) is the one replayed, at the price it stored")
-    XCTAssertEqual(Shop.wallet(m, content), Shop.wallet(rich(), content) + 19)
+    XCTAssertEqual(book.harvests.first?.paid, 120, "the earlier event (by id) is the one replayed, at the price it stored")
+    XCTAssertEqual(Shop.wallet(m, content), Shop.wallet(rich(), content) + 20)
   }
 
   func testPlantsFromTwoDevicesBothCountAndRemergingIsHarmless() {
@@ -155,16 +155,12 @@ final class GardenTests: XCTestCase {
 
   /// Kid copy: no gambling or advice words, nothing about money, short sentences.
   func testCopyIsKidSafe() {
-    let why = LocalWhy()
-    var lines = Garden.wisdom + [Garden.marketNote(weekday: 1, hour: 9), Garden.marketNote(weekday: 3, hour: 10), Garden.marketNote(weekday: 3, hour: 18), LocalWhy.honest]
-    for mv in [-6.0, -0.5, 0, 0.3, 2, 9] {
-      let n = why.explain(MoveClue(s: "DIS", nick: "Disney", move: mv, span: "today", normal: 1.5, reportDay: mv > 5 ? day : nil))
-      lines += [n.headline] + n.clues
-    }
+    var lines = Garden.wisdom + [Garden.marketNote(weekday: 1, hour: 9), Garden.marketNote(weekday: 3, hour: 10), Garden.marketNote(weekday: 3, hour: 18)]
     lines += [Garden.basketNudge({ var s = rich(); s.plant("DIS", points: 100, price: 100, today: day, id: eid(1), content); return s.gardenBook }()) ?? ""]
     for l in lines {
       for bad in ["bet", "gamble", "jackpot", "loot", "good buy", "you should", "cash", "money", "dollar", "win big"] {
-        XCTAssertFalse(l.lowercased().contains(bad), "\"\(bad)\" in: \(l)")
+        let words = " " + l.lowercased().map { $0.isLetter ? String($0) : " " }.joined() + " "
+        XCTAssertFalse(words.contains(" \(bad) "), "\"\(bad)\" in: \(l)")
       }
       for sentence in l.split(whereSeparator: { ".!?".contains($0) }) { XCTAssertLessThanOrEqual(sentence.split(separator: " ").count, 20, l) }
     }

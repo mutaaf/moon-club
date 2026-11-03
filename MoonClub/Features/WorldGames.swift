@@ -335,11 +335,16 @@ struct BuildCandleRound: View {
       }
       let col = v[1] >= v[0] ? CandleChart.up : CandleChart.down
       let strong = answered != nil
-      g.stroke(Path { $0.move(to: .init(x: cx, y: y(v[2]))); $0.addLine(to: .init(x: cx, y: y(v[3]))) }, with: .color(col.opacity(strong ? 1 : 0.45)), style: .init(lineWidth: 5, lineCap: .round))
       let top = y(max(v[0], v[1])), bot = y(min(v[0], v[1]))
-      let candleBody = Path(roundedRect: CGRect(x: cx - Self.bodyWidth / 2, y: top, width: Self.bodyWidth, height: max(bot - top, 4)), cornerRadius: 10)
-      g.fill(candleBody, with: .color(col.opacity(strong ? 1 : 0.22)))
-      g.stroke(candleBody, with: .color(col.opacity(strong ? 1 : 0.7)), style: .init(lineWidth: 2, dash: strong ? [] : [6, 4]))
+      if strong {
+        // Checked: drawn like every candle (hollow = up, filled = down, with an arrow), not by colour alone.
+        CandleInk.draw(g, x: cx, high: y(v[2]), low: y(v[3]), top: top, bottom: bot, width: Self.bodyWidth, up: v[1] >= v[0], big: true)
+      } else {
+        g.stroke(Path { $0.move(to: .init(x: cx, y: y(v[2]))); $0.addLine(to: .init(x: cx, y: y(v[3]))) }, with: .color(col.opacity(0.45)), style: .init(lineWidth: 5, lineCap: .round))
+        let candleBody = Path(roundedRect: CGRect(x: cx - Self.bodyWidth / 2, y: top, width: Self.bodyWidth, height: max(bot - top, 4)), cornerRadius: 10)
+        g.fill(candleBody, with: .color(col.opacity(0.22)))
+        g.stroke(candleBody, with: .color(col.opacity(0.7)), style: .init(lineWidth: 2, dash: [6, 4]))
+      }
       for (k, dx) in [(0, -1.0), (1, 1.0)] {   // dotted ties from the Start / End handles to the body's edges
         let yy = y(v[k]), x0 = cx + CGFloat(dx) * Self.bodyWidth / 2, x1 = cx + CGFloat(dx) * (Self.bodyWidth / 2 + Self.lane)
         g.stroke(Path { $0.move(to: .init(x: x0, y: yy)); $0.addLine(to: .init(x: x1, y: yy)) }, with: .color(Palette.accent.opacity(0.5)), style: .init(lineWidth: 1.5, dash: [2, 3]))
@@ -409,7 +414,7 @@ struct ReadDayRound: View {
       }
       Choices(options: options, correct: correct, answered: answered, picked: picked) { i in
         picked = i
-        answer(RoundResult(right: i == correct, why: candle.bodyShare < 0.25 ? "Tiny body, long wicks: it swung both ways." : candle.up ? "Green: it ended higher than it started." : "Red: it ended lower than it started."))
+        answer(RoundResult(right: i == correct, why: candle.bodyShare < 0.25 ? "Tiny body, long wicks: it swung both ways." : candle.up ? "Green and hollow: it ended higher than it started." : "Red and filled in: it ended lower than it started."))
       }
     }
   }
@@ -463,7 +468,7 @@ struct CandleMatchRound: View {
   }
   static func why(_ s: DayStory) -> String {
     switch s {
-    case .bigUp, .smallUp: return "A green body means it ended higher. Taller body, bigger move."
+    case .bigUp, .smallUp: return "A hollow green body means it ended higher. Taller body, bigger move."
     case .bigDown, .smallDown: return "A red body means it ended lower."
     case .tugOfWar: return "Long wicks and a tiny body: a tug-of-war day."
     }

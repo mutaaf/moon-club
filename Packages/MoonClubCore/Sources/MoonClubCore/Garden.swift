@@ -144,7 +144,7 @@ public enum Garden {
   }
 
   /// A unique event id: zero-padded millis (so it sorts by time) plus a little randomness.
-  public static func eventId(nowMillis: Int, salt: UInt16) -> String { String(format: "%015d-%04x", nowMillis, Int(salt)) }
+  public static func eventId(nowMillis: Int, salt: UInt16) -> String { String(format: "%015ld-%04x", nowMillis, Int(salt)) }
 
   // MARK: Prices (daily closes only; nothing ticks)
 
@@ -197,64 +197,10 @@ public enum Garden {
     "Patient planters look at months, not minutes.",
     "Up days and down days both happen. That's normal!",
     "Patterns are clues, not promises. Nobody knows what comes next.",
+    "A down day is like a rainy day. It doesn't mean you made a mistake.",
   ]
   public static func wisdom(today: String) -> String {
     let n = today.unicodeScalars.reduce(0) { $0 + Int($1.value) }
     return wisdom[n % wisdom.count]
-  }
-}
-
-// MARK: - Why did it move? (a seam the curriculum's Why engine can replace)
-
-/// A price move to explain.
-public struct MoveClue: Hashable, Sendable {
-  public let s: String; public let nick: String
-  /// Percent move (e.g. -2.4).
-  public let move: Double?
-  /// "today" / "since you planted" — how the headline names the time.
-  public let span: String
-  /// Its usual daily wiggle in percent (nil = unknown).
-  public let normal: Double?
-  /// A report card day near the move, if there was one.
-  public let reportDay: String?
-  public init(s: String, nick: String, move: Double?, span: String, normal: Double?, reportDay: String?) {
-    self.s = s; self.nick = nick; self.move = move; self.span = span; self.normal = normal; self.reportDay = reportDay
-  }
-}
-
-public struct WhyNote: Hashable, Sendable {
-  public let headline: String; public let clues: [String]; public let honest: String
-}
-
-/// Explains a move with honest clues. `LocalWhy` is the small built-in version; the curriculum's
-/// `Why.explain` (MoonClubCore Why.swift, metaphases /api/kids/why) can stand in for it without touching the garden.
-public protocol WhyExplainer: Sendable {
-  func explain(_ m: MoveClue) -> WhyNote
-}
-
-public struct LocalWhy: WhyExplainer {
-  public init() {}
-  public static let honest = "These are clues, not promises. Nobody knows for sure what comes next."
-  public func explain(_ m: MoveClue) -> WhyNote {
-    guard let mv = m.move else {
-      return WhyNote(headline: "We don't have \(m.nick)'s price yet.", clues: ["Prices update once a day. Check back tomorrow."], honest: Self.honest)
-    }
-    let am = abs(mv)
-    let dir = am < 0.05 ? "flat" : mv > 0 ? "up" : "down"
-    let headline = dir == "flat" ? "\(m.nick) barely moved \(m.span)." : "\(m.nick) went \(dir) \(toFixed(am, 1))% \(m.span)."
-    var clues: [String] = []
-    if let r = m.reportDay {
-      clues.append("\(m.nick) shared its report card on \(Day.en("EEEE, MMM d", r)). Report cards can move a price a lot.")
-    }
-    if let n = m.normal, n > 0, m.span == "today" {
-      let ratio = am / n
-      if ratio < 0.5 { clues.append("That's a tiny wiggle. Prices wiggle a little every day.") }
-      else if ratio < 1.5 { clues.append("That's about its usual daily wiggle.") }
-      else { clues.append("That's bigger than its usual wiggle. Lots of people changed their minds about it at once.") }
-    }
-    if dir == "up" { clues.append("When more people want shares than want to sell them, the price goes up.") }
-    else if dir == "down" { clues.append("When more people want to sell shares than buy them, the price goes down.") }
-    if clues.isEmpty { clues.append("Sometimes prices move for reasons we can't see.") }
-    return WhyNote(headline: headline, clues: Array(clues.prefix(3)), honest: Self.honest)
   }
 }

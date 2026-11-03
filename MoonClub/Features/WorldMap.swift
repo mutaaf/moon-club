@@ -34,8 +34,19 @@ struct WorldView: View {
     let currentNode = regions.isEmpty ? nil : regions[cur.region].nodes[cur.node]
     GeometryReader { geo in
       let split = fold.split(minPage: 300)
+      // Wide window, no fold (iPad, Stage Manager): the map gets most of the room (never a narrow strip
+      // that truncates its header) and the stop preview a fixed, readable column.
+      let panel = min(440, max(300, geo.size.width * 0.36))
       Group {
-        if let split {
+        if fold.fold == nil, geo.size.width >= 360 + 300 + 1 {
+          // Laid out by PageSplit like the fold layout (a plain HStack here kept the map re-rendering every
+          // frame on iPad: ~29 ms frames vs 16.7 measured with -bench).
+          PageSplit(split: FoldInfo.Split(lead: geo.size.width - panel, gap: 0, trail: panel), fill: true) {
+            map(regions, current: cur, width: geo.size.width - panel)
+            NodePanel(node: selected ?? currentNode, regions: regions, play: play)
+              .padding(.vertical, 12)
+          }
+        } else if let split {
           // iPhone Duo open / iPad: the map on one page, the level preview on the other — never on the fold.
           PageSplit(split: split, fill: true) {
             map(regions, current: cur, width: split.lead)
@@ -47,7 +58,7 @@ struct WorldView: View {
         }
       }
       .foldProbe($fold)
-      .sheet(item: Binding(get: { fold.split(minPage: 300) == nil ? selected : nil }, set: { selected = $0 })) { n in
+      .sheet(item: Binding(get: { fold.split(minPage: 300) == nil && !(fold.fold == nil && geo.size.width >= 661) ? selected : nil }, set: { selected = $0 })) { n in
         NodePanel(node: n, regions: regions, play: { selected = nil; play($0) })
           .padding(.top, 8)
           .presentationDetents([.height(360)])
@@ -130,6 +141,7 @@ struct WorldView: View {
             ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
               let open = World.regionOpen(ri, regions, app.state, app.content)
               RegionBanner(region: r, open: open, conquered: World.conquered(r, app.state, app.content))
+                .equatable()
                 .place(layout.banner(ri))
               if open {
                 ForEach(Array(r.nodes.enumerated()), id: \.element.id) { ni, n in
@@ -138,6 +150,7 @@ struct WorldView: View {
                              current: current.region == ri && current.node == ni, hue: hue(r),
                              mystery: n.id == mysteryID,
                              tap: { if nodeOpen { play(n) } else { selected = n } }, info: { selected = n })
+                    .equatable()  // skip unchanged stops when the map re-renders (0.13 perf pass)
                     .id(n.id)
                     .zoomSource(n.id, in: stopNS)
                     .place(layout.node(ri, ni, count: r.nodes.count))
@@ -374,8 +387,9 @@ struct MapCanvas: View, Equatable {
   }
 }
 
-struct RegionBanner: View {
+struct RegionBanner: View, Equatable {
   let region: Region, open: Bool, conquered: Bool
+  static func == (a: RegionBanner, b: RegionBanner) -> Bool { a.region.id == b.region.id && a.open == b.open && a.conquered == b.conquered }
   var body: some View {
     let _ = Perf.body("RegionBanner")
     HStack(spacing: 8) {
@@ -395,7 +409,15 @@ struct RegionBanner: View {
   }
 }
 
-struct NodeButton: View {
+/// Equatable on its data (the closures only ever play or select this same node), so a map re-render skips
+/// every stop whose look didn't change.
+// Ambient loops on the map (the current stop's pulse, the rocket's bob and flame, waving flags) play a few
+// times when the map appears and then rest. Each running loop made SwiftUI rebuild the whole map's display
+// list every frame (Time Profiler, 0.13): ~29 ms idle frames on iPad instead of 16.7.
+struct NodeButton: View, Equatable {
+  static func == (a: NodeButton, b: NodeButton) -> Bool {
+    a.node == b.node && a.stars == b.stars && a.open == b.open && a.current == b.current && a.mystery == b.mystery && a.hue == b.hue
+  }
   let node: WorldNode, stars: Int, open: Bool, current: Bool, hue: Hue
   /// Today's Mystery Stop (a sparkle tag; finishing it today banks bonus points).
   var mystery = false
@@ -452,7 +474,7 @@ struct NodeButton: View {
     .sensoryFeedback(.impact(weight: .light), trigger: held)
     .accessibilityLabel("\(node.title). \(open ? "\(stars) of 3 stars" : "Locked")\(mystery && open ? ". Mystery stop: bonus points today" : "")\(current ? ". You are here. Double tap to play" : "")")
     .accessibilityAction(named: "About this stop") { info() }
-    .onAppear { guard current, !rm, !pulse else { return }; withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { pulse = true } }
+    .onAppear { guard current, !rm, !pulse else { return }; withAnimation(.easeOut(duration: 1.6).repeatCount(4, autoreverses: false)) { pulse = true } }
   }
 }
 
@@ -478,7 +500,7 @@ struct RocketLuna: View {
     .frame(width: 70, height: 90)
     .offset(y: bob ? -5 : 0)
     .shadow(color: .black.opacity(0.2), radius: 6, y: 6)
-    .onAppear { guard !rm, !bob else { return }; withAnimation(Motion.gentle.repeatForever()) { bob = true } }
+    .onAppear { guard !rm, !bob else { return }; withAnimation(Motion.gentle.repeatCount(4)) { bob = true } }
     .accessibilityHidden(true)
   }
 }
@@ -516,7 +538,7 @@ struct PlantedFlag: View {
     }
     .frame(width: 44, height: 70)
     .shadow(color: (flag.map { Color(hex: $0.color) } ?? hue.color).opacity(0.4), radius: 8)
-    .onAppear { guard !rm else { return }; withAnimation(Motion.gentle.repeatForever()) { wave = true } }
+    .onAppear { guard !rm else { return }; withAnimation(Motion.gentle.repeatCount(5)) { wave = true } }
     .accessibilityHidden(true)
   }
 }
@@ -607,30 +629,27 @@ struct WorldHeader: View {
     // The land you're on is named up here, so its banner on the map is never the only place to read it
     // (it can sit under the tab bar while you scroll).
     let here = regions.isEmpty ? nil : regions[safe: World.current(regions, app.state, app.content).region]
-    HStack(spacing: 8) {
-      VStack(alignment: .leading, spacing: 0) {
-        Text(here?.name ?? "Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
-        Label("\(won) of \(regions.count) lands won", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
-          .lineLimit(1).minimumScaleFactor(0.8)
+    // Narrow map columns (Split View, Stage Manager) stack the title over the chips instead of truncating it.
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+          Text(here?.name ?? "Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
+          Label("\(won) of \(regions.count) lands won", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
+            .lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .accessibilityElement(children: .combine)
+        Spacer(minLength: 8)
+        chipsRow(streak: streak, stars: t.have)
       }
-      .accessibilityElement(children: .combine)
-      Spacer()
-      Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
-        .accessibilityLabel("\(streak) day streak")
-      Label("\(t.have)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
-        .contentTransition(.numericText(value: Double(t.have)))
-        .accessibilityLabel("\(t.have) stars")
-      Button { hangar = true } label: {
-        RocketMark(skin: Skins.current(app.state), size: 30).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
+      VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
+          Text(here?.name ?? "Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
+          Label("\(won) of \(regions.count) lands won", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
+            .lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .accessibilityElement(children: .combine)
+        HStack(spacing: 8) { chipsRow(streak: streak, stars: t.have); Spacer(minLength: 0) }
       }
-      .accessibilityLabel("Rocket hangar")
-      .sheet(isPresented: $hangar) { Hangar().presentationDetents([.medium]).presentationCornerRadius(32) }
-      NavigationLink { SchoolView() } label: {
-        Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
-      }
-      .accessibilityLabel("All lessons")
     }
     .padding(.horizontal, 16).padding(.vertical, 8)
     // Solid, not glass: the map's stops and stars slide cleanly *under* the header instead of showing
@@ -640,6 +659,27 @@ struct WorldHeader: View {
         .ignoresSafeArea(edges: .top)
         .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
     }
+  }
+
+  @ViewBuilder private func chipsRow(streak: Int, stars t: Int) -> some View {
+      Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
+        .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
+        .fixedSize()  // the count never wraps
+        .accessibilityLabel("\(streak) day streak")
+      Label("\(t)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
+        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
+        .contentTransition(.numericText(value: Double(t)))
+        .fixedSize()
+        .accessibilityLabel("\(t) stars")
+      Button { hangar = true } label: {
+        RocketMark(skin: Skins.current(app.state), size: 30).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
+      }
+      .accessibilityLabel("Rocket hangar")
+      .sheet(isPresented: $hangar) { Hangar().presentationDetents([.medium]).presentationCornerRadius(32) }
+      NavigationLink { SchoolView() } label: {
+        Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
+      }
+      .accessibilityLabel("All lessons")
   }
 }
 

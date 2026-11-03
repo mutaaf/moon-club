@@ -247,10 +247,14 @@ public enum Shop {
   public enum Lock: Hashable, Sendable { case rank(String), trophy(String), points(Int) }
   /// Why an item can't be bought yet (nil = it can, or it's owned).
   public static func lock(_ it: ShopItem, _ s: KidsState, _ c: KidsContent) -> Lock? {
+    lock(it, s, c, wallet: wallet(s, c), level: s.level(c).index, trophies: Trophies.progress(s, c))
+  }
+  /// The same, with the expensive derived values passed in (the app computes them once per state change).
+  public static func lock(_ it: ShopItem, _ s: KidsState, _ c: KidsContent, wallet w: Int, level: Int, trophies: [TrophyProgress]) -> Lock? {
     if it.slot != .freeze, owned(s).contains(it.id) { return nil }
-    if let r = it.rank, s.level(c).index < r { let ls = Ranks.levels(c); return .rank(r < ls.count ? ls[r].name : "a higher rank") }
-    if let t = it.trophy, (Trophies.progress(s, c).first { $0.trophy.id == t }?.tier ?? 0) < 1 { return .trophy(Trophies.all.first { $0.id == t }?.name ?? t) }
-    if wallet(s, c) < it.price { return .points(it.price - wallet(s, c)) }
+    if let r = it.rank, level < r { let ls = Ranks.levels(c); return .rank(r < ls.count ? ls[r].name : "a higher rank") }
+    if let t = it.trophy, (trophies.first { $0.trophy.id == t }?.tier ?? 0) < 1 { return .trophy(Trophies.all.first { $0.id == t }?.name ?? t) }
+    if w < it.price { return .points(it.price - w) }
     return nil
   }
 

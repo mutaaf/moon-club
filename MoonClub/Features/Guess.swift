@@ -102,7 +102,7 @@ struct GuessView: View {
     return Card {
       HStack(spacing: 14) {
         Glyph(co.emoji, size: 52)
-        VStack(alignment: .leading, spacing: 2) { Text(co.nick).font(.kTitle); Text("\(co.hook) · report card \(kidWhen(e.d, e.h, today: app.today))").font(.caption).foregroundStyle(.secondary) }
+        VStack(alignment: .leading, spacing: 2) { Text(co.nick).font(.kTitle).lineLimit(1).minimumScaleFactor(0.6); Text("\(co.hook) · report card \(kidWhen(e.d, e.h, today: app.today))").font(.caption).foregroundStyle(.secondary) }
       }
       Text(expectLine(e.eE)).font(.callout)
       HStack(spacing: 8) {

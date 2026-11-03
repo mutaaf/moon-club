@@ -15,7 +15,7 @@ struct ParentGate: View {
   var body: some View {
     VStack(spacing: 18) {
       Image(systemName: "lock.shield").font(.system(size: 44)).foregroundStyle(Palette.accent)
-      Text("For grown-ups").font(.kHero)
+      Text("For grown-ups").font(.kHero).lineLimit(1).minimumScaleFactor(0.6)
       Text("Please answer to continue:").foregroundStyle(.secondary)
       Text("What is \(a) × \(b)?").font(.kTitle).accessibilityIdentifier("gate-question")
       TextField("", text: $v).keyboardType(.numberPad).multilineTextAlignment(.center).font(.system(size: 34, weight: .bold, design: .rounded))
@@ -81,6 +81,9 @@ struct GrownUpsView: View {
           Section { VoiceSettingsView() } header: { Text("Luna's voice") } footer: {
             Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
           }
+        }
+        Section { GardenLimitSetting() } header: { Text("Moon Garden") } footer: {
+          Text("Kids can plant Moon points (earned in the app, never money) in companies they know and harvest them back any time. This caps how much of their points they can plant each day, so their Moon Shop points stay safe. Prices update once a day. No real money, no real trades.")
         }
         Section { PlaySettings() } header: { Text("Games") } footer: {
           Text("Relaxed play hides the speed ring, so there's no clock at all. Hearts never cost anything: out of hearts just means \"try again\". Sounds follow the ring/silent switch. After about 20 minutes, between games, Luna gets sleepy and offers a goodnight; \"one more game\" is always fine. Moon Club is also made for iPhone Duo: lessons become storybooks, bosses play in tabletop mode, and the hinge is a game control.")
@@ -229,6 +232,16 @@ struct WhatsNewSection: View {
     } else {
       let body = line.hasPrefix("- ") ? "• " + line.dropFirst(2) : Substring(line)
       Text((try? AttributedString(markdown: String(body))) ?? AttributedString(String(body))).font(.callout)
+    }
+  }
+}
+
+/// The Moon Garden's daily planting limit (synced: the later grown-up pick wins on every device).
+struct GardenLimitSetting: View {
+  @Environment(AppModel.self) private var app
+  var body: some View {
+    Picker("Plant each day, at most", selection: Binding(get: { app.state.gardenLimitPct }, set: { v in app.mutate { $0.setGardenLimit(v, nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } })) {
+      ForEach(Garden.limitChoices, id: \.self) { p in Text(p == 0 ? "Planting paused" : "\(p)% of their points").tag(p) }
     }
   }
 }

@@ -704,7 +704,7 @@ struct RocketMark: View {
     }
     .frame(width: size, height: size)
     .accessibilityHidden(true)
-    .task { guard flame, !rm else { return }; withAnimation(.easeInOut(duration: 0.18).repeatForever()) { flicker = true } }
+    .task { guard flame, !rm else { return }; withAnimation(.easeInOut(duration: 0.18).repeatCount(12)) { flicker = true } }
   }
 }
 
@@ -718,6 +718,7 @@ extension View {
       .navigationBarBackButtonHidden(true)
       .statusBarHidden(false)
       .onAppear { PlayActivity.shared.active += 1 }
+      .task { try? await Task.sleep(for: .seconds(1.2)); Ready.mark("play") } // screenshot scripts wait for this
       .onDisappear { PlayActivity.shared.active = max(0, PlayActivity.shared.active - 1) }
   }
 }
@@ -725,8 +726,11 @@ extension View {
 /// The dark, dramatic stage for boss fights: midnight with slow embers. Static under Reduce Motion.
 struct BossBackdrop: View {
   @Environment(\.accessibilityReduceMotion) private var rm
+  @Environment(\.scenePhase) private var phase
+  @State private var visible = false
   var body: some View {
-    TimelineView(.animation(paused: rm)) { ctx in
+    // Slow embers don't need 120 fps: 30 fps, and paused off screen / in the background (0.13 perf pass).
+    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: rm || !visible || phase != .active)) { ctx in
       Canvas { g, size in
         let t = rm ? 0 : ctx.date.timeIntervalSinceReferenceDate
         g.fill(Path(CGRect(origin: .zero, size: size)), with: .linearGradient(Gradient(colors: [Color(hex: 0x0E0B24), Color(hex: 0x2A1145), Color(hex: 0x3B1230)]), startPoint: .zero, endPoint: CGPoint(x: size.width * 0.4, y: size.height)))
@@ -743,6 +747,8 @@ struct BossBackdrop: View {
     }
     .ignoresSafeArea()
     .accessibilityHidden(true)
+    .onAppear { visible = true }
+    .onDisappear { visible = false }
   }
 }
 

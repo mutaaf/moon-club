@@ -5,10 +5,10 @@ import MoonClubCore
 struct StoryView: View {
   @Environment(AppModel.self) private var app
   @Environment(\.openQuest) private var openQuest
-  @State private var page = 0
-  @State private var fold = FoldInfo()
+  @State var page = 0
+  @State var fold = FoldInfo()
   /// Each page's own height: the pager is as tall as the card on screen (never the tallest card).
-  @State private var heights: [Int: CGFloat] = [:]
+  @State var heights: [Int: CGFloat] = [:]
 
   enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), why(String), word, quiz, next }
 
@@ -38,6 +38,43 @@ struct StoryView: View {
           RoundedRectangle(cornerRadius: 28).fill(.thinMaterial).frame(height: 460).overlay(ProgressView())
         } else {
           let cs = cards
+          // Three layouts, chosen by the room we have (never by device):
+          //  • a fold (iPhone Duo open): a book, two cards per spread, one each side of the fold
+          //  • wide, no fold (iPad, Stage Manager): every card at once in balanced columns (a grid, no
+          //    carousel: nothing runs off the edge, and each card is only as tall as its content)
+          //  • narrow (iPhone): one card per swipe, the pager as tall as the card on screen
+          if fold.fold == nil, fold.width >= 600 {
+            StoryColumns(cards: cs, width: fold.width)
+              .foldProbe($fold)
+          } else {
+            pager(cs)
+          }
+          if let e = app.marketError { Text(e.message).font(.footnote).foregroundStyle(.secondary) }
+        }
+      }
+      .padding(20)
+      .readable(fold.fold == nil && fold.width >= 600 ? 1040 : 640)
+    }
+    .background(AuroraField(surface: .story))
+    .refreshable { await app.loadMarket() }
+    .onDisappear { if cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
+    #if DEBUG
+    // Screenshots: -whyCard SYM shows the real WhyCard on its own (the story pager sits below the fold on a phone).
+    .sheet(isPresented: .constant(ProcessInfo.processInfo.arguments.contains("-whyCard"))) {
+      let a = ProcessInfo.processInfo.arguments
+      let s = a.firstIndex(of: "-whyCard").flatMap { $0 + 1 < a.count ? a[$0 + 1] : nil } ?? "DIS"
+      WhyCard(symbol: s).padding(20)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(20).frame(maxHeight: .infinity, alignment: .top).background(AuroraField(surface: .story))
+    }
+    // Screenshots: -storyWhy opens the pager on the "Why did it move?" card.
+    .task { if ProcessInfo.processInfo.arguments.contains("-storyWhy") { try? await Task.sleep(for: .seconds(1.5)); if let i = cards.firstIndex(where: { if case .why = $0 { return true }; return false }) { page = i } } }
+    #endif
+  }
+}
+
+extension StoryView {
+  @ViewBuilder private func pager(_ cs: [Card]) -> some View {
           // Opened wide (iPhone Duo, iPad) the story reads like a book: two cards per spread, one on
           // each side of the fold. On a phone it's one card per swipe.
           let sp = fold.split(minPage: 280)
@@ -77,27 +114,24 @@ struct StoryView: View {
           .foldProbe($fold)
           .onChange(of: per) { old, new in page = page * old / new }
           .sensoryFeedback(.selection, trigger: page)
-          if let e = app.marketError { Text(e.message).font(.footnote).foregroundStyle(.secondary) }
+  }
+}
+
+/// Story cards in balanced columns for wide windows: as many 300+ pt columns as fit (max 3), cards dealt
+/// round-robin so reading order runs left to right, each card only as tall as its own content.
+struct StoryColumns: View {
+  let cards: [StoryView.Card]
+  let width: CGFloat
+  var body: some View {
+    let n = max(1, min(3, Int((width + 18) / (300 + 18))))
+    HStack(alignment: .top, spacing: 18) {
+      ForEach(0..<n, id: \.self) { col in
+        VStack(spacing: 18) {
+          ForEach(Array(cards.enumerated()).filter { $0.offset % n == col }, id: \.offset) { _, c in StoryCard(card: c) }
         }
+        .frame(maxWidth: .infinity, alignment: .top)
       }
-      .padding(20)
-      .readable()
     }
-    .background(AuroraField(surface: .story))
-    .refreshable { await app.loadMarket() }
-    .onDisappear { if cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
-    #if DEBUG
-    // Screenshots: -whyCard SYM shows the real WhyCard on its own (the story pager sits below the fold on a phone).
-    .sheet(isPresented: .constant(ProcessInfo.processInfo.arguments.contains("-whyCard"))) {
-      let a = ProcessInfo.processInfo.arguments
-      let s = a.firstIndex(of: "-whyCard").flatMap { $0 + 1 < a.count ? a[$0 + 1] : nil } ?? "DIS"
-      WhyCard(symbol: s).padding(20)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .padding(20).frame(maxHeight: .infinity, alignment: .top).background(AuroraField(surface: .story))
-    }
-    // Screenshots: -storyWhy opens the pager on the "Why did it move?" card.
-    .task { if ProcessInfo.processInfo.arguments.contains("-storyWhy") { try? await Task.sleep(for: .seconds(1.5)); if let i = cards.firstIndex(where: { if case .why = $0 { return true }; return false }) { page = i } } }
-    #endif
   }
 }
 
@@ -161,7 +195,7 @@ struct WeatherCard: View {
     let w = weatherFor(score)
     Eyebrow(text: "Market weather")
     HStack { Spacer(); WeatherArt(icon: w.icon); Spacer() }
-    Text(w.title).font(.kHero)
+    Text(w.title).font(.kHero).lineLimit(2).minimumScaleFactor(0.6)
     Text(w.line).font(.kRead)
     Text("Grown-ups check a “mood meter” for the market. Today it says \(Int(score)) out of 100. 0 is very scared, 100 is very brave.").font(.callout).foregroundStyle(.secondary)
     HStack { ReadAloud(source: .appCopy("Market weather: \(w.title). \(w.line)")); ExplainMore(question: LunaPrompts.explain(weather: w.title)) }
@@ -204,7 +238,7 @@ struct ReportCard: View {
     Eyebrow(text: "Report card day!")
     HStack(spacing: 14) {
       Glyph(co.emoji, size: 60)
-      VStack(alignment: .leading) { Text(co.nick).font(.kHero); Text(co.hook.prefix(1).uppercased() + co.hook.dropFirst() + ".").foregroundStyle(.secondary) }
+      VStack(alignment: .leading) { Text(co.nick).font(.kHero).lineLimit(1).minimumScaleFactor(0.5).allowsTightening(true); Text(co.hook.prefix(1).uppercased() + co.hook.dropFirst() + ".").foregroundStyle(.secondary) }
     }
     HStack(spacing: 10) { MoonPhase(phase: event.h == .dmh ? 4 : event.h == .bmo ? 1 : event.h == .amc ? 3 : 0, size: 26); Text("Shares its report card **\(when)**.") }.font(.kRead)
     Text(expectLine(event.eE)).font(.body)
@@ -222,7 +256,7 @@ struct WordOfDay: View {
   var body: some View {
     let w = ofTheDay(app.content.words, today: app.today)
     Eyebrow(text: "Big word of the day")
-    Text(w.word).font(.system(size: 54, weight: .heavy, design: .rounded)).foregroundStyle(Palette.accent)
+    Text(w.word).font(.system(size: 54, weight: .heavy, design: .rounded)).lineLimit(1).minimumScaleFactor(0.4).foregroundStyle(Palette.accent)
     Text(w.means).font(.kRead)
     Text("Example: \(w.example)").font(.system(.title3, design: .serif).italic()).foregroundStyle(Palette.ink2)
     FlowLayout(spacing: 8) { ReadAloud(source: .appCopy("\(w.word). \(w.means) For example: \(w.example)")); ExplainMore(question: LunaPrompts.explain(word: w.word)) }

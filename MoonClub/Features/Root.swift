@@ -33,7 +33,8 @@ struct RootView: View {
   /// iPad sidebar: shown or hidden (debug `-sidebar hidden` for screenshots).
   @State private var columns: NavigationSplitViewVisibility = {
     #if DEBUG
-    if ProcessInfo.processInfo.arguments.contains("-sidebar"), ProcessInfo.processInfo.arguments.contains("hidden") { return .detailOnly }
+    let a = ProcessInfo.processInfo.arguments
+    if let i = a.firstIndex(of: "-sidebar"), i + 1 < a.count { return a[i + 1] == "hidden" ? .detailOnly : .all }
     #endif
     return .automatic
   }()
@@ -88,6 +89,7 @@ struct RootView: View {
     .task { await app.loadMarket() }
     .task { app.checkIn(); celebrateStreak() }
     .task { await bench() }
+    .task { try? await Task.sleep(for: .seconds(1.5)); Ready.mark("root") }
     .onAppear {
       let args = ProcessInfo.processInfo.arguments
       if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
@@ -138,6 +140,9 @@ struct RootView: View {
     }
     await phase("piggyIdle3s") { tab = .piggy; try? await Task.sleep(for: .seconds(3)) }
     await phase("worldIdle3s") { tab = .school; try? await Task.sleep(for: .seconds(3)) }
+    // Steady state: back on the Story after its aurora has settled (it drifts for 6 s after a screen appears).
+    tab = .story; try? await Task.sleep(for: .seconds(7))
+    await phase("storySettled3s") { try? await Task.sleep(for: .seconds(3)) }
     print("BENCH done"); fflush(stdout)
     #endif
   }

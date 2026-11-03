@@ -170,7 +170,7 @@ struct QuestView: View {
     case (_, "done"):
       VStack(spacing: 14) {
         MoonPhase(phase: chapter == "lemonade" ? 2 : 3, size: 96)
-        Text(app.content.badges.first { $0.id == meta?.badge }?.name ?? "Done!").font(.kHero)
+        Text(app.content.badges.first { $0.id == meta?.badge }?.name ?? "Done!").font(.kHero).lineLimit(2).minimumScaleFactor(0.6)
         Text(chapter == "lemonade" ? q.finish : text.finish).font(.kRead).multilineTextAlignment(.center)
         ReadAloud(source: .appCopy(chapter == "lemonade" ? q.finish : text.finish))
         if let next = chapters.first(where: { !app.chaptersDone.contains($0.id) && $0.id != chapter }) {

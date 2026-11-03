@@ -130,6 +130,89 @@ final class CardFitTests: XCTestCase {
     for p in PointSource.allCases { XCTAssertNotNil(UIImage(systemName: p.symbol), "source symbol \(p.symbol)") }
   }
 
+  /// Moon Garden (0.13): planting fits one sheet on iPhone SE and 17 at standard text, with nothing to
+  /// scroll; the garden's cards and rows fit a phone's width; the locker's points page (with the ledger) still fits.
+  func testMoonGardenFitsWithoutScrolling() throws {
+    let c = try content(), app = model(c)
+    app.mutate { $0.bank(.game, "fit", points: 900, today: "2026-10-31"); $0.setGardenLimit(100, nowMillis: 1) }
+    for (i, sym) in ["DIS", "NKE", "AAPL", "KO"].enumerated() { XCTAssertTrue(app.plant(sym, points: 20 + i), "plant \(sym)") }
+    app.harvest("KO", points: 5)
+    var misfits: [String] = []
+    for d in [Device(name: "iPhone SE", width: 375, height: 667, chrome: 40), Device(name: "iPhone 17", width: 402, height: 874, chrome: 62 + 34 + 10)] {
+      let room = d.height - d.chrome
+      for (name, v) in [("plant", AnyView(PlantSheet())), ("points", AnyView(MoonLocker(tab: .points)))] {
+        let host = UIHostingController(rootView: v.environment(app).environment(\.dynamicTypeSize, .large))
+        let h = host.sizeThatFits(in: CGSize(width: d.width, height: 1)).height
+        if h > room { misfits.append("\(d.name) \(name): \(Int(h)) > \(Int(room))") }
+      }
+      for (name, v) in [("summary", AnyView(GardenSummary(book: app.derived.garden) {})), ("row", AnyView(PlotRow(plot: app.derived.garden.growing[0]) {}))] {
+        let host = UIHostingController(rootView: v.environment(app).environment(\.dynamicTypeSize, .xxLarge))
+        let w = host.sizeThatFits(in: CGSize(width: d.width - 40, height: .greatestFiniteMagnitude)).width
+        if w > d.width - 40 + 0.5 { misfits.append("\(d.name) \(name) too wide: \(Int(w)) > \(Int(d.width - 40))") }
+      }
+    }
+    XCTAssertTrue(misfits.isEmpty, "Garden screens that would need scrolling or clip:\n" + misfits.joined(separator: "\n"))
+  }
+
+  /// iPad, Split View and Stage Manager widths: the wide-window layouts never draw wider than the window
+  /// (the old Story carousel ran off the right edge; the World header truncated in a narrow map column).
+  func testIPadLayoutsStayInsideTheirWindow() throws {
+    let c = try content(), app = model(c)
+    let cards: [StoryView.Card] = [.weather(40), .word, .quiz, .next]
+    var misfits: [String] = []
+    for w in [320.0, 450, 600, 688, 900, 1032, 1376] as [CGFloat] {
+      let views: [(String, AnyView)] = [
+        ("story columns", AnyView(StoryColumns(cards: cards, width: w))),
+        ("world header", AnyView(WorldHeader(regions: World.regions(c)))),
+        ("story", AnyView(StoryView())),
+        ("garden", AnyView(MoonGarden())),
+      ]
+      for (name, v) in views {
+        let host = UIHostingController(rootView: NavigationStack { v }.environment(app).environment(\.horizontalSizeClass, w >= 680 ? .regular : .compact))
+        let got = host.sizeThatFits(in: CGSize(width: w, height: 2000)).width
+        if got > w + 0.5 { misfits.append("\(name) at \(Int(w)): \(Int(got)) wide") }
+      }
+      // The header's title row: every land name fits (unscaled or stacked), never cut to "Trend…".
+      let header = UIHostingController(rootView: WorldHeader(regions: World.regions(c)).environment(app))
+      let hs = header.sizeThatFits(in: CGSize(width: w, height: .greatestFiniteMagnitude))
+      XCTAssertLessThanOrEqual(hs.width, w + 0.5, "world header at \(Int(w))")
+    }
+    XCTAssertTrue(misfits.isEmpty, misfits.joined(separator: "\n"))
+  }
+
+  /// Read the Day: equal prices share one label and labels are pushed apart, so "Start" and "Low" never overlap.
+  func testBigCandleLabelsNeverOverlap() {
+    let flat = BigCandle.labels(o: 100, h: 104, l: 100, c: 102)
+    XCTAssertEqual(flat.map(\.text), ["High $104", "End $102", "Start and low $100"])
+    let doji = BigCandle.labels(o: 100, h: 101, l: 99, c: 100)
+    XCTAssertEqual(doji.count, 3, "start and end on the same price share a row: \(doji.map(\.text))")
+    let ys = BigCandle.spread([10, 12, 13, 200], gap: 20, in: 0...220)
+    for (a, b) in zip(ys, ys.dropFirst()) { XCTAssertGreaterThanOrEqual(b - a, 20 - 0.001) }
+    let tight = BigCandle.spread([200, 205, 210, 215], gap: 20, in: 0...220)
+    XCTAssertLessThanOrEqual(tight.last ?? 0, 210 + 0.001, "pushed back inside the bottom edge")
+    for (a, b) in zip(tight, tight.dropFirst()) { XCTAssertGreaterThanOrEqual(b - a, 20 - 0.001) }
+  }
+
+  /// Colour-blind safe candles: an up candle's body is hollow (its center isn't the solid green), a down
+  /// candle's body is filled — readable even at a small size and in grayscale.
+  func testCandlesShowDirectionWithoutColour() throws {
+    func centerPixel(up: Bool, width: CGFloat) throws -> (r: CGFloat, g: CGFloat, b: CGFloat) {
+      let c = up ? Candle(d: "a", o: 100, h: 112, l: 98, c: 110) : Candle(d: "a", o: 110, h: 112, l: 98, c: 100)
+      let r = ImageRenderer(content: CandleChart(candles: [c, c, c], domain: 95...115).frame(width: width, height: 120).background(Color.white))
+      r.scale = 2
+      let img = try XCTUnwrap(r.uiImage?.cgImage)
+      let data = try XCTUnwrap(img.dataProvider?.data as Data?)
+      let bpr = img.bytesPerRow, x = Int(CGFloat(img.width) / 2), y = Int(CGFloat(img.height) * 0.42)
+      let o = y * bpr + x * 4
+      return (CGFloat(data[o]) / 255, CGFloat(data[o + 1]) / 255, CGFloat(data[o + 2]) / 255)
+    }
+    for w in [60.0, 120, 300] as [CGFloat] {
+      let up = try centerPixel(up: true, width: w), down = try centerPixel(up: false, width: w)
+      let lumUp = 0.3 * up.r + 0.59 * up.g + 0.11 * up.b, lumDown = 0.3 * down.r + 0.59 * down.g + 0.11 * down.b
+      XCTAssertGreaterThan(lumUp - lumDown, 0.25, "at \(Int(w)) pt an up body (hollow) must read lighter than a down body (filled), even in grayscale")
+    }
+  }
+
   func testArtReviewListAndNoMisleadingPictures() {
     // The whole emoji → picture map, for a human to skim (printed in the test log).
     print("ART REVIEW\n" + Art.reviewList.joined(separator: "\n"))

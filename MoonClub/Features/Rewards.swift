@@ -347,7 +347,7 @@ struct MoonShop: View {
   enum CellState: Equatable { case wearing, owned, buyable, locked(String) }
   private func cellState(_ it: ShopItem) -> CellState {
     if it.slot != .freeze, Shop.owned(app.state).contains(it.id) { return Shop.equipped(it.slot, app.state)?.id == it.id ? .wearing : .owned }
-    switch Shop.lock(it, app.state, app.content) {
+    switch Shop.lock(it, app.state, app.content, wallet: app.wallet, level: app.level.index, trophies: app.trophies) {
     case nil: return .buyable
     case let .rank(r): return .locked("Reach \(r)")
     case let .trophy(t): return .locked("Earn \(t)")
@@ -466,12 +466,9 @@ struct PointsBook: View {
   var body: some View {
     let lines = Rewards.breakdown(app.state, app.content)
     VStack(spacing: 8) {
-      HStack {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("\(app.points) earned").font(.kHeadline)
-          Text("\(Shop.spent(app.state)) spent in the Moon Shop").font(.caption).foregroundStyle(Palette.ink2)
-        }
-        Spacer()
+      HStack(alignment: .top) {
+        PointsLedger()
+        Spacer(minLength: 8)
         Label("\(Streak.play(app.state, today: app.today)) days", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).foregroundStyle(Hue.orange.color)
       }
       VStack(spacing: 0) {
@@ -492,6 +489,31 @@ struct PointsBook: View {
       Text("Come back every day: your visit bonus grows with your streak (up to 25).").font(.caption).foregroundStyle(Palette.ink2)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+  }
+}
+
+/// The wallet, line by line (MoonClubCore `Garden.balance`):
+/// earned + harvest gains − Moon Shop − planted now = to spend.
+struct PointsLedger: View {
+  @Environment(AppModel.self) private var app
+  var body: some View {
+    let d = app.derived, spent = Shop.spent(app.state)
+    VStack(alignment: .leading, spacing: 1) {
+      row("Earned", "\(d.points)", bold: false)
+      if !d.garden.harvests.isEmpty { row("Garden harvests", d.garden.gains >= 0 ? "+\(d.garden.gains)" : "−\(abs(d.garden.gains))", bold: false) }
+      if spent > 0 { row("Moon Shop", "−\(spent)", bold: false) }
+      if d.garden.principal > 0 { row("Growing in the garden", "−\(d.garden.principal)", bold: false) }
+      row("To spend", "\(d.wallet)", bold: true)
+    }
+    .accessibilityElement(children: .combine)
+  }
+  private func row(_ label: String, _ value: String, bold: Bool) -> some View {
+    HStack(spacing: 8) {
+      Text(label).font(bold ? .kHeadline : .caption).foregroundStyle(bold ? Palette.ink : Palette.ink2)
+      Spacer(minLength: 4)
+      Text(value).font(bold ? .kHeadline : .caption.weight(.bold)).monospacedDigit()
+    }
+    .frame(maxWidth: 230)
   }
 }
 

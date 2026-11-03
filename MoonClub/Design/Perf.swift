@@ -69,3 +69,51 @@ import QuartzCore
     return String(format: "frames=%d avg=%.1fms p95=%.1fms worst=%.0fms hitches=%d hitchRatio=%.1fms/s", frames, avg * 1000, p95 * 1000, worst * 1000, hitches, ratio)
   }
 }
+
+/// Screenshot readiness (debug + `-demo` only): appends a token ("root", "play") to
+/// Library/Caches/moonclub.ready once that screen is really on screen, so scripts wait for it instead of
+/// sleeping (boss screens on iPad were captured blank before the app had finished launching).
+enum Ready {
+  static func mark(_ token: String) {
+    #if DEBUG
+    guard ProcessInfo.processInfo.arguments.contains("-demo"),
+          let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
+    let url = dir.appendingPathComponent("moonclub.ready")
+    let line = Data((token + "\n").utf8)
+    if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(line); try? h.close() }
+    else { try? line.write(to: url) }
+    #endif
+  }
+}
+
+/// Debug `-window WxH`: lays the whole app out in a window of that size (in points), scaled to fit the
+/// screen. The simulator can't rotate or resize from the command line, so this is how landscape, Split View
+/// and Stage Manager sizes are checked and captured. Width ≥ 680 gets the regular size class (split view).
+struct DebugWindow: ViewModifier {
+  let size: CGSize?
+  init() {
+    #if DEBUG
+    let a = ProcessInfo.processInfo.arguments
+    if let i = a.firstIndex(of: "-window"), i + 1 < a.count {
+      let p = a[i + 1].split(separator: "x").compactMap { Double($0) }
+      size = p.count == 2 ? CGSize(width: p[0], height: p[1]) : nil
+    } else { size = nil }
+    #else
+    size = nil
+    #endif
+  }
+  func body(content: Content) -> some View {
+    if let size {
+      GeometryReader { geo in
+        let k = min(1, geo.size.width / size.width, geo.size.height / size.height)
+        content
+          .environment(\.horizontalSizeClass, size.width >= 680 ? .regular : .compact)
+          .frame(width: size.width, height: size.height)
+          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+          .scaleEffect(k)
+          .frame(width: geo.size.width, height: geo.size.height)
+      }
+      .background(Color(white: 0.12).ignoresSafeArea())
+    } else { content }
+  }
+}
