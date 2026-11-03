@@ -9,5 +9,8 @@
       <key>NSPrivacyAccessedAPITypeReasons</key><array><string>CA92.1</string></array></dict>
     <dict><key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
       <key>NSPrivacyAccessedAPITypeReasons</key><array><string>C617.1</string></array></dict>
+    <!-- CACurrentMediaTime (mach_absolute_time) times frames in Design/Aurora.swift: elapsed time inside the app only -->
+    <dict><key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key><array><string>35F9.1</string></array></dict>
   </array>
 </dict></plist>

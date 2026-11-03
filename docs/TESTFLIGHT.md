@@ -1,8 +1,10 @@
 # Shipping Moon Club to TestFlight
 
+For the public App Store release, see `docs/APPSTORE.md` (`make appstore-build`, `make appstore`).
+
 Ready in the repo:
 - iPhone + iPad target (`TARGETED_DEVICE_FAMILY 1,2`), bundle id `com.mutaafaziz.moonclub`
-- Luna app icon
+- Luna app icon: Icon Composer `MoonClub/AppIcon.icon` (Liquid Glass, iOS 26+) + an opaque 1024 PNG fallback, both from `make icon`
 - Privacy manifest: no tracking, no data collected
 - `ITSAppUsesNonExemptEncryption = NO`
 - Automatic signing with team **Z73865R687**

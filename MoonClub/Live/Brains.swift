@@ -25,10 +25,12 @@ enum BrainStore {
   static let key = "moonclub.brain.v1"
   static func load() -> BrainSettings {
     let local = UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(BrainSettings.self, from: $0) } ?? BrainSettings()
-    return KeyTravel.adopt(into: local) // a key the grown-up chose to use on their other devices
+    var s = KeyTravel.adopt(into: local) // a key the grown-up chose to use on their other devices
+    if !Distribution.allowsOwnKeys, s.choice == .byok { s.choice = nil } // App Store builds: never BYOK, even from an old save
+    return s
   }
   static func save(_ s: BrainSettings) { UserDefaults.standard.set(try? JSONEncoder().encode(s), forKey: key); KeyTravel.publish(s) }
-  static var lunaKey: String? { Keychain.get(service: Keychain.lunaService) }
+  static var lunaKey: String? { Distribution.allowsOwnKeys ? Keychain.get(service: Keychain.lunaService) : nil }
   /// What answers right now (read on every question, so a change in the grown-up corner applies at once).
   static func resolve() -> BrainKind {
     let s = load()

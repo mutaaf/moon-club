@@ -81,7 +81,10 @@ struct VoiceSettings: Codable, Equatable {
   var mode: Mode = .device
   var voice: String = "coral"
   static let key = "moonclub.voice.v1"
-  static func load() -> VoiceSettings { (UserDefaults.standard.data(forKey: key)).flatMap { try? JSONDecoder().decode(VoiceSettings.self, from: $0) } ?? VoiceSettings() }
+  static func load() -> VoiceSettings {
+    guard Distribution.allowsOwnKeys else { return VoiceSettings() } // App Store builds: the device voice only
+    return (UserDefaults.standard.data(forKey: key)).flatMap { try? JSONDecoder().decode(VoiceSettings.self, from: $0) } ?? VoiceSettings()
+  }
   func save() { UserDefaults.standard.set(try? JSONEncoder().encode(self), forKey: Self.key) }
 }
 
