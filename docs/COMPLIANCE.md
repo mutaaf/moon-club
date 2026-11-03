@@ -15,15 +15,18 @@ The user's call (2026-11-02): ship a working prototype to their own kids and bet
 - **Web → app transfer is a code a grown-up copies.** It holds only lesson ids, days, picks and pretend-money numbers. There's no upload, no camera and no account.
 - **Privacy manifest:** no tracking, and no collected data types.
 
+## App Store 1.0 (2026-11-03)
+Decided in `docs/APPSTORE.md`: listed under Education with a 4+ rating, **not** in the Kids Category. App Store builds compile with `STORE_BUILD` (no grown-up own-key AI or voice), so a child's text never reaches a third-party AI company in the App Store app. Privacy policy: https://mutaafaziz.com/metaphases/kids/privacy. App Privacy label: Data Not Collected. Items below still apply to a Kids Category opt-in and to the TestFlight family builds.
+
 ## Deferred (do before an App Store / Kids Category release)
 - [ ] **COPPA review of Luna.** Kid-typed questions do reach the Workers AI model through our worker. Decide whether that counts as collecting personal information from children, and what notice and consent it needs. Options: keep it with a verifiable parental-consent step, restrict it to tap-to-ask chips only, or keep free text behind the grown-up gate.
-- [ ] Privacy policy URL (required by App Store Connect, and for the Kids Category).
+- [x] Privacy policy URL: https://mutaafaziz.com/metaphases/kids/privacy (metaphases `/kids/privacy`).
 - [ ] **Kids Category opt-in (age 6–8 or 9–11).** Requirements:
   - parental gates for links, purchases and settings (gate already exists)
   - no third-party analytics or ads (already true)
   - review the human-review notes
-- [ ] Age rating questionnaire.
-- [ ] App Store screenshots and marketing copy (`make shots` produces the raw frames).
+- [x] Age rating questionnaire: `asc.mjs store-rating` (4+; answers in docs/APPSTORE.md).
+- [x] App Store screenshots and marketing copy: `make appstore` (`scripts/store-shots.sh`, `STORE` in `scripts/asc.mjs`).
 - [ ] **BYOK = kid text to a third party.** With a grown-up's own key, a child's free-text questions go to that AI company. Before public release: confirm each provider's terms allow under-13 content through a parent's account (several require users to be 18+ or exclude children's data); decide whether the in-app toggle counts as verifiable parental consent under COPPA, or whether BYOK must be limited to tap-to-ask questions; and name each provider in the privacy policy. On-device Apple Intelligence sends nothing, so it is the recommended default.
 - [ ] **Grown-up voice keys.** Confirm the third-party TTS terms allow children's content; document the data flow in the privacy policy.
 - [ ] **iCloud sync note in the privacy policy.** Say that progress can sync through the family's iCloud account if a grown-up turns it on, and that we never receive it.

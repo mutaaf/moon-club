@@ -9,6 +9,8 @@
 #     c. nobody hard-codes consent: every Requests.byok call passes the saved consent.
 #  4. Every MARKETING_VERSION has fun, link-free release notes (release-notes/<version>.md, ≤ 4000 chars).
 #  5. Widgets/Live Activities: only moonclub:// deep links, no web URLs, no push tokens.
+#  6. App Store builds (STORE_BUILD) never offer a grown-up's own AI or voice key: every own-key entry point checks
+#     Distribution.allowsOwnKeys (MoonClub/App/Distribution.swift, docs/APPSTORE.md "Kids Category").
 set -e
 cd "$(dirname "$0")/.."
 fail=0
@@ -45,5 +47,10 @@ ds=$(grep -rnE '\.shadow\([^)]*radius: *0[,)][^)]*y: *[1-9]' MoonClub MoonClubWi
 v=$(sed -nE 's/.*MARKETING_VERSION: *"([^"]+)".*/\1/p' project.yml | head -1)
 node scripts/asc.mjs notes "$v" >/dev/null || { echo "✗ release-notes/$v.md missing or invalid (see release-notes/README.md)"; fail=1; }
 grep -rnE 'pushType: *\.token|pushTokenUpdates' MoonClub MoonClubWidgets Shared --include=*.swift && { echo "✗ Live Activities must stay local (no push tokens)"; fail=1; } || true
+# 6
+for f in MoonClub/Features/BrainPicker.swift MoonClub/Features/GrownUps.swift MoonClub/Live/Brains.swift MoonClub/Live/LiveServices.swift; do
+  grep -q 'Distribution.allowsOwnKeys' "$f" || { echo "✗ $f: own-key features must be gated on Distribution.allowsOwnKeys (App Store builds)"; fail=1; }
+done
+grep -q 'option(.byok' MoonClub/Features/BrainPicker.swift && ! grep -B1 'option(.byok' MoonClub/Features/BrainPicker.swift | grep -q 'Distribution.allowsOwnKeys' && { echo "✗ the BYOK option in BrainPicker must sit inside 'if Distribution.allowsOwnKeys'"; fail=1; } || true
 [ $fail -eq 0 ] && echo "✓ kids-safety rules hold"
 exit $fail

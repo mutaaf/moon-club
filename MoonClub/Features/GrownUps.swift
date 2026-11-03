@@ -67,14 +67,20 @@ struct GrownUpsView: View {
           bullet("**Pretend money only.** Nothing can be bought, sold or paid for. No broker, no buy button.")
           bullet("**No data collected.** No accounts, no sign-up, no analytics, no ads. Progress lives only on this device.")
           bullet("**Read-only market data** (prices, report dates, market mood) comes from mutaafaziz.com/metaphases. Nothing about your child is sent.")
-          bullet("**Luna** thinks on this device with Apple Intelligence when it's available, or uses our free kid-safe model. Only if you add your own key and say OK are questions sent to that company. Same rules everywhere: simple words, money topics only, never advice, never asks for personal details. Stay nearby — she can make mistakes.")
+          if Distribution.allowsOwnKeys {
+            bullet("**Luna** thinks on this device with Apple Intelligence when it's available, or uses our free kid-safe model. Only if you add your own key and say OK are questions sent to that company. Same rules everywhere: simple words, money topics only, never advice, never asks for personal details. Stay nearby — she can make mistakes.")
+          } else {
+            bullet("**Luna** thinks on this device with Apple Intelligence when it's available, or uses our free kid-safe model, which keeps nothing and never sees a name or account. Questions never go to any other company. Same rules everywhere: simple words, money topics only, never advice, never asks for personal details. Stay nearby — she can make mistakes.")
+          }
           bullet("Nothing here is investment advice.")
         }
         Section { BrainPicker().id("brain") } header: { Text("Luna's brain") } footer: {
           Text("Every brain gets the same kid-safe rules, and every answer is checked on this device before your child sees it.")
         }
-        Section { VoiceSettingsView() } header: { Text("Luna's voice") } footer: {
-          Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
+        if Distribution.allowsOwnKeys {
+          Section { VoiceSettingsView() } header: { Text("Luna's voice") } footer: {
+            Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
+          }
         }
         Section { PlaySettings() } header: { Text("Games") } footer: {
           Text("Relaxed play hides the speed ring, so there's no clock at all. Hearts never cost anything: out of hearts just means \"try again\". Sounds follow the ring/silent switch. After about 20 minutes, between games, Luna gets sleepy and offers a goodnight; \"one more game\" is always fine. Moon Club is also made for iPhone Duo: lessons become storybooks, bosses play in tabletop mode, and the hinge is a game control.")

@@ -3,7 +3,7 @@
 Native SwiftUI (iOS 17+, iPhone + iPad) kids app; the native twin of mutaafaziz.com/metaphases/kids. Read README.md and docs/ARCHITECTURE.md first. Same kids rules as metaphases AGENTS.md: pretend money only, nothing about the child leaves the device, no ads/analytics/SDKs, no links out except behind the parental gate (GrownUps.swift only — `scripts/check-rules.sh`), Luna = one of three brains picked by a grown-up behind the gate (on-device Apple Intelligence by default when available; free kid-safe brain with no key; or the grown-up's own key, ONLY after per-provider consent, see `Brain.swift`), the same kid-safe prompt plus `LunaGuard` on every answer, a grown-up voice key only ever speaks app copy or Luna's answer, reading grade ≤ 5, never advice.
 
 ## Commands
-`make up` (idempotent: xcodegen + Metal toolchain check + rules + core tests + app tests + sims), `make test`, `make shots`, `make device`, `make testflight`, `make content`.
+`make up` (idempotent: xcodegen + Metal toolchain check + rules + core tests + app tests + sims), `make test`, `make shots`, `make device`, `make testflight`, `make content`, `make icon`. App Store: `make appstore-validate`, `make appstore-build`, `make appstore`, then `node scripts/asc.mjs submit --yes` only when the user says go (`docs/APPSTORE.md`).
 
 ## Release notes
 Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`release-notes/README.md`): fun, at least 3 family-friendly pop-culture nods, never lyrics, no links, ≤ 4000 chars. It feeds TestFlight "What to Test", the GitHub release and the in-app What's new. `check-rules.sh` fails without it.
@@ -110,3 +110,12 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
   - **New emoji** in a pack need an `Art.map` entry first. CardFitTests checks Core's and every bundled pack's `glyphs`.
   - **Not yet done (Ms. Rivera's note):** candle colors need an up or down arrow for color-blind kids. The chart games still rely on color plus position.
 
+- **App Store (docs/APPSTORE.md)**:
+  - App Store builds compile with `STORE_BUILD` (`Distribution.allowsOwnKeys` is false: no BYOK brain, no voice keys) and are numbered `<timestamp>.1`, which is how `store-check` tells them from family builds. `check-rules.sh` rule 6 keeps every own-key entry point gated.
+  - Not in the Kids Category (Education, 4+); see the decision in APPSTORE.md before changing that.
+  - Screenshot display types: there's no `APP_IPHONE_69`. 6.9" (1320×2868) goes in `APP_IPHONE_67`; iPhone Duo is `APP_IPHONE_DUO` (earns the "Made for iPhone Duo" badge with a 27.1+ SDK build). POST a bogus `screenshotDisplayType` and the API lists every valid one.
+  - Apple has no "Games › Educational" subcategory; the secondary category is Games › Family + Trivia.
+  - The first App Store version can't take `whatsNew` (`store-meta` adds it from the 2nd release on). PATCHing a localization must not include `locale`.
+  - App Privacy (nutrition label) and agreements aren't in the API: click-by-click in APPSTORE.md.
+  - Store simulators: "Store 69" (iPhone 17 Pro Max), "Store iPad 13" (iPad Pro 13-inch (M5)) on iOS 27.0, and "Store Duo" (iOS 27.1). A fresh simulator image can take ~3 minutes for its first `simctl install`.
+- **App icon**: `scripts/brand/icon.mjs` writes the Icon Composer bundle `MoonClub/AppIcon.icon` (background fill + Sky/Luna/Rocket glass groups; dark fill; halo hidden when tinted) and the opaque fallback `AppIcon.appiconset/icon-1024.png`. Both are named AppIcon, and actool prefers the `.icon` (it also bakes the legacy PNGs from it). XcodeGen 2.46 adds `.icon` to Resources as `wrapper.icon` automatically. Rendering is dependency-free: `sips` uses CoreSVG, which **ignores `clip-path`**, so draw shapes explicitly. `--preview <dir>` renders every appearance with Icon Composer's `ictool` (`/Applications/Xcode.app/Contents/Applications/Icon Composer.app/Contents/Executables/ictool … --export-image --rendition Default|Dark|TintedLight|TintedDark|ClearLight|ClearDark`). `xcrun ictool` is a different tool, and `--help` on it hangs.

@@ -24,10 +24,12 @@ struct BrainPicker: View {
       option(.free, title: "Free Luna", subtitle: "Metaphases",
              means: "A free, kid-safe helper on our server. Questions are sent without any name or account and aren't stored. Short answers, one question at a time.",
              status: nil)
-      option(.byok, title: "Your own key", subtitle: "Full capabilities",
-             means: "Use your own Anthropic, OpenAI, Google or xAI account for Super Luna: longer, richer answers, follow-up memory, deeper “Explain more” on story and report cards, and a friendlier voice.",
-             status: nil)
-      if s.choice == .byok { byokSetup.transition(.opacity.combined(with: .move(edge: .top))) }
+      if Distribution.allowsOwnKeys {
+        option(.byok, title: "Your own key", subtitle: "Full capabilities",
+               means: "Use your own Anthropic, OpenAI, Google or xAI account for Super Luna: longer, richer answers, follow-up memory, deeper “Explain more” on story and report cards, and a friendlier voice.",
+               status: nil)
+      }
+      if Distribution.allowsOwnKeys, s.choice == .byok { byokSetup.transition(.opacity.combined(with: .move(edge: .top))) }
       HStack(spacing: 6) {
         Image(systemName: active.symbol)
         Text("Right now: **\(active.badge)**").accessibilityIdentifier("brain-active")

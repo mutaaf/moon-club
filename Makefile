@@ -3,7 +3,7 @@ SIM_PHONE ?= iPhone 17
 SIM_PAD ?= iPad Pro 11-inch (M5)
 DD := build/dd
 
-.PHONY: up gen build test core rules sim shots widgets device testflight content clean
+.PHONY: up gen build test core rules sim shots widgets device testflight content clean icon store-shots appstore appstore-build appstore-validate
 up: gen test sim
 gen:
 	@command -v xcodegen >/dev/null || brew install xcodegen
@@ -32,5 +32,23 @@ testflight:
 	scripts/testflight.sh
 content:
 	scripts/sync-content.sh
+# App icon: Icon Composer bundle (MoonClub/AppIcon.icon) + the flat 1024 PNG, from code (scripts/brand/icon.mjs).
+icon:
+	node scripts/brand/icon.mjs --preview build/icon
+# App Store (docs/APPSTORE.md). `make appstore` prepares the draft version: idempotent, nothing goes public.
+store-shots: build
+	scripts/store-shots.sh
+appstore: store-shots
+	node scripts/asc.mjs store-meta
+	node scripts/asc.mjs store-rating
+	node scripts/asc.mjs store-shots
+	node scripts/asc.mjs store-check
+# An App Store binary (STORE_BUILD: no own-key AI/voice; build number <timestamp>.1), uploaded via TestFlight.
+appstore-build:
+	STORE=1 scripts/testflight.sh
+	node scripts/asc.mjs store-meta
+# Same archive, validated by App Store Connect without uploading.
+appstore-validate:
+	STORE=1 VALIDATE=1 scripts/testflight.sh
 clean:
 	rm -rf build MoonClub.xcodeproj
