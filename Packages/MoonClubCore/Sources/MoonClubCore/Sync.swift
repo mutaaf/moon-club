@@ -12,6 +12,7 @@
 //                          history is the union by date, a clash takes the larger value
 //   league                 union by player emoji; each player's guesses union by (company, day)
 //   me / recapSeen         larger wins (deterministic); the league view hides the player that is "me"
+//   played, chests         union (sorted); skin is the max of "<millis>|<id>", so the later pick wins
 //   resetEpoch             "reset on all devices" bumps it; a larger epoch wins outright, so older data from
 //                          a device that hasn't heard about the reset can't bring progress back
 import Foundation
@@ -54,6 +55,9 @@ public enum Sync {
     r.storyRead = maxOpt(a.storyRead, o.storyRead) // latest day the Story was marked read (app or widget)
     r.league = mergeLeague(a.league, o.league)  // "me" is filtered where the league is shown (filtering here would break associativity)
     r.stars = mergeStars(a.stars, o.stars)     // Market World: best stars per node (max is a semilattice)
+    r.played = unionOpt(a.played, o.played)    // Game On play log (the 400 cap applies when writing, never here)
+    r.chests = unionOpt(a.chests, o.chests)
+    r.skin = maxOpt(a.skin, o.skin)            // "<millis>|<id>": the later pick wins
     return r
   }
 
@@ -62,6 +66,11 @@ public enum Sync {
     var m = a ?? [:]
     for (k, v) in b ?? [:] { m[k] = max(m[k] ?? 0, v) }
     return m
+  }
+
+  static func unionOpt(_ a: [String]?, _ b: [String]?) -> [String]? {
+    guard a != nil || b != nil else { return nil }
+    return Set((a ?? []) + (b ?? [])).sorted()
   }
 
   static func maxOpt<T: Comparable>(_ a: T?, _ b: T?) -> T? {

@@ -115,16 +115,21 @@ struct BadgesGrid: View {
   }
 }
 
-/// One step at a time, with spring transitions, step dots, read-aloud and a celebration at the end.
+/// One step at a time inside the Game On HUD: hearts, combo, coins and Luna, one composed card (big art up
+/// top, then the words, then the answers) that fills the screen exactly, and the buttons pinned below.
+/// Nothing scrolls at standard text sizes; accessibility text sizes let the *page* scroll as a fallback.
 struct LessonPlayer: View {
   let lesson: Lesson
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
   @Environment(\.accessibilityReduceMotion) private var rm
+  @Environment(\.dynamicTypeSize) private var type
   @State private var step = 0
   @State private var answers: [Int: Int] = [:]
   @State private var sorts: [Int: [Int: Int]] = [:]
   @State private var burst = 0
+  @State private var run = RunModel()
+  @State private var attempt = 0
 
   var done: Bool { step >= lesson.steps.count }
   var ready: Bool {
@@ -139,89 +144,112 @@ struct LessonPlayer: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
   /// iPhone Duo: closing the phone on a finished lesson tucks Luna in for the night.
   @State private var tucked = false
-  /// The card fills the screen at least (measured), and grows past it only for very large text.
-  @State private var cardMin: CGFloat = 420
 
   var body: some View {
-    // No card ever scrolls inside itself: the card grows to its content (and at least fills the screen),
-    // and only the page scrolls if the reader's text size needs it. The buttons stay pinned at the bottom.
-    GeometryReader { geo in
-      ScrollView {
-        VStack(spacing: 18) {
-          HStack(spacing: 5) {
-            ForEach(lesson.steps.indices, id: \.self) { i in
-              Capsule().fill(i < step ? (isQuiz(i) ? Palette.good : Palette.accent) : i == step ? Palette.accent.opacity(0.4) : Palette.line).frame(height: 6)
-            }
-          }
-          .animation(Motion.safe(Motion.card, rm), value: step)
-          .accessibilityLabel(done ? "Finished" : "Step \(step + 1) of \(lesson.steps.count)")
-
-          // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread — the story on the
-          // left page, the play on the right, never across the fold.
-          Storybook(minPage: 280, fill: false) {
-            card(art: true)
-          } first: {
-            storyPage
-          } second: {
-            card(art: false)
-          }
-        }
-        .padding(.horizontal, 20).padding(.top, 12)
-        .readable(720)
+    Group {
+      if type >= .xxxLarge {
+        ScrollView { stage.frame(minHeight: 640) }.scrollBounceBehavior(.basedOnSize)
+      } else {
+        stage
       }
-      .scrollBounceBehavior(.basedOnSize)
-      .onChange(of: geo.size.height, initial: true) { _, h in cardMin = max(260, h - 50) }
     }
-    .safeAreaInset(edge: .bottom) {
-      HStack(spacing: 12) {
-        if done {
-          Button("Back") { dismiss() }.buttonStyle(SoftButtonStyle())
-          if let next = nextLesson { NavigationLink("Next lesson", value: next).buttonStyle(PrimaryButtonStyle()) }
-        } else {
-          Button { go(-1) } label: { Image(systemName: "chevron.left").font(.headline) }.buttonStyle(SoftButtonStyle()).disabled(step == 0).accessibilityLabel("Back")
-          Button(step == lesson.steps.count - 1 ? "Finish" : "Next") { go(1) }.buttonStyle(PrimaryButtonStyle()).disabled(!ready)
-        }
-      }
-      .padding(.horizontal, 20).padding(.vertical, 10)
-      .readable(720)
-      .background(.bar)
-    }
+    .safeAreaInset(edge: .bottom) { actions }
     .background(AuroraField(surface: .school))
-    .navigationTitle(lesson.title)
+    .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
+    .playChrome()
     #if DEBUG
     .onAppear { let a = ProcessInfo.processInfo.arguments; if let i = a.firstIndex(of: "-step"), i + 1 < a.count, let n = Int(a[i + 1]) { step = min(n, lesson.steps.count - 1) } } // screenshots
     #endif
     .onAppear { LiveActivities.lesson(lesson, step: step) }
     .onDisappear { if !done { LiveActivities.lessonLeft(lesson) } }
-    .navigationBarTitleDisplayMode(.inline)
     .sensoryFeedback(.selection, trigger: step)
-    .modifier(TaskToolbar())
     .onChange(of: duo?.closedTick) { _, _ in if done { withAnimation(rm ? nil : .spring) { tucked = true } } }
     .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: tucked)
+    .onChange(of: answers) { old, new in
+      // Score the first pick on a check (later taps are locked).
+      for (k, v) in new where old[k] == nil {
+        if case let .check(c) = lesson.steps[k] { run.record(v == c.answer) }
+      }
+    }
+    .onChange(of: sorts) { old, new in
+      // Each sorted card: right fills the combo; a wrong one only resets it (sorting never costs a heart).
+      for (k, picks) in new {
+        guard case let .sort(_, _, items, _) = lesson.steps[k] else { continue }
+        for (i, b) in picks where old[k]?[i] == nil {
+          if b == items[i].b { run.record(true) } else { run.combo = 0; run.mood = .thinking }
+        }
+      }
+    }
+  }
+
+  private var stage: some View {
+    VStack(spacing: 12) {
+      GameHUD(run: run, title: lesson.title, done: min(step, lesson.steps.count), total: lesson.steps.count) { dismiss() }
+      // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread: the story on the
+      // left page, the play on the right, never across the fold.
+      Storybook(minPage: 280, fill: true) {
+        card(art: true)
+      } first: {
+        storyPage
+      } second: {
+        card(art: false)
+      }
+      .frame(maxHeight: .infinity)
+    }
+    .padding(.horizontal, 20).padding(.top, 4)
+    .readable(720)
+  }
+
+  @ViewBuilder private var actions: some View {
+    HStack(spacing: 12) {
+      if run.outOfFuel && !done {
+        EmptyView()
+      } else if done {
+        if !tucked { Button("Back to the map") { dismiss() }.buttonStyle(ChunkyPrimary()) }
+      } else {
+        Button { go(-1) } label: { Image(systemName: "chevron.left").font(.headline.weight(.heavy)).frame(width: 24) }
+          .buttonStyle(ChunkyStyle(face: Palette.card, edge: Palette.line, ink: Palette.ink)).frame(width: 64)
+          .disabled(step == 0).opacity(step == 0 ? 0.5 : 1).accessibilityLabel("Back")
+        Button(step == lesson.steps.count - 1 ? "Finish" : "Next") { go(1) }.buttonStyle(ChunkyPrimary()).disabled(!ready).opacity(ready ? 1 : 0.55)
+      }
+    }
+    .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 6)
+    .readable(720)
   }
 
   /// The single card (phone) or the right-hand "play" page (spread). `art` keeps the big picture on the
   /// card when there's no left page to hold it.
   private func card(art: Bool) -> some View {
     ZStack {
-      if done {
-        VStack(spacing: 14) {
-          if art { doneArt }
-          Text(tucked ? "Goodnight, Luna!" : "Lesson done!").font(.kHero).multilineTextAlignment(.center)
-          Text(tucked ? "Luna is tucked in. See you tomorrow for the next one!" : "You filled a moon and earned 10 points.").font(.kRead).multilineTextAlignment(.center)
+      if run.outOfFuel && !done {
+        OutOfFuel(retry: retry, leave: { dismiss() }).transition(.scale(scale: 0.92).combined(with: .opacity))
+      } else if done {
+        if tucked {
+          VStack(spacing: 14) {
+            SleepyLuna(size: 110)
+            Text("Goodnight, Luna!").font(.kHero).multilineTextAlignment(.center)
+            Text("Luna is tucked in. See you tomorrow for the next one!").font(.kRead).multilineTextAlignment(.center)
+          }
+          .transition(.scale.combined(with: .opacity))
+        } else {
+          RunResults(stars: stars, run: run, subtitle: "Lesson done! You filled a moon and earned 10 points.", again: retry, map: { dismiss() })
+            .transition(.scale.combined(with: .opacity))
         }
-        .transition(.scale.combined(with: .opacity))
       } else {
-        stepView(lesson.steps[step], art: art).id(step)
+        stepView(lesson.steps[step], art: art).id("\(attempt)-\(step)")
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
           .transition(rm ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
       }
     }
-    .frame(maxWidth: .infinity)
-    .padding(24)
-    .frame(minHeight: cardMin)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(20)
+    .background(Palette.card.opacity(0.9), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+    .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(.white.opacity(0.6), lineWidth: 1))
+    .shadow(color: Palette.accent.opacity(0.12), radius: 18, y: 8)
     .overlay(Celebrate(trigger: burst))
   }
+
+  private var stars: Int { run.answered == 0 ? 3 : World.starsFor(right: run.right, of: run.answered) }
 
   @ViewBuilder private var doneArt: some View {
     if tucked { SleepyLuna(size: 110) } else { MoonPhase(phase: 4, size: 110) }
@@ -248,9 +276,8 @@ struct LessonPlayer: View {
       Text(done ? lesson.title : "Page \(step + 1) of \(lesson.steps.count)").font(.kEyebrow).foregroundStyle(.secondary)
     }
     .id(done ? -1 : step)
-    .frame(maxWidth: .infinity)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .padding(24)
-    .frame(minHeight: cardMin)
     .background(Palette.moon.opacity(0.35), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
     .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Palette.line.opacity(0.6), lineWidth: 0.5))
     .transition(.opacity)
@@ -263,17 +290,22 @@ struct LessonPlayer: View {
     return nil
   }
 
-  var nextLesson: Lesson? { let ls = app.content.lessons; return ls.firstIndex(of: lesson).flatMap { $0 + 1 < ls.count ? ls[$0 + 1] : nil } }
   func isQuiz(_ i: Int) -> Bool { if case .say = lesson.steps[i] { return false }; return true }
   func go(_ d: Int) {
     withAnimation(Motion.safe(Motion.card, rm)) { step = max(0, step + d) }
-    if step >= lesson.steps.count { app.mutate { $0.finishLesson(lesson.id, today: app.today) }; burst += 1; LiveActivities.lessonDone(lesson) }
-    else { LiveActivities.lesson(lesson, step: step) }
+    run.nextRound()
+    if step >= lesson.steps.count {
+      app.mutate { $0.finishLesson(lesson.id, today: app.today); $0.play("lesson", lesson.id, today: app.today) }
+      burst += 1; LiveActivities.lessonDone(lesson)
+    } else { LiveActivities.lesson(lesson, step: step) }
+  }
+  func retry() {
+    withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); step = 0; answers = [:]; sorts = [:]; attempt += 1; tucked = false }
   }
 
   func stepView(_ s: Step, art: Bool = true) -> some View {
     StepContent(step: s, art: art, seed: step + lesson.id.count,
-                picked: Binding(get: { answers[step] }, set: { answers[step] = $0 }),
+                picked: Binding(get: { answers[step] }, set: { if answers[step] == nil { answers[step] = $0 } }),
                 picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }))
   }
 }
@@ -286,12 +318,14 @@ struct StepContent: View {
   var seed = 0
   @Binding var picked: Int?
   @Binding var picks: [Int: Int]
+  /// The art stage grows into spare room up to this height (CardFitTests measures at its minimum).
+  var artMax: CGFloat = 420
   var body: some View {
     switch step {
     case let .say(emoji, text):
-      VStack(spacing: 22) {
-        if art { Glyph(emoji, size: 96, style: .halo) }
-        Text(text).font(.system(.title2, design: .rounded).weight(.semibold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+      VStack(spacing: 18) {
+        if art { ArtPanel(key: emoji, maxHeight: artMax) }
+        Text(text).font(.system(.title2, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }
     case let .check(c):
@@ -299,6 +333,40 @@ struct StepContent: View {
     case let .sort(q, buckets, items, why):
       SortView(q: q, buckets: buckets, items: items, why: why, picks: $picks)
     }
+  }
+}
+
+/// The picture at the top of a lesson card: the art on a soft color stage, with Luna peeking in. It takes
+/// the room the words leave (between a minimum and a maximum), so the card always looks composed.
+struct ArtPanel: View {
+  let key: String
+  var maxHeight: CGFloat = 420
+  @Environment(\.accessibilityReduceMotion) private var rm
+  @State private var float = false
+  var body: some View {
+    let spec = Art.spec(key)
+    ZStack(alignment: .bottomTrailing) {
+      RoundedRectangle(cornerRadius: 26, style: .continuous)
+        .fill(LinearGradient(colors: [spec.hue.light.opacity(0.55), spec.hue.light.opacity(0.18)], startPoint: .top, endPoint: .bottom))
+      // A few soft dots so the stage isn't flat.
+      Canvas { g, sz in
+        for i in 0..<7 {
+          let fi = CGFloat(i)
+          let x = (fi * 0.17 + 0.07).truncatingRemainder(dividingBy: 1) * sz.width
+          let y = (fi * 0.29 + 0.12).truncatingRemainder(dividingBy: 1) * sz.height
+          let r = 4 + (fi * 3).truncatingRemainder(dividingBy: 7)
+          g.fill(Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)), with: .color(spec.hue.color.opacity(0.18)))
+        }
+      }
+      Glyph(key, size: 132, style: .halo)
+        .offset(y: float && !rm ? -6 : 0)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      Luna(size: 46, wave: true, mood: .happy).padding(12)
+    }
+    .frame(minHeight: min(150, maxHeight), maxHeight: maxHeight)
+    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+    .accessibilityHidden(true)
+    .task { guard !rm else { return }; withAnimation(Motion.gentle.repeatForever()) { float = true } }
   }
 }
 
@@ -314,24 +382,23 @@ struct CheckView: View {
     let opts = check.options.enumerated().map { ($0.offset, $0.element) }
     let k = (seed * 7 + check.q.count) % max(1, opts.count)
     let shuffled = Array(opts[k...] + opts[..<k])
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 8) {
       HStack(alignment: .top, spacing: 10) {
         Text(check.q).font(.kTitle).fixedSize(horizontal: false, vertical: true)
         Spacer(minLength: 0)
         SpeakButton(source: .appCopy("\(check.q) \(check.options.joined(separator: ". Or, ")).") )
       }
-      ForEach(shuffled, id: \.0) { i, text in
-        let isPick = chosen == i, right = i == check.answer
-        Button { withAnimation(Motion.tap) { if standalone { local = i } else { picked = i } } } label: {
-          HStack { Text(text).font(.kHeadline).multilineTextAlignment(.leading); Spacer(minLength: 4); if isPick { Image(systemName: right ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill") } }
-            .padding(.horizontal, 14).padding(.vertical, 10).frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-            .foregroundStyle(Palette.midnight)
-            .background(isPick ? (right ? Palette.mint : Palette.peach) : Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(isPick ? (right ? Palette.good : Palette.bad).opacity(0.5) : Palette.line, lineWidth: 1.5))
+      ForEach(Array(shuffled.enumerated()), id: \.element.0) { k, pair in
+        let (i, text) = pair
+        let right = i == check.answer
+        // Once picked, the right answer glows and a wrong pick wobbles; the rest dim.
+        let state: AnswerState = chosen == nil ? .idle : right ? .right : chosen == i ? .wrong : .dim
+        AnswerButton(text: text, index: k, state: state) {
+          guard chosen == nil else { return }
+          withAnimation(Motion.tap) { if standalone { local = i } else { picked = i } }
         }
-        .buttonStyle(PressStyle())
-        .accessibilityAddTraits(isPick ? .isSelected : [])
-        .sensoryFeedback(trigger: chosen) { _, n in n == i ? (right ? .success : .warning) : nil }
+        .allowsHitTesting(chosen == nil)
+        .sensoryFeedback(trigger: chosen) { _, n in n == i ? (right ? .success : .error) : nil }
       }
       if let c = chosen { Text((c == check.answer ? "Yes! " : "Good try! ") + check.why).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true).transition(.opacity) }
     }

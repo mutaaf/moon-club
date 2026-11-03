@@ -25,6 +25,13 @@ public struct KidsState: Codable, Hashable, Sendable {
   public var storyRead: String?
   /// Market World: best stars (0–3) per map node id. Optional so older saves decode.
   public var stars: [String: Int]?
+  /// Game On (0.10): what was played each day, as "yyyy-MM-dd|kind|id" (kind: lesson, game, boss, quest, guess).
+  /// Feeds Today's missions and the play streak. Optional so older saves decode; merge = union.
+  public var played: [String]?
+  /// Days whose mission chest was opened (union). Each chest unlocks the next rocket skin (cosmetic only).
+  public var chests: [String]?
+  /// The rocket skin the kid picked, as "<millis>|<skin id>": the later pick wins on merge (max).
+  public var skin: String?
   public init() {}
 
   // MARK: Intents (pure reducers)
@@ -61,6 +68,15 @@ public struct KidsState: Codable, Hashable, Sendable {
   public mutating func finishLemonade() { questDone = true }
   public mutating func readStory(today: String) { storyRead = today }
   /// Keep the best result for a Market World node (stars never go down).
+  /// Logs one play for today's missions and the streak. Capped at the newest 400 entries when written.
+  public mutating func play(_ kind: String, _ id: String, today: String) {
+    let e = "\(today)|\(kind)|\(id)"
+    var p = played ?? []
+    if !p.contains(e) { p.append(e); p.sort(); if p.count > 400 { p.removeFirst(p.count - 400) } }
+    played = p
+  }
+  public mutating func openChest(today: String) { var c = Set(chests ?? []); c.insert(today); chests = c.sorted() }
+  public mutating func pickSkin(_ id: String, nowMillis: Int) { skin = "\(nowMillis)|\(id)" }
   public mutating func earn(_ node: String, stars n: Int) { var m = stars ?? [:]; m[node] = max(m[node] ?? 0, min(3, max(0, n))); stars = m }
 
   // MARK: Derived

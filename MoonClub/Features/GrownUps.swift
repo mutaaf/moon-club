@@ -68,6 +68,9 @@ struct GrownUpsView: View {
         Section { VoiceSettingsView() } header: { Text("Luna's voice") } footer: {
           Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
         }
+        Section { PlaySettings() } header: { Text("Games") } footer: {
+          Text("Relaxed play hides the speed ring, so there's no clock at all. Hearts never cost anything: out of hearts just means \"try again\". Sounds follow the ring/silent switch.")
+        }
         Section { LeagueSettings() } header: { Text("Family league") } footer: {
           Text("Each player picks an emoji instead of a name. A code holds only the company, the date and the guess. Codes work with the website too.")
         }
@@ -95,6 +98,15 @@ struct GrownUpsView: View {
     }
   }
   func bullet(_ s: LocalizedStringKey) -> some View { Text(s).font(.callout) }
+}
+
+struct PlaySettings: View {
+  @AppStorage(PlayPrefs.relaxedKey) private var relaxed = false
+  @AppStorage(PlayPrefs.soundsKey) private var sounds = true
+  var body: some View {
+    Toggle("Relaxed play (no speed ring)", isOn: $relaxed)
+    Toggle("Game sounds", isOn: $sounds)
+  }
 }
 
 struct VoiceSettingsView: View {

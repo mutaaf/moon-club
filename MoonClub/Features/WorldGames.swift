@@ -1,36 +1,61 @@
 import SwiftUI
 import MoonClubCore
 
-// The Market World chart games. Every game is a few short rounds inside one `GameShell`: a prompt, a chart
-// you touch, a gentle "why", then stars. Answers come from MoonClubCore.ChartMath (unit-tested). Nothing
-// on these screens scrolls inside a card: the chart takes the space that's left, and copy is one line.
+// The Market World chart games. Every game is a few short rounds inside one `GameShell`: the Game On HUD
+// (hearts, combo, coins, stars, Luna), a prompt, a chart you touch, a gentle "why", then the results.
+// Answers come from MoonClubCore.ChartMath (unit-tested). Nothing on these screens scrolls: the chart
+// takes the space that's left, and copy is one line.
 
 struct RoundResult: Equatable { let right: Bool; let why: String }
 
-/// Rounds, feedback, stars and the finish card for every game.
+/// Rounds, HUD, feedback, results and refuel for every game (and the region quiz bosses).
 struct GameShell<Round: View>: View {
   let node: WorldNode
   let rounds: Int
   let intro: String
+  var boss: BossInfo? = nil
+  /// Games get the speed ring (unless a grown-up picked relaxed play); bosses don't.
+  var timed = true
   var onFinish: (Int) -> Void
   @ViewBuilder let round: (_ index: Int, _ answer: @escaping (RoundResult) -> Void, _ answered: RoundResult?) -> Round
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.accessibilityReduceMotion) private var rm
+  @AppStorage(PlayPrefs.relaxedKey) private var relaxed = false
+  @State private var run = RunModel()
   @State private var index = 0
-  @State private var right = 0
   @State private var result: RoundResult?
   @State private var finished = false
+  @State private var attempt = 0
   @State private var burst = 0
 
+  static var speedSeconds: Double { 20 }
+
   var body: some View {
-    VStack(spacing: 14) {
-      header
+    let dark = boss != nil
+    VStack(spacing: 12) {
+      GameHUD(run: run, title: node.title, done: finished ? rounds : index + (result == nil ? 0 : 1), total: rounds,
+              boss: boss, speed: timed && !relaxed && !finished && result == nil && !run.outOfFuel ? Self.speedSeconds : nil, dark: dark) { dismiss() }
+      if !finished && !run.outOfFuel {
+        Text(intro).font(.subheadline.weight(.semibold)).foregroundStyle(dark ? Color.white.opacity(0.85) : Palette.ink2)
+          .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2).minimumScaleFactor(0.85)
+      }
       ZStack {
-        if finished { finish.transition(.scale(scale: 0.92).combined(with: .opacity)) }
-        else {
-          round(index, { r in guard result == nil else { return }; withAnimation(Motion.safe(Motion.card, rm)) { result = r }; if r.right { right += 1 } }, result)
-            .id(index)
+        if finished {
+          RunResults(stars: stars, run: run, boss: boss != nil, again: again, map: { dismiss() })
+            .padding(20)
+            .background(Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
+        } else if run.outOfFuel && result == nil {
+          OutOfFuel(retry: again, leave: { dismiss() })
+            .padding(20)
+            .background(Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
+        } else {
+          round(index, answer, result)
+            .padding(dark ? 16 : 0)
+            .background { if dark { RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Palette.card.opacity(0.94)) } }
+            .id("\(attempt)-\(index)")
             .transition(rm ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
         }
       }
@@ -39,60 +64,48 @@ struct GameShell<Round: View>: View {
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
-    .background(AuroraField(surface: .school))
+    .background { if dark { BossBackdrop() } else { AuroraField(surface: .school) } }
+    .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
-    .navigationTitle(node.title)
-    .navigationBarTitleDisplayMode(.inline)
-    .sensoryFeedback(trigger: result) { _, n in n.map { $0.right ? .success : .warning } }
+    .playChrome()
+    .sensoryFeedback(trigger: result) { _, n in n.map { $0.right ? .success : .error } }
+    .onAppear { run.nextRound() }
   }
 
-  private var header: some View {
-    VStack(spacing: 8) {
-      HStack(spacing: 6) {
-        ForEach(0..<rounds, id: \.self) { i in
-          Capsule().fill(i < index || (i == index && (result != nil || finished)) ? Palette.accent : Palette.line).frame(height: 6)
-        }
-      }
-      if !finished { Text(intro).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink2).frame(maxWidth: .infinity, alignment: .leading).lineLimit(2).minimumScaleFactor(0.85) }
-    }
-    .padding(.top, 8)
-    .animation(Motion.safe(Motion.card, rm), value: index)
+  private func answer(_ r: RoundResult) {
+    guard result == nil else { return }
+    run.record(r.right, fast: timed && !relaxed && SpeedRing.fast(run.roundStart, Self.speedSeconds), bossHit: boss == nil ? 0 : 1 / Double(max(rounds, 1)))
+    withAnimation(Motion.safe(Motion.card, rm)) { result = r }
   }
 
   @ViewBuilder private var footer: some View {
-    if finished {
-      Button("Back to the map") { dismiss() }.buttonStyle(PrimaryButtonStyle())
-    } else if let r = result {
+    if let r = result, !finished {
       VStack(spacing: 10) {
         HStack(alignment: .top, spacing: 10) {
           Image(systemName: r.right ? "checkmark.circle.fill" : "arrow.uturn.left.circle.fill").font(.title2).foregroundStyle(r.right ? Palette.good : Hue.orange.color)
-          Text((r.right ? "Yes! " : "Good try. ") + r.why).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            .symbolEffect(.bounce, value: r.right)
+          Text((r.right ? (run.multiplier > 1 ? "Combo x\(run.multiplier)! " : "Yes! ") : "Good try. ") + r.why).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: 0)
         }
         .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        Button(index + 1 < rounds ? "Next" : "See my stars") { next() }.buttonStyle(PrimaryButtonStyle())
+        Button(run.outOfFuel ? "Uh oh, fuel check" : index + 1 < rounds ? "Next" : "See my stars") { next() }.buttonStyle(ChunkyPrimary())
       }
       .transition(.move(edge: .bottom).combined(with: .opacity))
     }
   }
 
-  private var stars: Int { World.starsFor(right: right, of: rounds) }
+  private var stars: Int { World.starsFor(right: run.right, of: rounds) }
 
-  private var finish: some View {
-    VStack(spacing: 16) {
-      Luna(size: 110, wave: true, mood: stars == 3 ? .cheering : .happy)
-      StarRow(stars: stars, size: 40, animated: true)
-      Text(stars == 3 ? "Perfect!" : stars == 2 ? "Great job!" : "You did it!").font(.kHero)
-      Text("\(right) of \(rounds) right. \(stars == 3 ? "You conquered it!" : "Play again any time for more stars.")").font(.kRead).multilineTextAlignment(.center).foregroundStyle(Palette.ink2)
-    }
-    .padding(28)
-    .frame(maxWidth: .infinity)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+  private func again() {
+    withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); index = 0; result = nil; finished = false; attempt += 1 }
   }
 
   private func next() {
-    if index + 1 < rounds {
+    if run.outOfFuel {
+      withAnimation(Motion.safe(Motion.card, rm)) { result = nil }
+    } else if index + 1 < rounds {
       withAnimation(Motion.safe(Motion.card, rm)) { index += 1; result = nil }
+      run.nextRound()
     } else {
       onFinish(stars)
       withAnimation(Motion.safe(Motion.celebrate, rm)) { finished = true }
@@ -152,27 +165,22 @@ struct Choices: View {
   var pick: (Int) -> Void
   var body: some View {
     ViewThatFits(in: .horizontal) {
-      HStack(spacing: 10) { buttons }
-      VStack(spacing: 8) { buttons }
+      HStack(spacing: 10) { buttons(compact: true) }
+      VStack(spacing: 6) { buttons(compact: false) }
     }
   }
-  @ViewBuilder private var buttons: some View {
+  @ViewBuilder private func buttons(compact: Bool) -> some View {
     ForEach(options.indices, id: \.self) { i in
-      Button { pick(i) } label: {
-        Text(options[i]).font(.kHeadline).multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.8)
-          .frame(maxWidth: .infinity, minHeight: 50).padding(.horizontal, 12)
-          .background(fill(i), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-          .foregroundStyle(answered != nil && (i == correct || i == picked) ? Color.white : Palette.ink)
-      }
-      .buttonStyle(PressStyle())
-      .disabled(answered != nil)
+      AnswerButton(text: options[i], index: i, state: state(i), compact: compact) { pick(i) }
+        .frame(maxWidth: .infinity)
+        .disabled(answered != nil)
     }
   }
-  private func fill(_ i: Int) -> AnyShapeStyle {
-    guard answered != nil else { return AnyShapeStyle(.thinMaterial) }
-    if i == correct { return AnyShapeStyle(Palette.good) }
-    if i == picked { return AnyShapeStyle(Hue.coral.color) }
-    return AnyShapeStyle(.thinMaterial)
+  private func state(_ i: Int) -> AnswerState {
+    guard answered != nil else { return .idle }
+    if i == correct { return .right }
+    if i == picked { return .wrong }
+    return .dim
   }
 }
 
@@ -263,7 +271,7 @@ struct BuildCandleRound: View {
         let ok = v[0] == day.o && v[1] == day.c && v[2] == day.h && v[3] == day.l
         answer(RoundResult(right: ok, why: ok ? "Start and end make the body. High and low make the wicks." : "Start \(coins(day.o)), end \(coins(day.c)): that's the body. High \(coins(day.h)) and low \(coins(day.l)) are the wick tips."))
       }
-      .buttonStyle(PrimaryButtonStyle()).disabled(answered != nil)
+      .buttonStyle(ChunkyPrimary()).disabled(answered != nil)
       .sensoryFeedback(.selection, trigger: v)
     }
   }
@@ -459,22 +467,13 @@ struct SpotTrendRound: View {
           .animation(Motion.tap, value: drag)
       }
       HStack(spacing: 10) {
-        ForEach([Trend.up, .sideways, .down], id: \.self) { t in
-          Button { pick(t) } label: {
-            Label(t == .up ? "Up" : t == .down ? "Down" : "Sideways", systemImage: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right")
-              .font(.kHeadline).labelStyle(.titleAndIcon).lineLimit(1).minimumScaleFactor(0.7)
-              .frame(maxWidth: .infinity, minHeight: 52)
-              .background(color(t), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-              .foregroundStyle(answered != nil && (t == trend || t == picked) ? Color.white : Palette.ink)
-          }
-          .buttonStyle(PressStyle()).disabled(answered != nil)
+        ForEach(Array([Trend.up, .sideways, .down].enumerated()), id: \.element) { i, t in
+          AnswerButton(text: t == .up ? "Up" : t == .down ? "Down" : "Sideways", icon: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right",
+                       index: i, state: answered == nil ? .idle : t == trend ? .right : t == picked ? .wrong : .dim, compact: true) { pick(t) }
+            .disabled(answered != nil)
         }
       }
     }
-  }
-  private func color(_ t: Trend) -> AnyShapeStyle {
-    guard answered != nil else { return AnyShapeStyle(.thinMaterial) }
-    return t == trend ? AnyShapeStyle(Palette.good) : t == picked ? AnyShapeStyle(Hue.coral.color) : AnyShapeStyle(.thinMaterial)
   }
   private func pick(_ t: Trend) {
     guard answered == nil else { return }
@@ -523,7 +522,7 @@ struct DrawTrendRound: View {
         let s = ChartMath.trendlineStars(start: l.0, end: l.1, closes: closes)
         answer(RoundResult(right: s >= 2, why: s >= 2 ? "Your line follows the gold best-fit line." : "Follow the middle of the wiggles, from left to right. The gold line shows it."))
       }
-      .buttonStyle(PrimaryButtonStyle()).disabled(line == nil || answered != nil)
+      .buttonStyle(ChunkyPrimary()).disabled(line == nil || answered != nil)
     }
   }
 }
@@ -564,7 +563,7 @@ struct FindLevelRound: View {
         let s = ChartMath.levelStars(guess: lv, target: target, chartRange: chart.range.upperBound - chart.range.lowerBound)
         answer(RoundResult(right: s >= 2, why: s >= 2 ? "Right where the price kept turning. Remember: floors can break!" : "The gold line is where it kept turning. A floor is a clue, not a promise."))
       }
-      .buttonStyle(PrimaryButtonStyle()).disabled(answered != nil)
+      .buttonStyle(ChunkyPrimary()).disabled(answered != nil)
     }
   }
 }

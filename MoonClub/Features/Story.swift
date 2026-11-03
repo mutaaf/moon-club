@@ -7,6 +7,8 @@ struct StoryView: View {
   @Environment(\.openQuest) private var openQuest
   @State private var page = 0
   @State private var fold = FoldInfo()
+  /// Each page's own height: the pager is as tall as the card on screen (never the tallest card).
+  @State private var heights: [Int: CGFloat] = [:]
 
   enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), word, quiz, next }
 
@@ -27,6 +29,7 @@ struct StoryView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Hero(eyebrow: Day.en("EEEE, MMMM d", app.today), title: "Today's", accent: "Market Story")
+        TodaysMissions()
         StartHere()
         if app.loadingMarket && app.events.isEmpty && app.mood == nil {
           RoundedRectangle(cornerRadius: 28).fill(.thinMaterial).frame(height: 460).overlay(ProgressView())
@@ -36,11 +39,11 @@ struct StoryView: View {
           // each side of the fold. On a phone it's one card per swipe.
           let sp = fold.split(minPage: 280)
           let per = sp == nil ? 1 : 2
-          // A horizontal pager that is as tall as its tallest card: no card ever scrolls inside itself,
-          // nothing hides under the tab bar (the page scrolls as a whole if the text is very large).
+          // A horizontal pager as tall as the card you're on (each card sizes to its content, the pager
+          // eases between heights as you swipe). No card scrolls inside itself; the page scrolls if needed.
           let pages = Array(stride(from: 0, to: cs.count, by: per))
           ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 0) {   // not lazy: the row is as tall as the tallest card, so swiping never jumps
+            HStack(alignment: .top, spacing: 0) {
               ForEach(Array(pages.enumerated()), id: \.offset) { p, start in
                 Group {
                   if let sp {
@@ -53,12 +56,17 @@ struct StoryView: View {
                   }
                 }
                 .padding(.horizontal, 2)
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[p] = $0 }
+                .frame(maxHeight: .infinity, alignment: .top)
                 .containerRelativeFrame(.horizontal)
                 .id(p)
               }
             }
             .scrollTargetLayout()
           }
+          .frame(height: heights[page] ?? heights.values.min() ?? 360, alignment: .top)
+          .animation(Motion.page, value: heights[page])
           .scrollTargetBehavior(.paging)
           .scrollPosition(id: Binding(get: { page }, set: { if let v = $0 { page = v } }))
           .scrollClipDisabled()
@@ -117,7 +125,7 @@ struct StoryCard: View {
   let card: StoryView.Card
   @Environment(AppModel.self) private var app
   var body: some View {
-    Card(fill: true) {
+    Card {
       switch card {
       case .recap: if let r = app.recap { RecapCard(recap: r) }
       case let .weather(score): WeatherCard(score: score)

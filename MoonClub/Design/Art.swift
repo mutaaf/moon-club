@@ -46,14 +46,14 @@ enum Art {
     "🧾": .init(symbol: "doc.plaintext.fill", hue: .slate), "🏷️": .init(symbol: "tag.fill", hue: .coral),
     "➕": .init(symbol: "plus.circle.fill", hue: .mint), "🎁": .init(symbol: "gift.fill", hue: .coral),
     // growing
-    "🌱": .init(symbol: "leaf.fill", hue: .mint), "🌳": .init(symbol: "tree.fill", hue: .mint), "🌻": .init(symbol: "sun.min.fill", hue: .lemon),
-    "🥚": .init(symbol: "oval.portrait.fill", hue: .lemon), "🐄": .init(symbol: "drop.fill", hue: .sky), "🐢": .init(symbol: "tortoise.fill", hue: .teal),
+    "🌱": .init(symbol: "leaf.fill", hue: .mint), "🌳": .init(symbol: "tree.fill", hue: .mint), "🌻": .init(symbol: "camera.macro", hue: .lemon),
+    "🥚": .init(symbol: "oval.portrait.fill", hue: .orange), "🐄": .init(symbol: "pawprint.fill", hue: .choco), "🐢": .init(symbol: "tortoise.fill", hue: .teal),
     // companies & work
     "🏪": .init(symbol: "storefront.fill", hue: .coral), "🏠": .init(symbol: "house.fill", hue: .orange), "🏡": .init(symbol: "house.fill", hue: .mint),
     "🧑‍🍳": .init(symbol: "frying.pan.fill", hue: .orange), "🧑‍💼": .init(symbol: "briefcase.fill", hue: .slate), "🔧": .init(symbol: "wrench.and.screwdriver.fill", hue: .slate),
     "🤝": .init(symbol: "hands.clap.fill", hue: .orange), "🏟️": .init(symbol: "sportscourt.fill", hue: .teal), "👑": .init(symbol: "crown.fill", hue: .gold),
     "🍕": .init(symbol: "chart.pie.fill", hue: .orange), "🍰": .init(symbol: "birthday.cake.fill", hue: .berry), "🎂": .init(symbol: "birthday.cake.fill", hue: .coral),
-    "🍋": .init(symbol: "drop.circle.fill", hue: .lemon), "🍎": .init(symbol: "fork.knife.circle.fill", hue: .coral), "🍭": .init(symbol: "sparkles", hue: .berry),
+    "🍋": .init(symbol: "custom.lemon", hue: .lemon), "🍎": .init(symbol: "fork.knife.circle.fill", hue: .coral), "🍭": .init(symbol: "birthday.cake.fill", hue: .berry),
     // charts & reports
     "📈": .init(symbol: "chart.line.uptrend.xyaxis", hue: .mint), "📊": .init(symbol: "chart.bar.fill", hue: .sky), "📝": .init(symbol: "doc.text.fill", hue: .sky),
     "📋": .init(symbol: "list.clipboard.fill", hue: .sky), "📅": .init(symbol: "calendar", hue: .coral), "🗓️": .init(symbol: "calendar", hue: .coral),
@@ -75,7 +75,7 @@ enum Art {
     "🛒": .init(symbol: "cart.fill", hue: .sky), "📱": .init(symbol: "iphone", hue: .slate), "💻": .init(symbol: "laptopcomputer", hue: .slate),
     "🎮": .init(symbol: "gamecontroller.fill", hue: .grape), "🕹️": .init(symbol: "gamecontroller.fill", hue: .ink), "🎲": .init(symbol: "dice.fill", hue: .coral),
     "🎧": .init(symbol: "headphones", hue: .mint), "🏀": .init(symbol: "basketball.fill", hue: .orange), "🎯": .init(symbol: "target", hue: .coral),
-    "🏰": .init(symbol: "wand.and.stars", hue: .grape), "🍟": .init(symbol: "takeoutbag.and.cup.and.straw.fill", hue: .coral), "🥤": .init(symbol: "bubbles.and.sparkles.fill", hue: .coral),
+    "🏰": .init(symbol: "crown.fill", hue: .berry), "🍟": .init(symbol: "takeoutbag.and.cup.and.straw.fill", hue: .coral), "🥤": .init(symbol: "bubbles.and.sparkles.fill", hue: .coral),
     "🥨": .init(symbol: "fork.knife", hue: .choco), "🍿": .init(symbol: "popcorn.fill", hue: .coral), "▶️": .init(symbol: "play.rectangle.fill", hue: .coral),
     "☕": .init(symbol: "cup.and.saucer.fill", hue: .teal), "🌯": .init(symbol: "fork.knife", hue: .orange), "🍫": .init(symbol: "rectangle.split.3x3.fill", hue: .choco),
     // League players
@@ -96,6 +96,10 @@ enum Art {
     let trimmed = key.replacingOccurrences(of: "\u{FE0F}", with: "")
     return map[trimmed] ?? map.first { $0.key.replacingOccurrences(of: "\u{FE0F}", with: "") == trimmed }?.value ?? fallback
   }
+  /// For review: every emoji key and what it's drawn as ("🍋 → custom.lemon (lemon)"), sorted.
+  static var reviewList: [String] { map.map { "\($0.key) → \($0.value.symbol) (\($0.value.hue))" }.sorted() }
+  /// Pairs a reviewer flagged as misleading; a test keeps them from coming back.
+  static let neverAgain: [String: String] = ["🐄": "drop.fill", "🍋": "drop.circle.fill", "🌻": "sun.min.fill", "🏰": "wand.and.stars", "💰": "drop.fill"]
   /// For tests: every key whose symbol must exist.
   static var allSymbols: [String] { Array(Set(map.values.map(\.symbol) + [fallback.symbol])).filter { !$0.hasPrefix("custom.") } }
 }
@@ -136,6 +140,7 @@ struct Glyph: View {
   /// The symbol itself, or one of Moon Club's own drawn marks (`custom.*`) where no SF Symbol fits.
   @ViewBuilder private func mark(_ s: CGFloat, color: Color) -> some View {
     if spec.symbol == "custom.candle" { CandleMark(color: color).frame(width: s * 1.1, height: s * 1.2) }
+    else if spec.symbol == "custom.lemon" { LemonMark(tint: color == .white ? .white : nil).frame(width: s * 1.25, height: s * 1.05) }
     else if spec.symbol == "custom.piggy" { PiggyMark(tint: color == .white ? .white : nil).frame(width: s * 1.3, height: s * 1.05) }
     else { Image(systemName: spec.symbol).font(.system(size: s, weight: .semibold)).foregroundStyle(color).symbolRenderingMode(.hierarchical) }
   }
@@ -159,6 +164,29 @@ struct PiggyMark: View {
       g.fill(Path(roundedRect: CGRect(x: w * 0.36, y: h * 0.18, width: w * 0.2, height: h * 0.05), cornerRadius: h * 0.025), with: .color(ink.opacity(0.55)))
       var tail = Path(); tail.move(to: .init(x: w * 0.09, y: h * 0.42)); tail.addQuadCurve(to: .init(x: w * 0.02, y: h * 0.36), control: .init(x: w * 0.0, y: h * 0.46))
       g.stroke(tail, with: .color(shade), style: .init(lineWidth: max(1.5, w * 0.03), lineCap: .round))
+    }
+    .accessibilityHidden(true)
+  }
+}
+
+/// A lemon, drawn: a yellow oval with pointed ends and a leaf. `tint` paints it one color (on a tile).
+struct LemonMark: View {
+  var tint: Color? = nil
+  var body: some View {
+    Canvas { g, sz in
+      let w = sz.width, h = sz.height
+      let peel = tint ?? Color(hex: 0xF7CF3B), rind = tint?.opacity(0.7) ?? Color(hex: 0xD99A1E), leaf = tint?.opacity(0.85) ?? Color(hex: 0x3DB97F)
+      var l = Path(); l.move(to: .init(x: w * 0.52, y: h * 0.24)); l.addQuadCurve(to: .init(x: w * 0.86, y: h * 0.06), control: .init(x: w * 0.62, y: h * 0.0)); l.addQuadCurve(to: .init(x: w * 0.52, y: h * 0.24), control: .init(x: w * 0.78, y: h * 0.3))
+      g.fill(l, with: .color(leaf))
+      var b = Path()
+      b.move(to: .init(x: w * 0.04, y: h * 0.6))
+      b.addQuadCurve(to: .init(x: w * 0.5, y: h * 0.2), control: .init(x: w * 0.14, y: h * 0.2))
+      b.addQuadCurve(to: .init(x: w * 0.96, y: h * 0.6), control: .init(x: w * 0.86, y: h * 0.2))
+      b.addQuadCurve(to: .init(x: w * 0.5, y: h * 0.98), control: .init(x: w * 0.86, y: h * 0.98))
+      b.addQuadCurve(to: .init(x: w * 0.04, y: h * 0.6), control: .init(x: w * 0.14, y: h * 0.98))
+      g.fill(b, with: .color(peel))
+      g.stroke(b, with: .color(rind), lineWidth: max(1, w * 0.04))
+      g.fill(Path(ellipseIn: CGRect(x: w * 0.3, y: h * 0.38, width: w * 0.16, height: h * 0.1)), with: .color(.white.opacity(tint == nil ? 0.55 : 0.3)))
     }
     .accessibilityHidden(true)
   }

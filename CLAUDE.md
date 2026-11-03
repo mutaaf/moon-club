@@ -11,9 +11,18 @@ Every version needs `release-notes/<MARKETING_VERSION>.md` in the house style (`
 ## Market World, art and motion
 - The World tab is the map (`Features/WorldMap.swift`, games in `WorldGames.swift`, bosses in `WorldBosses.swift`); rules in MoonClubCore `World.swift` + `Charts.swift`. New chart lessons come from metaphases (`units` candles/trends/patterns/signals) via `make content`; the map drops nodes whose content is missing.
 - **Never draw an emoji as a picture.** Use `Glyph(key)` (`Design/Art.swift`); add new emoji keys to `Art.map` (CardFitTests fails on any content emoji without art, or any symbol that doesn't exist). No brand logos (`apple.logo` etc.).
-- **No ScrollView inside a card.** Make the page scroll, page the content, or shorten copy. CardFitTests measures every lesson step at SE/17/Duo/iPad with xxxLarge text.
+- **No ScrollView inside a card.** Make the page scroll, page the content, or shorten copy. CardFitTests measures every lesson step at SE (xxLarge)/17/Duo/iPad (xxxLarge); from xxxLarge the lesson page itself may scroll as a fallback.
 - Animations use `Motion` tokens; appear animations use `enterOnce`.
 - Debug launch args for screenshots: `-world mid|all` (seed map progress), `-play <node id>` (open a game/boss), `-step <n>` (lesson step), `-conquer` (win the current land after 2 s, for recording the conquer animation).
+
+## Game On (0.10): play screens
+- Every lesson, chart game, boss and quest uses `Design/GameKit.swift`: `RunModel` (hearts, combo, coins, Luna's mood), `GameHUD`, `AnswerButton`/`ChunkyStyle`, `CoinBurst`, `RunResults`, `OutOfFuel`, `BossBackdrop`, and `.playChrome()` (hides the tab and navigation bars; the HUD's X closes, with a "Leave? Your stars stay" confirm mid-run). New play screens use these, not ad-hoc buttons.
+- Play screens are fixed full-screen layouts: no ScrollView at standard text sizes (LessonPlayer falls back to a page scroll from `.xxxLarge` up). `CardFitTests.testEveryPlayScreenFitsWithoutScrolling` lays every game, boss and lesson out at its minimum height on iPhone SE and 17.
+- Out of hearts is never punitive ("Luna's rocket needs fuel"); sorting never costs a heart; the speed ring only gives bonus coins and is off with Relaxed play (grown-ups → Games; `PlayPrefs`).
+- Today's missions, chest, play streak and rocket skins are pure in MoonClubCore `Missions.swift`. State fields `played` / `chests` (union) and `skin` ("<millis>|<id>", max wins) are optional. Log plays with `state.play(kind, id, today:)`; kinds are lesson, game, boss, node, quest, guess.
+- On the map a tap plays an open stop directly. Long-press (or the VoiceOver action) opens the info sheet.
+- `Art.neverAgain` lists emoji→symbol pairs that were misleading (cow/lemon drawn as water drops). The art test keeps them out, and prints `Art.reviewList` for review.
+- `-play <node id>` goes through the same `play(_:)` as a tap. Setting `playing` directly rendered lessons, units and quests blank.
 
 ## iPhone Duo
 Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → code.

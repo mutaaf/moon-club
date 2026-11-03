@@ -19,6 +19,8 @@ struct TimeMachineBoss: View {
   @State private var call: Trend?
   @State private var shown = 0
   @State private var burst = 0
+  @State private var run = RunModel()
+  @State private var results = false
 
   private let past = 40, future = 12
 
@@ -33,18 +35,17 @@ struct TimeMachineBoss: View {
     let name = companyName(s?.s ?? "Practice", app)
     let floorOpts = floorOptions(floor, pastC)
 
-    VStack(spacing: 14) {
-      HStack(spacing: 10) {
-        Glyph("⏳", size: 36)
-        VStack(alignment: .leading, spacing: 0) {
-          Text("Chart Time Machine").font(.kHeadline)
-          Text("\(name) · \(Day.en("MMMM yyyy", pastC.last?.d ?? app.today))").font(.caption).foregroundStyle(.secondary)
-        }
-        Spacer()
-        PretendPill()
-      }
-      .padding(.top, 8)
-
+    VStack(spacing: 12) {
+      GameHUD(run: run, title: node.title, done: min(3, phase.rawValue), total: 3, boss: BossInfo(name: "\(name) · \(Day.en("MMM yyyy", pastC.last?.d ?? app.today))", art: "⏳"), dark: true) { dismiss() }
+      if results {
+        RunResults(stars: 1 + right, run: run, boss: true, subtitle: "You read the clues like a pro. Clues help, but they're never promises.",
+                   again: { withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); right = 0; feedback = nil; call = nil; shown = 0; phase = .trend; results = false } },
+                   map: { dismiss() })
+          .padding(20)
+          .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+          .frame(maxHeight: .infinity)
+          .transition(.scale(scale: 0.92).combined(with: .opacity))
+      } else {
       ChartCard(caption: phase == .reveal || phase == .done ? "What happened next" : "The chart, up to that day") {
         CandleChart(candles: all,
                     level: phase == .floor && feedback == nil ? nil : (phase.rawValue >= Phase.floor.rawValue ? floor : nil),
@@ -65,13 +66,16 @@ struct TimeMachineBoss: View {
         }
       }
       .frame(maxWidth: .infinity)
+      .padding(16)
+      .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+      }
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
-    .background(AuroraField(surface: .luna))
+    .background(BossBackdrop())
+    .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
-    .navigationTitle(node.title)
-    .navigationBarTitleDisplayMode(.inline)
+    .playChrome()
   }
 
   private func startIndex(_ s: CandleSeries?) -> Int {
@@ -93,11 +97,12 @@ struct TimeMachineBoss: View {
       Text(q).font(.kTitle).frame(maxWidth: .infinity, alignment: .leading)
       Choices(options: opts, correct: correct, answered: feedback, picked: nil) { i in
         let r = why(i == correct); if r.right { right += 1 }
+        run.record(r.right, bossHit: 0.34)
         withAnimation(Motion.safe(Motion.card, rm)) { feedback = r }
       }
       if let f = feedback {
         Text((f.right ? "Yes! " : "Good try. ") + f.why).font(.callout.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
-        Button("Next clue") { withAnimation(Motion.safe(Motion.card, rm)) { feedback = nil; phase = Phase(rawValue: phase.rawValue + 1) ?? .call } }.buttonStyle(PrimaryButtonStyle())
+        Button("Next clue") { run.nextRound(); withAnimation(Motion.safe(Motion.card, rm)) { feedback = nil; phase = Phase(rawValue: phase.rawValue + 1) ?? .call } }.buttonStyle(ChunkyPrimary())
       }
     }
   }
@@ -106,11 +111,8 @@ struct TimeMachineBoss: View {
     VStack(spacing: 10) {
       Text("Your pretend call: the next two weeks will go…").font(.kTitle).frame(maxWidth: .infinity, alignment: .leading)
       HStack(spacing: 10) {
-        ForEach([Trend.up, .sideways, .down], id: \.self) { t in
-          Button { call = t; travel() } label: {
-            Label(t == .up ? "Up" : t == .down ? "Down" : "Sideways", systemImage: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right").font(.kHeadline).lineLimit(1).minimumScaleFactor(0.7)
-              .frame(maxWidth: .infinity, minHeight: 52).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-          }.buttonStyle(PressStyle())
+        ForEach(Array([Trend.up, .sideways, .down].enumerated()), id: \.element) { i, t in
+          AnswerButton(text: t == .up ? "Up" : t == .down ? "Down" : "Sideways", icon: t == .up ? "arrow.up.right" : t == .down ? "arrow.down.right" : "arrow.right", index: i, compact: true) { call = t; travel() }
         }
       }
       Text("Just pretend. No points for the call: only for reading the clues.").font(.footnote).foregroundStyle(.secondary)
@@ -124,7 +126,7 @@ struct TimeMachineBoss: View {
         try? await Task.sleep(for: .milliseconds(rm ? 0 : 140))
         withAnimation(Motion.safe(.easeOut(duration: 0.14), rm)) { shown = k }
       }
-      withAnimation(Motion.safe(Motion.card, rm)) { phase = .done }
+      withAnimation(Motion.safe(Motion.card, rm)) { phase = .done; run.bossHP = 0 }
       onFinish(1 + right)
       burst += 1
     }
@@ -146,8 +148,7 @@ struct TimeMachineBoss: View {
         Spacer(minLength: 0)
       }
       if phase == .done {
-        StarRow(stars: 1 + right, size: 30, animated: true)
-        Button("Back to the map") { dismiss() }.buttonStyle(PrimaryButtonStyle())
+        Button("See my stars") { withAnimation(Motion.safe(Motion.celebrate, rm)) { results = true } }.buttonStyle(ChunkyPrimary())
       }
     }
   }
@@ -161,7 +162,8 @@ struct ReviewBoss: View {
   @Environment(AppModel.self) private var app
   var body: some View {
     let checks = Self.pick(World.lessons(of: region, app.content), seed: region.id.count)
-    GameShell(node: node, rounds: checks.count, intro: "Five quick questions from this land. Win them to plant your flag!", onFinish: onFinish) { i, answer, answered in
+    GameShell(node: node, rounds: checks.count, intro: "Five quick questions from this land. Win them to plant your flag!",
+              boss: BossInfo(name: node.title, art: node.art), timed: false, onFinish: onFinish) { i, answer, answered in
       ReviewRound(check: checks[i], seed: i, answer: answer, answered: answered)
     }
   }
@@ -183,20 +185,15 @@ struct ReviewRound: View {
     return VStack(spacing: 16) {
       Spacer(minLength: 0)
       Text(check.q).font(.kTitle).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-      VStack(spacing: 8) {
-        ForEach(order, id: \.self) { i in
-          Button { picked = i; answer(RoundResult(right: i == check.answer, why: check.why)) } label: {
-            Text(check.options[i]).font(.kHeadline).multilineTextAlignment(.center).frame(maxWidth: .infinity, minHeight: 52).padding(.horizontal, 12)
-              .background(fill(i), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-              .foregroundStyle(answered != nil && (i == check.answer || i == picked) ? Color.white : Palette.ink)
-          }.buttonStyle(PressStyle()).disabled(answered != nil)
+      VStack(spacing: 6) {
+        ForEach(Array(order.enumerated()), id: \.element) { k, i in
+          AnswerButton(text: check.options[i], index: k, state: answered == nil ? .idle : i == check.answer ? .right : i == picked ? .wrong : .dim) {
+            picked = i; answer(RoundResult(right: i == check.answer, why: check.why))
+          }
+          .disabled(answered != nil)
         }
       }
       Spacer(minLength: 0)
     }
-  }
-  private func fill(_ i: Int) -> AnyShapeStyle {
-    guard answered != nil else { return AnyShapeStyle(.thinMaterial) }
-    return i == check.answer ? AnyShapeStyle(Palette.good) : i == picked ? AnyShapeStyle(Hue.coral.color) : AnyShapeStyle(.thinMaterial)
   }
 }
