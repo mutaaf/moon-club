@@ -47,6 +47,9 @@ public struct KidsState: Codable, Hashable, Sendable {
   public var rankSeen: Int?
   /// iPhone Duo things done ("book", "tabletop", "hinge", "night") -> count (merge: max per key). See Party.swift `DuoUse`.
   public var duo: [String: Int]?
+  /// Spaced review (Review.swift): question id "<lesson>#<step>" -> "yyyy-MM-dd|box". Optional so older saves
+  /// decode; merge = max per key (the later day wins, then the higher box).
+  public var review: [String: String]?
   public init() {}
 
   // MARK: Intents (pure reducers)

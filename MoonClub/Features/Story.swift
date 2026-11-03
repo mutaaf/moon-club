@@ -10,7 +10,7 @@ struct StoryView: View {
   /// Each page's own height: the pager is as tall as the card on screen (never the tallest card).
   @State private var heights: [Int: CGFloat] = [:]
 
-  enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), word, quiz, next }
+  enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), why(String), word, quiz, next }
 
   var cards: [Card] {
     var out: [Card] = []
@@ -19,7 +19,9 @@ struct StoryView: View {
     if let m = app.mood { out.append(.weather(m)) }
     var seen = Set<String>()
     for e in app.upcoming where e.d <= Day.add(app.today, 10) && !seen.contains(e.s) && seen.count < 3 { seen.insert(e.s); out.append(.report(e)) }
-    out += [.word, .quiz]
+    // "Why did it move?" for a company the kid cares about: their piggy bank, their latest guess, else Disney.
+    let whySym = app.state.piggy?.holdings.first?.s ?? app.state.guesses.max { $0.d < $1.d }?.s ?? "DIS"
+    out += [.why(whySym), .word, .quiz]
     if !fresh, app.recap?.active == true { out.append(.recap) }
     out.append(.next)
     return out
@@ -83,6 +85,18 @@ struct StoryView: View {
     .background(AuroraField(surface: .story))
     .refreshable { await app.loadMarket() }
     .onDisappear { if cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
+    #if DEBUG
+    // Screenshots: -whyCard SYM shows the real WhyCard on its own (the story pager sits below the fold on a phone).
+    .sheet(isPresented: .constant(ProcessInfo.processInfo.arguments.contains("-whyCard"))) {
+      let a = ProcessInfo.processInfo.arguments
+      let s = a.firstIndex(of: "-whyCard").flatMap { $0 + 1 < a.count ? a[$0 + 1] : nil } ?? "DIS"
+      WhyCard(symbol: s).padding(20)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(20).frame(maxHeight: .infinity, alignment: .top).background(AuroraField(surface: .story))
+    }
+    // Screenshots: -storyWhy opens the pager on the "Why did it move?" card.
+    .task { if ProcessInfo.processInfo.arguments.contains("-storyWhy") { try? await Task.sleep(for: .seconds(1.5)); if let i = cards.firstIndex(where: { if case .why = $0 { return true }; return false }) { page = i } } }
+    #endif
   }
 }
 
@@ -130,6 +144,7 @@ struct StoryCard: View {
       case .recap: if let r = app.recap { RecapCard(recap: r) }
       case let .weather(score): WeatherCard(score: score)
       case let .report(e): ReportCard(event: e)
+      case let .why(s): WhyCard(symbol: s)
       case .word: WordOfDay()
       case .quiz: QuizOfDay()
       case .next: NextAdventures()

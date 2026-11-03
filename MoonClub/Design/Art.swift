@@ -88,7 +88,11 @@ enum Art {
     "〰️": .init(symbol: "waveform.path", hue: .grape), "🔊": .init(symbol: "speaker.wave.3.fill", hue: .sky), "🪜": .init(symbol: "stairs", hue: .orange),
     "⏳": .init(symbol: "hourglass", hue: .grape), "⏰": .init(symbol: "alarm.fill", hue: .orange),
     "📉": .init(symbol: "chart.line.downtrend.xyaxis", hue: .coral), "⬆️": .init(symbol: "arrow.up.circle.fill", hue: .mint),
-    "⬇️": .init(symbol: "arrow.down.circle.fill", hue: .coral), "💤": .init(symbol: "moon.zzz.fill", hue: .grape), "🌕": .init(symbol: "circle.fill", hue: .gold),
+    "⬇️": .init(symbol: "arrow.down.circle.fill", hue: .coral),
+    // curriculum overhaul: trade-offs, Review stops, why-did-it-move clues, guest packs
+    "⚖️": .init(symbol: "scalemass.fill", hue: .teal), "🔁": .init(symbol: "arrow.triangle.2.circlepath", hue: .grape),
+    "👥": .init(symbol: "person.3.fill", hue: .sky), "🌍": .init(symbol: "globe.americas.fill", hue: .teal),
+    "📏": .init(symbol: "ruler.fill", hue: .orange), "🧪": .init(symbol: "testtube.2", hue: .mint), "💤": .init(symbol: "moon.zzz.fill", hue: .grape), "🌕": .init(symbol: "circle.fill", hue: .gold),
   ]
   static let fallback = ArtSpec(symbol: "sparkles", hue: .grape)
   static func spec(_ key: String) -> ArtSpec {

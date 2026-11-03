@@ -9,7 +9,10 @@ public struct KidCo: Codable, Hashable, Sendable {
 }
 public struct KidWord: Codable, Hashable, Sendable { public let word: String; public let means: String; public let example: String }
 public struct KidTerm: Codable, Hashable, Sendable { public let word: String; public let emoji: String; public let means: String; public let example: String; public let play: String? }
-public struct Unit: Codable, Hashable, Sendable, Identifiable { public let id: String; public let title: String; public let emoji: String; public let blurb: String }
+public struct Unit: Codable, Hashable, Sendable, Identifiable { public let id: String; public let title: String; public let emoji: String; public let blurb: String
+  /// "6-8" (Little Moons, for everyone) or "9-11" (Big Moons). Optional: older content has none.
+  public let track: String?
+  public init(id: String, title: String, emoji: String, blurb: String, track: String? = nil) { self.id = id; self.title = title; self.emoji = emoji; self.blurb = blurb; self.track = track } }
 public struct Badge: Codable, Hashable, Sendable, Identifiable { public let id: String; public let name: String; public let why: String; public let phase: Int }
 public struct Level: Codable, Hashable, Sendable { public let min: Int; public let name: String }
 
@@ -40,7 +43,10 @@ public enum Step: Codable, Hashable, Sendable {
 }
 public struct Check: Codable, Hashable, Sendable { public let q: String; public let options: [String]; public let answer: Int; public let why: String
   public init(q: String, options: [String], answer: Int, why: String) { self.q = q; self.options = options; self.answer = answer; self.why = why } }
-public struct Lesson: Codable, Hashable, Sendable, Identifiable { public let id: String; public let unit: String; public let title: String; public let emoji: String; public let steps: [Step] }
+public struct Lesson: Codable, Hashable, Sendable, Identifiable { public let id: String; public let unit: String; public let title: String; public let emoji: String
+  public let track: String?; public let objectives: [String]?
+  public let steps: [Step]
+  public init(id: String, unit: String, title: String, emoji: String, track: String? = nil, objectives: [String]? = nil, steps: [Step]) { self.id = id; self.unit = unit; self.title = title; self.emoji = emoji; self.track = track; self.objectives = objectives; self.steps = steps } }
 
 /// Any quest copy block: every field optional, so chapters can carry different words per stage.
 public struct StageText: Codable, Hashable, Sendable {
@@ -93,12 +99,12 @@ public struct KidsContent: Codable, Sendable {
   public let version: Int
   public let generated: String
   public let companies: [KidCo]
-  public let words: [KidWord]
-  public let terms: [String: KidTerm]
+  public var words: [KidWord]
+  public var terms: [String: KidTerm]
   public let quest: LemonadeText
   public let questChapters: QuestChapters?
-  public let units: [Unit]
-  public let lessons: [Lesson]
+  public var units: [Unit]
+  public var lessons: [Lesson]
   public let badges: [Badge]
   public let levels: [Level]
   public let startCoins: Double
@@ -106,6 +112,26 @@ public struct KidsContent: Codable, Sendable {
   public let players: [String]
   public let playerNames: [String]
   public let maxCodeGuesses: Int
+  // Lesson packs (metaphases shared/kidsPacks.ts). All optional, so older content still loads.
+  /// Core's manifest: id, version, ages, tracks, curators and expert sign-offs.
+  public var pack: PackMeta?
+  public var objectives: [PackObjective]?
+  /// The Market World map. When absent, World.swift falls back to the built-in map.
+  public var regions: [RegionSpec]?
+  public var guessCourse: GuessCourse?
+  public var piggyCourse: PiggyCourse?
+  public var review: ReviewConfig?
+  public var assessments: [Assessment]?
+  public var games: [GameSpec]?
+  public var glyphs: [String]?
+  /// Optional packs bundled with the app (guest / creator packs). A grown-up turns them on behind the gate.
+  public var packs: [LessonPack]?
+  /// The remote pack channel's public key (Ed25519, base64). The app trusts this one, never the server's.
+  public struct Channel: Codable, Sendable { public let publicKey: String }
+  public var channel: Channel?
+  /// Which optional packs are composed in (not decoded; set by `with(packs:)`).
+  public var activePacks: [String] = []
+  private enum CodingKeys: String, CodingKey { case version, generated, companies, words, terms, quest, questChapters, units, lessons, badges, levels, startCoins, maxPicks, players, playerNames, maxCodeGuesses, pack, objectives, regions, guessCourse, piggyCourse, review, assessments, games, glyphs, packs, channel }
 
   public static let supportedVersion = 1
 
@@ -146,6 +172,7 @@ public struct KidsContent: Codable, Sendable {
     }
     try need(levels.first?.min == 0 && zip(levels, levels.dropFirst()).allSatisfy { $0.min < $1.min }, "levels must start at 0 and rise")
     try need(players.count == playerNames.count && players.count == 8, "8 League players")
+    if let core = pack, core.id.isEmpty { try need(false, "pack id") }
     for (_, t) in terms { if let p = t.play { try need(["company", "shares", "price", "report"].contains(p) || p.contains(":") || p.hasPrefix("save") || p.hasPrefix("div"), "term play target \(p)") } }
   }
 

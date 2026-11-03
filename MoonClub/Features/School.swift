@@ -169,7 +169,7 @@ struct LessonPlayer: View {
     .onChange(of: answers) { old, new in
       // Score the first pick on a check (later taps are locked).
       for (k, v) in new where old[k] == nil {
-        if case let .check(c) = lesson.steps[k] { run.record(v == c.answer) }
+        if case let .check(c) = lesson.steps[k] { run.record(v == c.answer); app.answered(lesson: lesson.id, step: k, right: v == c.answer, review: false) }
       }
     }
     .onChange(of: sorts) { old, new in

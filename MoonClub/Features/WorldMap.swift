@@ -680,6 +680,7 @@ struct NodePanel: View {
     case .guess: return "Guess a real company's report card."
     case .review: return "Boss! Five questions to plant your flag."
     case .timeMachine: return "Boss! Read a real chart, then travel forward in time."
+    case .practice: return "Review stop: questions you met before come back, mixed up. Visit any time."
     }
   }
 }
@@ -716,6 +717,7 @@ struct NodePlayer: View {
     case let .timeMachine(s): TimeMachineBoss(node: node, symbol: s, onFinish: finish)
     case let .review(rid): if let r = regions.first(where: { $0.id == rid }) { ReviewBoss(node: node, region: r, onFinish: finish) }
     case .guess: GuessView()
+    case .practice: if let r = regions.first(where: { $0.nodes.contains(node) }) { ReviewStopView(node: node, region: r, regions: regions, onFinish: finish) }
     default: EmptyView()
     }
   }

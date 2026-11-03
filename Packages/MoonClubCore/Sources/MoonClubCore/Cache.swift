@@ -78,6 +78,8 @@ public struct CachePolicy: Sendable {
   public static let mood = CachePolicy(ttl: 15 * 60, maxStale: 3 * 86400)
   public static let quotes = CachePolicy(ttl: 2 * 60, maxStale: 3 * 86400)
   public static let ticker = CachePolicy(ttl: 6 * 3600, maxStale: 14 * 86400)
+  /// "Why did it move?": refreshed every 15 minutes, an old answer is still worth showing for a day.
+  public static let why = CachePolicy(ttl: 15 * 60, maxStale: 86400)
   public static let luna = CachePolicy(ttl: 7 * 86400, maxStale: 7 * 86400)
 }
 

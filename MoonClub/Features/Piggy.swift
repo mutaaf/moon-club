@@ -90,6 +90,8 @@ struct PiggyBank: View {
   @State private var prices: [String: Double] = [:]
   @State private var loaded = false
   @State private var confirm = false
+  /// Times the bank was opened today (device-only count) for Luna's "don't peek every minute" tip.
+  @State private var peeks = 0
   var body: some View {
     // The piggy can disappear while this view is still on screen (start over, reset, an iCloud merge):
     // never force-unwrap it. That was the 0.8.0 TestFlight crash (EXC_BREAKPOINT in PiggyBank.body).
@@ -140,12 +142,15 @@ struct PiggyBank: View {
     }
     Card {
       HStack(spacing: 6) { ForEach(p.holdings, id: \.s) { h in Glyph(app.companies[h.s]?.emoji ?? "", size: 36) } }
-      Text(basketTip(p.holdings.count)).font(.callout)
+      PiggyCoachTip(piggy: p, value: loaded ? value : nil, peeks: peeks)
     }
+    if loaded, let m = biggestMover(p.holdings, prices: prices), abs(m.change) >= 0.05 { Card { WhyCard(symbol: m.s, title: "Why did \(app.company(m.s).nick) move?") } }
+    CourseCard(kind: .piggy)
     Button(confirm ? "Yes, empty it and start over" : "Start over with new pretend coins") {
       if confirm { withAnimation { app.mutate { $0.resetPiggy() } } } else { confirm = true }
     }.font(.footnote).frame(maxWidth: .infinity)
     .task {
+      if peeks == 0 { peeks = app.peekPiggy() }
       if let q = try? await app.market.quotes(p.holdings.map(\.s)) {
         prices = q; withAnimation(.snappy) { loaded = true }
         app.mutate { $0.recordValue(today: app.today, value: piggyValue(p.holdings, prices: q)) }

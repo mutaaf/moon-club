@@ -40,7 +40,7 @@ final class CardFitTests: XCTestCase {
   }
 
   func testEveryLessonStepFitsItsCardWithoutScrolling() throws {
-    let c = try content(), app = model(c)
+    let base = try content(), c = base.with(packs: base.bundledPacks), app = model(c)  // Core + every bundled pack
     var misfits: [String] = []
     for d in Self.devices {
       let cardWidth = min(d.width, 720) - 40
@@ -66,7 +66,7 @@ final class CardFitTests: XCTestCase {
   }
 
   func testEveryPlayScreenFitsWithoutScrolling() throws {
-    let c = try content(), app = model(c)
+    let base = try content(), c = base.with(packs: base.bundledPacks), app = model(c)  // Core + every bundled pack
     let regions = World.regions(c)
     var misfits: [String] = [], checked = 0
     for d in Self.screens {
@@ -165,6 +165,9 @@ final class CardFitTests: XCTestCase {
       if case let .say(e, _) = s { keys.insert(e) }
       if case let .sort(_, _, items, _) = s { keys.formUnion(items.map(\.emoji)) }
     } }
+    // Lesson packs: every glyph Core and every bundled pack declares, and the why-card clue art.
+    keys.formUnion(c.glyphs ?? []); for p in c.bundledPacks { keys.formUnion(p.glyphs) }
+    keys.formUnion(WhyCard.art.values)
     let missing = keys.filter { Art.spec($0) == Art.fallback }
     XCTAssertTrue(missing.isEmpty, "emoji without designed art: \(missing.sorted())")
     for s in ["moon.zzz.fill", "map.fill", "books.vertical.fill", "character.book.closed.fill", "hand.thumbsup.fill", "hand.thumbsdown.fill", "flag.checkered", "signpost.right.fill", "figure.hiking", "sailboat.fill", "beach.umbrella.fill", "flame.fill", "flag.2.crossed.fill"] {

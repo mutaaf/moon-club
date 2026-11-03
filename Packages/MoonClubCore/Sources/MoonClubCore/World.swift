@@ -15,12 +15,30 @@ public enum NodeKind: Hashable, Sendable {
   case guess                 // Guess the Report Card (opens the Guess screen)
   case review(String)        // boss: a captain's quiz over the region's lessons
   case timeMachine(String)   // boss: Chart Time Machine on a real company's chart
+  case practice              // Review stop: spaced retrieval of missed and older questions (Review.swift). Optional.
+
+  /// From a pack's node spec (kind + ref); nil for kinds or refs this build doesn't know.
+  public init?(kind: String, ref: String?) {
+    switch (kind, ref) {
+    case let ("unit", r?): self = .unit(r)
+    case let ("lesson", r?): self = .lesson(r)
+    case let ("quest", r?): self = .quest(r)
+    case let ("game", r?): guard let g = GameKind(rawValue: r) else { return nil }; self = .game(g)
+    case ("guess", _): self = .guess
+    case let ("review", r?): self = .review(r)
+    case let ("timeMachine", r?): self = .timeMachine(r)
+    case ("practice", _): self = .practice
+    default: return nil
+    }
+  }
 }
 
 public struct WorldNode: Identifiable, Hashable, Sendable {
   public let id: String; public let title: String; public let art: String; public let kind: NodeKind
   public init(id: String, title: String, art: String, kind: NodeKind) { self.id = id; self.title = title; self.art = art; self.kind = kind }
   public var isBoss: Bool { if case .review = kind { return true }; if case .timeMachine = kind { return true }; return false }
+  /// Optional stops (Review stops) never block the trail or the boss, and don't count toward map stars.
+  public var isOptional: Bool { if case .practice = kind { return true }; return false }
 }
 
 public struct Region: Identifiable, Hashable, Sendable {
@@ -34,6 +52,32 @@ public enum World {
   /// The seven regions, bottom of the map to the top. Nodes that point at content this build doesn't have
   /// (e.g. a lesson not exported yet) are dropped, never shown broken.
   public static func regions(_ c: KidsContent) -> [Region] {
+    if let specs = c.regions, !specs.isEmpty {
+      return specs.map { r in Region(id: r.id, name: r.name, blurb: r.blurb, art: r.art, hue: r.hue,
+                                     nodes: r.nodes.compactMap { n in NodeKind(kind: n.kind, ref: n.ref).map { WorldNode(id: n.id, title: n.title, art: n.art, kind: $0) } }) }
+        .map(dropMissing(c)).filter { $0.nodes.filter { !$0.isOptional }.count >= 2 }
+    }
+    return builtIn(c)
+  }
+
+  /// Nodes that point at content this build doesn't have are dropped, never shown broken.
+  static func dropMissing(_ c: KidsContent) -> (Region) -> Region {
+    let lessonIds = Set(c.lessons.map(\.id)), unitIds = Set(c.units.map(\.id))
+    let chapterIds = Set(c.questChapters?.CHAPTERS.map(\.id) ?? []).union(["lemonade"])
+    return { r in
+      Region(id: r.id, name: r.name, blurb: r.blurb, art: r.art, hue: r.hue, nodes: r.nodes.filter { n in
+        switch n.kind {
+        case let .unit(u): return unitIds.contains(u)
+        case let .lesson(l): return lessonIds.contains(l)
+        case let .quest(q): return chapterIds.contains(q)
+        default: return true
+        }
+      })
+    }
+  }
+
+  /// The map before lesson packs (content without `regions`).
+  static func builtIn(_ c: KidsContent) -> [Region] {
     let lessonIds = Set(c.lessons.map(\.id)), unitIds = Set(c.units.map(\.id))
     let chapterIds = Set(c.questChapters?.CHAPTERS.map(\.id) ?? []).union(["lemonade"])
     func ok(_ n: WorldNode) -> Bool {
@@ -131,11 +175,17 @@ public enum World {
     case .guess:
       let right = s.guesses.filter { $0.result == .right }.count
       return max(stored, s.guesses.isEmpty ? 0 : right >= 3 ? 3 : right >= 1 ? 2 : 1)
-    case .game, .review, .timeMachine: return stored
+    case .game, .review, .timeMachine, .practice: return stored
     }
   }
 
   public static func conquered(_ r: Region, _ s: KidsState, _ c: KidsContent) -> Bool { stars(r.boss, s, c) > 0 }
+
+  /// The lessons a Review stop in this region draws from: this region's and every earlier region's.
+  public static func reviewScope(_ r: Region, _ rs: [Region], _ c: KidsContent) -> Set<String> {
+    let upTo = rs.prefix { $0.id != r.id } + [r]
+    return Set(upTo.flatMap { lessons(of: $0, c) }.map(\.id))
+  }
 
   /// Region 0 is always open; the next opens once the one before is conquered (its boss has a star).
   public static func regionOpen(_ i: Int, _ rs: [Region], _ s: KidsState, _ c: KidsContent) -> Bool {
@@ -145,14 +195,16 @@ public enum World {
   /// A node opens once the node before it has a star; the boss opens once every other node has one.
   public static func nodeOpen(_ n: WorldNode, in r: Region, regionOpen: Bool, _ s: KidsState, _ c: KidsContent) -> Bool {
     guard regionOpen, let i = r.nodes.firstIndex(of: n) else { return false }
-    if n.isBoss { return r.nodes.dropLast().allSatisfy { stars($0, s, c) > 0 } }
-    return i == 0 || stars(r.nodes[i - 1], s, c) > 0
+    if n.isOptional { return true }
+    if n.isBoss { return r.nodes.dropLast().filter { !$0.isOptional }.allSatisfy { stars($0, s, c) > 0 } }
+    guard let prev = r.nodes[..<i].last(where: { !$0.isOptional }) else { return true }
+    return stars(prev, s, c) > 0
   }
 
   /// Where Luna's rocket waits: the first open node without a star (or the last boss once all is conquered).
   public static func current(_ rs: [Region], _ s: KidsState, _ c: KidsContent) -> (region: Int, node: Int) {
     for (ri, r) in rs.enumerated() where regionOpen(ri, rs, s, c) {
-      for (ni, n) in r.nodes.enumerated() where nodeOpen(n, in: r, regionOpen: true, s, c) && stars(n, s, c) == 0 { return (ri, ni) }
+      for (ni, n) in r.nodes.enumerated() where !n.isOptional && nodeOpen(n, in: r, regionOpen: true, s, c) && stars(n, s, c) == 0 { return (ri, ni) }
     }
     guard !rs.isEmpty else { return (0, 0) }
     let last = rs.indices.last { regionOpen($0, rs, s, c) } ?? 0
@@ -168,7 +220,7 @@ public enum World {
   }
 
   public static func totalStars(_ s: KidsState, _ c: KidsContent) -> (have: Int, of: Int) {
-    let ns = regions(c).flatMap(\.nodes)
+    let ns = regions(c).flatMap(\.nodes).filter { !$0.isOptional }
     return (ns.reduce(0) { $0 + stars($1, s, c) }, ns.count * 3)
   }
 

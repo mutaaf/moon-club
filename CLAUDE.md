@@ -98,3 +98,15 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
   - `Palette.accent` is computed from `ThemeColor.hex` (the App colors pick); the root re-ids its content on change. Widgets keep the default.
   - `PlayActivity.shared` counts open play screens (via `playChrome()`): toasts move to the top during play; the rank ceremony waits until play ends.
   - Debug/demo args: `-points <n>` (bank spendable points), `-rank` (show the current rank's ceremony), `-equip id,id` (own + wear shop items), `-locker badges|shop|points` with `-slot rocket|hat|flag|trail|theme|frame|freeze`.
+- **Lesson packs and the curriculum** ([docs/CURRICULUM.md](docs/CURRICULUM.md), [docs/PACKS.md](docs/PACKS.md)):
+  - **Editing lessons.** Lessons are edited ONLY in metaphases `packs/<id>/pack.json`, then `make content`. Never hand-edit `kids-content.json`.
+  - **Sync from a worktree.** Pass the path: `scripts/sync-content.sh <metaphases worktree>`. The default `../metaphases` points at the main checkout, which may be on another branch.
+  - **Keep both sides in step.** `PackRules.validate` (Swift) must stay a port of `validatePack` (TS). The `packValidate` vectors fail on any drift. The same goes for `Why.explain`/`whyMoved`, `Coach`/`kidsCoach`, `with(packs:)`/`composePacks`. Change both sides together.
+  - **Card fit is in the validator** (`Fit`, `FIT`): title 40, say 110, question 90, option 42, why 100 characters; 2–3 options. `WorldTests.testEveryCardStepFitsOneCard` uses the same numbers for Core.
+  - **Map.** The map comes from `content.regions` when present (`World.builtIn` is only the fallback). Review stops are `.practice` nodes: `isOptional` means they never gate the trail or the boss, and they don't count toward star totals.
+  - **Review state.** `KidsState.review` stores misses and Review-stop answers only (a right answer in a lesson records nothing). Merge: max of `"day|box"` per question. It is in SyncTests' generator.
+  - **Pack choices.** `AppModel.content` is a `var`: `setPack` recomposes Core with the enabled packs. `baseContent` is Core as shipped. Debug/demo: `-packs guest-coach-nova`.
+  - **Remote packs are off** (`PackChannel.remoteEnabled = false`). The trusted Ed25519 key is `channel.publicKey` in our own content. The private key is on the operator's Mac at `~/.config/metaphases/kids-pack-signing.jwk` (back it up; a new key needs an app build).
+  - **New emoji** in a pack need an `Art.map` entry first. CardFitTests checks Core's and every bundled pack's `glyphs`.
+  - **Not yet done (Ms. Rivera's note):** candle colors need an up or down arrow for color-blind kids. The chart games still rely on color plus position.
+

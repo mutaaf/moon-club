@@ -66,6 +66,11 @@ final class LiveMarketData: MarketDataSource, @unchecked Sendable {
     let d = try await cache.data("ticker:\(symbol)", policy: .ticker) { try await get("api/ticker/\(symbol)") }
     return try dec.decode(TickerPayload.self, from: d)
   }
+  /// Read-only: only the company symbol and a range go out; nothing about the child.
+  func why(_ symbol: String, range: WhyRange) async throws -> WhyInput? {
+    let d = try await cache.data("why:\(symbol):\(range.rawValue)", policy: .why) { try await get("api/kids/why", ["s": symbol, "range": range.rawValue]) }
+    return try dec.decode(Why.Payload.self, from: d).input
+  }
 }
 
 // MARK: Luna — see Brains.swift (free / on-device / your own key, chosen in the grown-up corner).

@@ -59,6 +59,8 @@ struct MoonClubApp: App {
         if let i = args.firstIndex(of: "-equip"), i + 1 < args.count {
           for id in args[i + 1].split(separator: ",").map(String.init) { var o = Set(seeded.owned ?? []); o.insert(id); seeded.owned = o.sorted(); seeded.equip(id, nowMillis: 1) }
         }
+        // Screenshots: -packs id,id turns lesson packs on (as a grown-up would behind the gate).
+        if let i = args.firstIndex(of: "-packs"), i + 1 < args.count { PackPrefs.enabled = Set(args[i + 1].split(separator: ",").map(String.init)) }
         #if DEBUG
         // Screenshots: -brain onDevice|free|byok presets Luna's brain choice (demo only).
         if let i = args.firstIndex(of: "-brain"), let k = BrainKind(rawValue: args[i + 1]) { var b = BrainStore.load(); b.choice = k; BrainStore.save(b) }

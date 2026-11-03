@@ -54,6 +54,14 @@ struct GrownUpsView: View {
           bullet("What an earnings “report card” is, and what beat and miss mean, with companies they know.")
           bullet("Saving vs investing, dividends, and why spreading money out is safer.")
           bullet("Patience, and the difference between hype and facts.")
+          bullet("Why prices move: report cards, the whole market, groups of companies, or a normal wiggle. And that \"we're not sure\" is an honest answer.")
+          bullet("Two tracks: Little Moons (6–8) and Big Moons (9–11). Questions a child misses come back at Review stops on the map.")
+        }
+        Section { LearningReport().id("packs") } header: { Text("What your child is learning") } footer: {
+          Text("Worked out on this device from finished lessons and Review stop answers. Nothing is sent anywhere.")
+        }
+        Section { PackSettings() } header: { Text("Lesson packs") } footer: {
+          Text("Every pack is checked by a teacher and a markets expert, and follows the same rules: pretend money, no links, no ads, no advice. Guest hosts are always shown as guests, and never ask kids to follow or buy anything.")
         }
         Section("Our promises") {
           bullet("**Pretend money only.** Nothing can be bought, sold or paid for. No broker, no buy button.")
@@ -89,6 +97,7 @@ struct GrownUpsView: View {
       }
       #if DEBUG
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-askReset") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("reset", anchor: .bottom) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPacks") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("packs", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollSync") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("sync", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
       #endif
