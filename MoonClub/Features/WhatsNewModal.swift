@@ -37,7 +37,14 @@ struct WhatsNewModal: View {
   @State private var burst = 0
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  private var cards: [(version: String, item: ReleaseNews.Item)] { news.flatMap { n in n.items.map { (n.version, $0) } } }
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  /// iPhone Duo news shows only on a device with a hinge (its own "Made for iPhone Duo" card); everyone else
+  /// never sees features they can't use.
+  private var cards: [(version: String, item: ReleaseNews.Item)] {
+    let hinge = duo?.hasHinge ?? false
+    return news.flatMap { n in n.items.filter { hinge || !Self.isDuo($0) }.map { (n.version, $0) } }
+  }
+  static func isDuo(_ i: ReleaseNews.Item) -> Bool { i.text.contains("iPhone Duo") }
   private let hues: [Hue] = [.ink, .mint, .orange, .grape, .berry]
 
   var body: some View {
@@ -81,6 +88,7 @@ struct WhatsNewModal: View {
   /// widgets), springing in when its page arrives. Fixed height, no scrolling: notes are linted to ≤ 90 chars.
   private func card(_ item: ReleaseNews.Item, hue: Hue, index: Int) -> some View {
     VStack(spacing: 18) {
+      if Self.isDuo(item) { DuoCallout(text: "Just for your iPhone Duo") }
       Glyph(symbol: item.symbol, hue: hue, size: 92)
         .scaleEffect(page == index || reduceMotion ? 1 : 0.82)
         .animation(Motion.safe(Motion.celebrate, reduceMotion), value: page)
@@ -89,7 +97,7 @@ struct WhatsNewModal: View {
     }
     .padding(24)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .moonGlass(radius: 28)
     .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.line.opacity(0.6), lineWidth: 0.5))
     .accessibilityElement(children: .combine)
   }

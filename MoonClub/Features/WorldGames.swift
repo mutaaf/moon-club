@@ -44,7 +44,7 @@ struct GameShell<Round: View>: View {
       }
       ZStack {
         if finished {
-          RunResults(stars: stars, run: run, boss: boss != nil, source: boss != nil ? .boss : .game, earnId: node.id, again: again, map: { dismiss() })
+          RunResults(stars: stars, run: run, boss: boss != nil, source: boss != nil ? .boss : .game, earnId: node.id, node: node, again: again, map: { dismiss() })
             .padding(20)
             .background(Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
             .transition(.scale(scale: 0.92).combined(with: .opacity))
@@ -84,6 +84,7 @@ struct GameShell<Round: View>: View {
     .background { if dark { BossBackdrop() } else { AuroraField(surface: .school) } }
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
+    .glassStage()
     .playChrome()
     .sensoryFeedback(trigger: result) { _, n in n.map { $0.right ? .success : .error } }
     .onAppear { run.nextRound() }
@@ -104,7 +105,7 @@ struct GameShell<Round: View>: View {
           Text((r.right ? (run.multiplier > 1 ? "Combo x\(run.multiplier)! " : "Yes! ") : "Good try. ") + r.why).font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: 0)
         }
-        .padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(12).moonGlass(radius: 18)
         Button(run.outOfFuel ? "Uh oh, fuel check" : index + 1 < rounds ? "Next" : "See my stars") { next() }.buttonStyle(ChunkyPrimary())
       }
       .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -168,7 +169,7 @@ struct ChartCard<C: View>: View {
       content.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     .padding(16)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .moonGlass(radius: 28)
     .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.line.opacity(0.6), lineWidth: 0.5))
   }
 }
@@ -255,7 +256,14 @@ struct BuildCandleRound: View {
   /// start, end, high, low: a calm starting candle, every handle in a different spot.
   @State private var v: [Double] = [5, 7, 10, 2]
   @State private var dragging: Int?
+  /// iPhone Duo: the hinge moves this handle (High by default; tap a handle to pick it).
+  @State private var hingeHandle = 2
+  @State private var hingeUsed = false
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  @Environment(AppModel.self) private var app
   let names = ["Start", "End", "High", "Low"]
+  /// The hinge is a control only while the phone is partly open (a Duo; nowhere else).
+  private var hingeLive: Bool { duo?.reading?.status == .partiallyOpen }
   static let bodyWidth: CGFloat = 64, lane: CGFloat = 34, axis: CGFloat = 40
   // Lanes: Start on the body's left edge, End on its right edge, High and Low on the wick (centered).
   // Labels on the outside (Start left, End right, High above, Low below), so nothing overlaps. A faint
@@ -275,8 +283,9 @@ struct BuildCandleRound: View {
             ForEach(0..<4, id: \.self) { k in
               label(k).position(labelPoint(k, x: xs[k], y: y(v[k])))
               handle(k).position(x: xs[k], y: y(v[k]))
+                .overlay { if hingeLive && hingeHandle == k { Circle().stroke(Hue.grape.color, lineWidth: 3).frame(width: 52, height: 52).position(x: xs[k], y: y(v[k])).allowsHitTesting(false) } }
                 .gesture(DragGesture(minimumDistance: 0).onChanged { g in
-                  dragging = k
+                  dragging = k; hingeHandle = k
                   set(k, (Double((h - 22 - g.location.y) / (h - 44)) * 12).rounded())
                 }.onEnded { _ in dragging = nil })
                 .disabled(answered != nil)
@@ -284,12 +293,23 @@ struct BuildCandleRound: View {
           }
         }
       }
+      if hingeLive && answered == nil {
+        DuoCallout(text: "Open or close me to move \(names[hingeHandle])", symbol: "rectangle.portrait.on.rectangle.portrait.angled.fill")
+          .transition(.scale.combined(with: .opacity))
+      }
       Button("Check my candle") {
+        if hingeUsed { app.mutate { $0.useDuo(.hinge) }; hingeUsed = false }
         let ok = v[0] == day.o && v[1] == day.c && v[2] == day.h && v[3] == day.l
         answer(RoundResult(right: ok, why: ok ? "Start and end make the body. High and low make the wicks." : "Start \(coins(day.o)), end \(coins(day.c)): that's the body. High \(coins(day.h)) and low \(coins(day.l)) are the wick tips."))
       }
       .buttonStyle(ChunkyPrimary()).disabled(answered != nil)
       .sensoryFeedback(.selection, trigger: v)
+    }
+    // iPhone Duo: the hinge angle is a dial (30°…170° sweeps $0…$12) for the picked handle.
+    .onChange(of: duo?.reading?.degrees) { _, deg in
+      guard hingeLive, answered == nil, dragging == nil, let deg else { return }
+      let target = Double(HingeDial.value(deg, in: 0...12))
+      if target != v[hingeHandle] { set(hingeHandle, target); hingeUsed = true }
     }
   }
   /// Keeps it a real candle: High ≥ the body ≥ Low, and High above Low.

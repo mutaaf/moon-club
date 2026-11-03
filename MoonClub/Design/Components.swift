@@ -142,8 +142,7 @@ struct Card<Content: View>: View {
     VStack(alignment: .leading, spacing: 14) { content }
       .padding(padding)
       .frame(maxWidth: .infinity, maxHeight: fill ? .infinity : nil, alignment: .topLeading)
-      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-      .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.line.opacity(0.7), lineWidth: 0.5))
+      .moonGlass(radius: 28)
       .shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10)
   }
 }
@@ -172,7 +171,7 @@ struct SoftButtonStyle: ButtonStyle {
       .padding(.vertical, 6)
       .frame(minHeight: 48)
       .padding(.horizontal, 16)
-      .background(selected ? AnyShapeStyle(Palette.midnight) : AnyShapeStyle(.thinMaterial), in: Capsule())
+      .moonGlass(Capsule(), tint: selected ? Palette.midnight : nil, interactive: true, weight: .thin)
       .overlay(Capsule().strokeBorder(Palette.line, lineWidth: selected ? 0 : 1))
       .scaleEffect(configuration.isPressed ? 0.96 : 1)
       .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)

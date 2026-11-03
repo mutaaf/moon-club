@@ -235,7 +235,7 @@ struct NextAdventures: View {
   func adv(_ e: String, _ t: String, _ s: String, _ go: @escaping () -> Void) -> some View {
     Button(action: go) {
       HStack(spacing: 14) { Glyph(e, size: 44); VStack(alignment: .leading) { Text(t).font(.kHeadline); Text(s).font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "chevron.right").foregroundStyle(.tertiary) }
-        .padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(14).moonGlass(radius: 20, weight: .thin)
     }.buttonStyle(.plain)
   }
 }

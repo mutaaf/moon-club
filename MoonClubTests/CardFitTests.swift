@@ -113,7 +113,7 @@ final class CardFitTests: XCTestCase {
     // A large sheet starts ~10 pt below the status bar and ends at the screen bottom.
     for d in [Device(name: "iPhone SE", width: 375, height: 667, chrome: 40), Device(name: "iPhone 17", width: 402, height: 874, chrome: 62 + 34 + 10)] {
       let room = d.height - d.chrome
-      var screens: [(String, MoonLocker)] = [("badges", MoonLocker(tab: .badges)), ("points", MoonLocker(tab: .points))]
+      var screens: [(String, MoonLocker)] = [("badges", MoonLocker(tab: .badges)), ("stickers", MoonLocker(tab: .stickers)), ("points", MoonLocker(tab: .points))]
       for s in ShopSlot.allCases { screens.append(("shop \(s.rawValue)", MoonLocker(tab: .shop, slot: s))) }
       for (name, v) in screens {
         let host = UIHostingController(rootView: v.environment(app).environment(\.dynamicTypeSize, .large))

@@ -93,7 +93,7 @@ struct BrainPicker: View {
         if let m = s.model { Text("Model: \(m)").font(.footnote).foregroundStyle(.secondary) }
       } else {
         SecureField(s.provider.keyHint, text: $paste).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
-          .padding(10).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+          .padding(10).moonGlass(radius: 12, weight: .thin)
           .accessibilityIdentifier("byok-key")
       }
       Button {
@@ -132,7 +132,7 @@ struct BrainPicker: View {
       Text("Your key stays in this device's Keychain and goes only to \(s.provider.label). Luna still follows every kid rule: simple words, money topics only, never advice. Use a key with a spending limit.").font(.footnote).foregroundStyle(.secondary)
     }
     .padding(14)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+    .moonGlass(radius: 18, weight: .thin)
   }
 
   private func check() async {

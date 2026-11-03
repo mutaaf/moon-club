@@ -95,8 +95,8 @@ struct RankBadge: View {
 
 // MARK: - The Moon Locker (Badges · Shop · Points)
 
-enum LockerTab: String, CaseIterable, Identifiable { case badges, shop, points; var id: String { rawValue }
-  var title: String { ["Badges", "Moon Shop", "My points"][LockerTab.allCases.firstIndex(of: self) ?? 0] }
+enum LockerTab: String, CaseIterable, Identifiable { case badges, stickers, shop, points; var id: String { rawValue }
+  var title: String { ["Badges", "Stickers", "Shop", "Points"][LockerTab.allCases.firstIndex(of: self) ?? 0] }
 }
 struct OpenLocker { let open: (LockerTab) -> Void; func callAsFunction(_ t: LockerTab = .badges) { open(t) } }
 private struct OpenLockerKey: EnvironmentKey { static let defaultValue = OpenLocker { _ in } }
@@ -117,7 +117,9 @@ struct MoonLocker: View {
         .pickerStyle(.segmented)
       Group {
         switch tab {
-        case .badges: TrophyShelf()
+        // Opened like a book (iPhone Duo, iPad): the trophy shelf on one page, the sticker book on the other.
+        case .badges: Storybook(minPage: 300, fill: true) { TrophyShelf() } first: { TrophyShelf() } second: { StickerBook() }
+        case .stickers: StickerBook()
         case .shop: MoonShop(slot: slot)
         case .points: PointsBook()
         }
@@ -154,7 +156,7 @@ struct MoonLocker: View {
       .accessibilityElement(children: .combine)
       .accessibilityLabel("\(app.wallet) Moon points to spend")
       Button { dismiss() } label: {
-        Image(systemName: "xmark").font(.headline.weight(.heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle())
+        Image(systemName: "xmark").font(.headline.weight(.heavy)).frame(width: 40, height: 40).moonGlass(Circle(), interactive: true, weight: .thin)
       }
       .buttonStyle(PressStyle()).accessibilityLabel("Close")
     }
@@ -181,12 +183,15 @@ struct ProgressBar: View {
 
 struct TrophyShelf: View {
   @Environment(AppModel.self) private var app
+  @Environment(DuoModel.self) private var duo: DuoModel?
   @State private var picked: String?
   @State private var page = 0
   static let perPage = 6
 
   var body: some View {
-    let all = app.trophies
+    // iPhone Duo-only trophies show only where there's a hinge (or once earned on a Duo).
+    let shown = Set(Trophies.visible(hinge: duo?.hasHinge ?? false, app.state).map(\.id))
+    let all = app.trophies.filter { shown.contains($0.id) }
     let pages = stride(from: 0, to: all.count, by: Self.perPage).map { Array(all[$0..<min($0 + Self.perPage, all.count)]) }
     let earned = all.filter { $0.tier > 0 }.count + app.badges.count
     VStack(spacing: 10) {
@@ -294,6 +299,7 @@ struct SpecialBadges: View {
 
 struct MoonShop: View {
   @Environment(AppModel.self) private var app
+  @Environment(DuoModel.self) private var duo: DuoModel?
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var slot: ShopSlot
   init(slot: ShopSlot = .rocket) { _slot = State(initialValue: slot) }
@@ -317,7 +323,7 @@ struct MoonShop: View {
         }
       }
       Text(slot.title).font(.kHeadline).frame(maxWidth: .infinity, alignment: .leading)
-      let items = Shop.all.filter { $0.slot == slot }
+      let items = Shop.visible(hinge: duo?.hasHinge ?? false, app.state).filter { $0.slot == slot }
       // Up to six items: three across. More (the rockets): four across, so a shelf is always two rows.
       LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: items.count > 6 ? 4 : 3), spacing: 10) {
         ForEach(items) { it in
@@ -504,6 +510,9 @@ struct RankCeremony: View {
     let unlocks = Ranks.unlocks(index)
     VStack(spacing: 12) {
       Spacer(minLength: 0)
+      // iPhone Duo: the new moon waits behind "Open me wide!" until the hinge opens flat.
+      OpenWideReveal(what: "your new moon", dark: true) {
+      VStack(spacing: 12) {
       ZStack {
         Circle().fill(RadialGradient(colors: [Hue.gold.color.opacity(0.5), .clear], center: .center, startRadius: 4, endRadius: 110)).frame(width: 220, height: 220)
           .scaleEffect(grow && !rm ? 1.08 : 0.9)
@@ -535,6 +544,13 @@ struct RankCeremony: View {
           }
         }
       }
+      }
+      .onAppear {
+        GameSound.play(.win); Chime.rising()
+        withAnimation(rm ? Motion.fade : .spring(response: 0.6, dampingFraction: 0.55)) { grow = true }
+        burst += 1
+      }
+      }
       Spacer(minLength: 0)
       Button("Let's go!") { done(false) }.buttonStyle(ChunkyPrimary(tint: Hue.gold.color.blend(with: .black, by: 0.1)))
       Button("See the Moon Shop") { done(true) }.buttonStyle(ChunkyStyle(face: .white.opacity(0.14), edge: .black.opacity(0.4), ink: .white))
@@ -543,13 +559,10 @@ struct RankCeremony: View {
     .readable(520)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(BossBackdrop())
-    .overlay(Celebrate(trigger: burst))
+    .modifier(Shake(amount: rm ? 0 : 7, tick: burst))
+    .animation(.linear(duration: 0.45), value: burst)
+    .overlay(Celebrate(trigger: burst, tier: .large).ignoresSafeArea())
     .sensoryFeedback(.success, trigger: burst)
-    .task {
-      GameSound.play(.win)
-      withAnimation(rm ? Motion.fade : .spring(response: 0.6, dampingFraction: 0.55)) { grow = true }
-      burst += 1
-    }
     .accessibilityElement(children: .contain)
   }
 }
@@ -603,7 +616,7 @@ struct BadgeToast: View {
           Text(.init(n.title)).font(.subheadline).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(.leading, 10).padding(.trailing, 16).padding(.vertical, 8)
-        .background(.regularMaterial, in: Capsule())
+        .moonGlass(Capsule(), interactive: true)
         .overlay(Capsule().strokeBorder(Hue.gold.color.opacity(0.6), lineWidth: 1))
         .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
         .padding(top ? .top : .bottom, top ? 118 : Self.tabBarClearance)
@@ -634,6 +647,7 @@ struct BadgeToast: View {
     app.mutate { $0.seeBadges([n.id]) }
     withAnimation(Motion.safe(Motion.celebrate, rm)) { showing = n }
     burst += 1
+    PartyCenter.shared.fire(.badgeTier)
     try? await Task.sleep(for: .seconds(4))
     withAnimation(Motion.safe(Motion.card, rm)) { showing = nil }
     try? await Task.sleep(for: .milliseconds(400))
@@ -669,7 +683,7 @@ struct RunEarnings: View {
       .frame(width: 150)
     }
     .padding(10)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .moonGlass(radius: 18, weight: .thin)
     .accessibilityElement(children: .combine)
     .task {
       let before = run.startPoints ?? app.points

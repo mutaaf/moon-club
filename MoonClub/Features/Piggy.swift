@@ -36,7 +36,7 @@ struct PiggySetup: View {
           VStack(spacing: 6) { Glyph(c.emoji, size: 44); Text(c.nick).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8) }
             .frame(maxWidth: .infinity, minHeight: 92)
             .background(on ? Palette.lavender : Color.clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .moonGlass(radius: 20, weight: .thin)
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(on ? Palette.accent : Palette.line, lineWidth: on ? 2 : 1))
             .scaleEffect(on ? 1.03 : 1)
         }
@@ -135,7 +135,7 @@ struct PiggyBank: View {
           if !loaded || abs(c) < 0.05 { Text("New!").font(.subheadline).foregroundStyle(.secondary) }
           else { Text("\(c >= 0 ? "+" : "")\(toFixed(c, 1))%").font(.kHeadline).monospacedDigit().foregroundStyle(c >= 0 ? Palette.good : Palette.bad) }
         }
-        .padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(14).moonGlass(radius: 18, weight: .thin)
       }
     }
     Card {

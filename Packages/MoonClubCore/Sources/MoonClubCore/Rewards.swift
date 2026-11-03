@@ -201,9 +201,19 @@ public enum Shop {
       ShopItem(id: "frame.galaxy", slot: .frame, name: "Galaxy frame", price: 500, symbol: "circle.hexagongrid.fill", hue: "sky", color: 0x3F82EE, rank: 8),
       ShopItem(id: "theme.midnight", slot: .theme, name: "Midnight", price: 600, symbol: "paintpalette.fill", hue: "slate", color: 0x34306E, rank: 9),
 
+      // iPhone Duo only: earned with the Storybook Reader trophy; hidden on devices without a hinge.
+      ShopItem(id: "frame.fold", slot: .frame, name: "Storybook frame", price: 150, symbol: "book.pages.fill", hue: "ink", color: 0x2346D8, trophy: "duo-book"),
+
       ShopItem(id: "freeze", slot: .freeze, name: "Streak saver", price: 60, symbol: "snowflake", hue: "sky", color: 0x3F82EE),
     ]
   }()
+
+  /// iPhone Duo-only items (they need a Duo trophy).
+  public static let duoOnly: Set<String> = ["frame.fold"]
+  /// The shelf for this device: Duo-only items hide without a hinge, unless already owned or earned on a Duo.
+  public static func visible(hinge: Bool, _ s: KidsState) -> [ShopItem] {
+    all.filter { !duoOnly.contains($0.id) || hinge || s.playedOnDuo || (s.owned ?? []).contains($0.id) }
+  }
 
   public static func item(_ id: String) -> ShopItem? {
     if id.hasPrefix("freeze#") { return all.first { $0.id == "freeze" } }
@@ -259,7 +269,7 @@ public enum Shop {
 // MARK: - Trophies (tiered badges)
 
 public enum TrophyCategory: String, CaseIterable, Sendable {
-  case charts, lands, bosses, streaks, guesses, saver, curious, school
+  case charts, lands, bosses, streaks, guesses, saver, curious, school, duo
   public var title: String {
     switch self {
     case .charts: return "Chart Reader"
@@ -270,6 +280,7 @@ public enum TrophyCategory: String, CaseIterable, Sendable {
     case .saver: return "Saver"
     case .curious: return "Curious"
     case .school: return "Moon School"
+    case .duo: return "Made for iPhone Duo"
     }
   }
 }
@@ -314,7 +325,16 @@ public enum Trophies {
     Trophy(id: "curious", name: "Curious Cat", category: .curious, symbol: "questionmark.bubble.fill", hue: "teal", unit: "questions for Luna", hint: "Ask Luna a money question."),
     Trophy(id: "bookworm", name: "Bookworm", category: .school, symbol: "book.fill", hue: "ink", unit: "lessons done", hint: "Finish a one-minute lesson."),
     Trophy(id: "mission-maker", name: "Mission Maker", category: .streaks, symbol: "shippingbox.fill", hue: "gold", unit: "chests opened", hint: "Finish all 3 of today's missions."),
+    // iPhone Duo only: shown only on a device with a hinge (or once earned there). See `visible(hinge:)`.
+    Trophy(id: "duo-book", name: "Storybook Reader", category: .duo, symbol: "book.pages.fill", hue: "ink", unit: "lessons read as a book", hint: "Open your iPhone Duo like a book and finish a lesson."),
+    Trophy(id: "duo-tabletop", name: "Tabletop Trader", category: .duo, symbol: "laptopcomputer", hue: "teal", unit: "tabletop plays", hint: "Set your iPhone Duo down like a laptop and fight a Chart Time Machine boss."),
+    Trophy(id: "duo-hinge", name: "Hinge Hero", category: .duo, symbol: "rectangle.portrait.on.rectangle.portrait.angled.fill", hue: "grape", unit: "hinge moves", hint: "Build a candle with the hinge, or open wide to launch."),
   ]
+
+  /// Duo-only trophies hide on devices without a hinge, unless the kid already earned one on a Duo.
+  public static func visible(hinge: Bool, _ s: KidsState) -> [Trophy] {
+    all.filter { $0.category != .duo || hinge || s.playedOnDuo }
+  }
 
   static func regionStars(_ id: String, _ s: KidsState, _ c: KidsContent) -> (Int, Int) {
     guard let r = World.regions(c).first(where: { $0.id == id }) else { return (0, 0) }
@@ -352,6 +372,9 @@ public enum Trophies {
       case "curious": count = (s.asked ?? [:]).values.reduce(0, +); goals = [1, 10, 30]
       case "bookworm": count = s.lessons.count; goals = [1, Int((Double(lessons) / 2).rounded(.up)), lessons]
       case "mission-maker": count = (s.chests ?? []).count; goals = [1, 7, 30]
+      case "duo-book": count = s.duoCount(.book); goals = [1, 5, 15]
+      case "duo-tabletop": count = s.duoCount(.tabletop) + s.duoCount(.night); goals = [1, 5, 15]
+      case "duo-hinge": count = s.duoCount(.hinge); goals = [1, 5, 15]
       default: count = 0; goals = [1, 2, 3]
       }
       return TrophyProgress(trophy: t, count: count, goals: goals)

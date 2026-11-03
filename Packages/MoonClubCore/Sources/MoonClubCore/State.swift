@@ -45,6 +45,8 @@ public struct KidsState: Codable, Hashable, Sendable {
   public var asked: [String: Int]?
   /// The highest rank whose ceremony has been shown (merge: max).
   public var rankSeen: Int?
+  /// iPhone Duo things done ("book", "tabletop", "hinge", "night") -> count (merge: max per key). See Party.swift `DuoUse`.
+  public var duo: [String: Int]?
   public init() {}
 
   // MARK: Intents (pure reducers)

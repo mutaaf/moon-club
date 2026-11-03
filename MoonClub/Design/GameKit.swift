@@ -53,6 +53,19 @@ enum GameSound {
   /// When the current round started (for the speed ring).
   var roundStart = Date()
   var started = false
+  /// Luna's speech bubble in the HUD (Party.swift `LunaLine`), and the tick that shows it.
+  var say: String?
+  var sayTick = 0
+  /// Luna's flip (medium celebrations: combo ×3).
+  var flipTick = 0
+  private var missedBefore = false
+  private static let firstWinKey = "luna.firstWinDay"
+
+  /// Luna says something (shown for a moment above her in the HUD).
+  func lunaSays(_ l: LunaLine) {
+    say = l.line("\(Day.format(Date()))|\(answered)|\(combo)")
+    sayTick &+= 1
+  }
 
   var multiplier: Int { combo >= 5 ? 3 : combo >= 3 ? 2 : 1 }
   var outOfFuel: Bool { hearts <= 0 }
@@ -64,6 +77,8 @@ enum GameSound {
   @discardableResult func record(_ ok: Bool, fast: Bool = false, bossHit: Double = 0) -> Int {
     started = true
     answered += 1
+    let today = Day.format(Date())
+    let firstOfDay = ok && UserDefaults.standard.string(forKey: Self.firstWinKey) != today
     if ok {
       right += 1; combo += 1; bestCombo = max(bestCombo, combo)
       let gained = Rewards.perRight * multiplier + (fast ? 1 : 0)
@@ -71,18 +86,71 @@ enum GameSound {
       mood = combo >= 3 ? .cheering : .happy
       if bossHit > 0 { bossHP = max(0, bossHP - bossHit) }
       GameSound.play(.right)
+      if firstOfDay { UserDefaults.standard.set(today, forKey: Self.firstWinKey) }
+      if let l = LunaLine.after(right: true, combo: combo, missedBefore: missedBefore, firstOfDay: firstOfDay) { lunaSays(l) }
+      if combo == 3 || combo == 6 { flipTick &+= 1; PartyCenter.shared.fire(.combo(combo)) }
+      missedBefore = false
       return gained
     } else {
       combo = 0; hearts = max(0, hearts - 1); crackTick += 1
       mood = .oops
       GameSound.play(.wrong)
+      // Luna only comments on a miss now and then (every other miss), so it never feels like nagging.
+      if (answered - right) % 2 == 1 { lunaSays(.miss) }
+      missedBefore = true
       return 0
     }
   }
   func nextRound() { roundStart = Date(); if mood == .oops { mood = .thinking } }
   func reset() {
     hearts = Self.maxHearts; combo = 0; bestCombo = 0; coins = 0; right = 0; answered = 0; startPoints = nil
-    mood = .happy; bossHP = 1; roundStart = Date(); started = false
+    mood = .happy; bossHP = 1; roundStart = Date(); started = false; say = nil; missedBefore = false
+  }
+}
+
+/// Luna hops a little on every right answer (the small tier's "Luna bounce").
+struct LunaBounce: ViewModifier {
+  let tick: Int
+  @Environment(\.accessibilityReduceMotion) private var rm
+  @State private var up = false
+  func body(content: Content) -> some View {
+    content.offset(y: up ? -7 : 0)
+      .onChange(of: tick) { _, _ in
+        guard !rm else { return }
+        withAnimation(.spring(response: 0.18, dampingFraction: 0.5)) { up = true }
+        Task { try? await Task.sleep(for: .milliseconds(170)); withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { up = false } }
+      }
+  }
+}
+
+/// Luna's speech bubble: pops out of her for ~2.4 s. Never blocks a tap (no hit testing).
+struct LunaBubble: View {
+  let text: String?
+  let tick: Int
+  var dark = false
+  @Environment(\.accessibilityReduceMotion) private var rm
+  @State private var shown = false
+  var body: some View {
+    Group {
+      if shown, let text {
+        Text(text)
+          .font(.system(.subheadline, design: .rounded).weight(.bold))
+          .foregroundStyle(Palette.ink)
+          .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+          .padding(.horizontal, 12).padding(.vertical, 8)
+          .frame(width: 210, alignment: .leading)
+          .moonGlass(radius: 16, tint: Palette.moon.opacity(0.7))
+          .offset(x: 26, y: 34)
+          .transition(.scale(scale: 0.3, anchor: .topLeading).combined(with: .opacity))
+          .accessibilityLabel("Luna says: \(text)")
+      }
+    }
+    .allowsHitTesting(false)
+    .onChange(of: tick) { _, _ in
+      withAnimation(Motion.safe(Motion.celebrate, rm)) { shown = true }
+      let t = tick
+      Task { try? await Task.sleep(for: .seconds(2.4)); if t == tick { withAnimation(Motion.fade) { shown = false } } }
+    }
   }
 }
 
@@ -116,7 +184,7 @@ struct GameHUD: View {
       HStack(spacing: 12) {
         Button { if run.midRun { confirm = true } else { onClose() } } label: {
           Image(systemName: "xmark").font(.system(size: 16, weight: .heavy)).frame(width: 36, height: 36)
-            .background(dark ? AnyShapeStyle(.white.opacity(0.14)) : AnyShapeStyle(.thinMaterial), in: Circle())
+            .moonGlass(Circle(), interactive: true, weight: .thin, dark: dark)
             .foregroundStyle(dark ? .white : Palette.ink)
         }
         .buttonStyle(PressStyle())
@@ -132,8 +200,13 @@ struct GameHUD: View {
         Luna(size: 30, mood: run.mood)
           .overlay(LunaFrame(item: look.frame, size: 30))
           .modifier(Shake(amount: rm ? 0 : 5, tick: run.crackTick))
+          .modifier(LunaBounce(tick: run.coinTick))
+          .rotation3DEffect(.degrees(rm ? 0 : Double(run.flipTick) * 360), axis: (x: 0, y: 1, z: 0))
+          .animation(rm ? nil : .spring(response: 0.6, dampingFraction: 0.7), value: run.flipTick)
           .scaleEffect(run.mood == .cheering && !rm ? 1.12 : 1)
           .animation(Motion.safe(Motion.celebrate, rm), value: run.mood)
+          .overlay(alignment: .topLeading) { LunaBubble(text: run.say, tick: run.sayTick, dark: dark) }
+          .zIndex(2)
         ComboFlame(combo: run.combo, multiplier: run.multiplier, dark: dark)
         Spacer(minLength: 4)
         if let speed { SpeedRing(start: run.roundStart, seconds: speed) }
@@ -212,7 +285,7 @@ struct ComboFlame: View {
       }
     }
     .padding(.horizontal, 10).padding(.vertical, 5)
-    .background(dark ? AnyShapeStyle(.white.opacity(0.1)) : AnyShapeStyle(.thinMaterial), in: Capsule())
+    .moonGlass(Capsule(), weight: .thin, dark: dark)
     .scaleEffect(multiplier > 1 && !rm ? 1.04 : 1)
     .animation(Motion.safe(Motion.celebrate, rm), value: combo)
     .accessibilityLabel(combo > 0 ? "\(combo) in a row" : "No combo yet")
@@ -248,7 +321,8 @@ struct CoinCounter: View {
         .foregroundStyle(dark ? .white : Palette.ink)
     }
     .padding(.horizontal, 9).padding(.vertical, 5)
-    .background(dark ? AnyShapeStyle(.white.opacity(0.1)) : AnyShapeStyle(.thinMaterial), in: Capsule())
+    .moonGlass(Capsule(), weight: .thin, dark: dark)
+    .modifier(GlassMorphID(id: "points"))
     .modifier(Pop(tick: tick))
     .animation(Motion.safe(Motion.tap, rm), value: coins)
     .accessibilityLabel("\(coins) Moon points this round")
@@ -317,7 +391,7 @@ struct BossBar: View {
       }
     }
     .padding(10)
-    .background(Color.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .moonGlass(radius: 18, dark: true)
     .animation(Motion.safe(Motion.card, rm), value: hp)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Boss \(boss.name), \(Int(hp * 100)) percent left")
@@ -436,7 +510,9 @@ struct AnswerButton: View {
       }
       }
     }
-    .buttonStyle(ChunkyStyle(face: face, edge: edge, ink: ink, glow: state == .right ? Hue.mint.color : nil))
+    .buttonStyle(ChunkyStyle(face: face, edge: edge, ink: ink, glow: state == .right ? Hue.mint.color : nil, glass: state == .idle))
+    .overlay { Sparkle(trigger: state == .right ? 1 : 0, tier: .small) }
+    .sensoryFeedback(.impact(weight: .light), trigger: state == .right)
     .modifier(Shake(amount: 8, tick: state == .wrong ? 1 : 0))
     .animation(Motion.celebrate, value: state)
     .accessibilityAddTraits(state == .right || state == .wrong ? .isSelected : [])
@@ -455,13 +531,15 @@ struct ChunkyStyle: ButtonStyle {
   var glow: Color? = nil
   var depth: CGFloat = 4
   var radius: CGFloat = 18
+  /// Liquid Glass face (idle answers): the 3D edge stays solid underneath, the face is glass.
+  var glass = false
   func makeBody(configuration: Configuration) -> some View {
     let down = configuration.isPressed ? depth - 1 : 0
     configuration.label
       .foregroundStyle(ink)
       .padding(.horizontal, 14).padding(.vertical, 9)
       .frame(maxWidth: .infinity, minHeight: 50)
-      .background(face, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+      .modifier(ChunkyFace(face: face, radius: radius, glass: glass))
       .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(edge.opacity(0.5), lineWidth: 1.5))
       .offset(y: down)
       .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(edge).offset(y: depth))
@@ -469,6 +547,14 @@ struct ChunkyStyle: ButtonStyle {
       .shadow(color: (glow ?? .clear).opacity(0.7), radius: glow == nil ? 0 : 14)
       .animation(Motion.tap, value: configuration.isPressed)
       .contentShape(Rectangle())
+  }
+}
+
+private struct ChunkyFace: ViewModifier {
+  let face: Color; let radius: CGFloat; let glass: Bool
+  func body(content: Content) -> some View {
+    if glass { content.moonGlass(radius: radius, tint: face.opacity(0.55), interactive: true) }
+    else { content.background(face, in: RoundedRectangle(cornerRadius: radius, style: .continuous)) }
   }
 }
 
@@ -495,8 +581,11 @@ struct RunResults: View {
   /// Where the run's Moon points are banked (shown under the stats, with a way to the Moon Shop).
   var source: PointSource = .game
   var earnId: String? = nil
+  /// The Market World stop, for "almost there" nudges (nil for lessons opened outside the map).
+  var node: WorldNode? = nil
   let again: () -> Void
   let map: () -> Void
+  @Environment(AppModel.self) private var app
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var slammed = 0
   @State private var flag = false
@@ -530,9 +619,15 @@ struct RunResults: View {
       HStack(spacing: 10) {
         stat("\(run.accuracy)%", "right", "target", .mint)
         stat("\(run.bestCombo)", "best combo", "flame.fill", .orange)
-        stat("\(run.coins)", "points", "moon.fill", .gold)
+        stat("\(run.coins)", "points", "moon.fill", .gold).modifier(GlassMorphID(id: "points"))
       }
       if let earnId { RunEarnings(run: run, source: source, earnId: earnId) }
+      if let node, let nudge = Nudge.after(node, stars: stars, app.state, app.content).first {
+        Label(nudge, systemImage: "sparkles").font(.subheadline.weight(.bold)).foregroundStyle(Palette.ink)
+          .lineLimit(2).minimumScaleFactor(0.85)
+          .padding(.horizontal, 12).padding(.vertical, 8)
+          .moonGlass(Capsule(), tint: Hue.lemon.light.opacity(0.7))
+      }
       Spacer(minLength: 0)
       VStack(spacing: 8) {
         Button(action: map) { Text(boss ? "Plant my flag" : "Back to the map") }.buttonStyle(ChunkyPrimary())
@@ -541,6 +636,8 @@ struct RunResults: View {
     }
     .task {
       GameSound.play(.win)
+      if boss { PartyCenter.shared.fire(.bossBeaten, title: "Boss beaten!") }
+      else if stars == 3 { PartyCenter.shared.fire(.perfectRound) }
       if boss { try? await Task.sleep(for: .milliseconds(rm ? 0 : 250)); withAnimation(Motion.safe(Motion.celebrate, rm)) { flag = true } }
       for i in 0..<stars {
         try? await Task.sleep(for: .milliseconds(rm ? 0 : 330))
@@ -555,7 +652,7 @@ struct RunResults: View {
       Text(label).font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
     }
     .frame(maxWidth: .infinity).padding(.vertical, 10)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .moonGlass(radius: 18, weight: .thin)
     .accessibilityElement(children: .combine)
   }
 }
