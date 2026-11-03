@@ -235,7 +235,9 @@ struct CompanyStage: View {
             .frame(width: 140, height: 140)
             .background(RadialGradient(colors: [Color(hex: 0xFFF8C8), Color(hex: 0xFFD84D)], center: .init(x: 0.35, y: 0.3), startRadius: 4, endRadius: 120), in: Circle())
             .overlay(Circle().strokeBorder(Palette.midnight, lineWidth: 3))
-            .shadow(color: Palette.midnight, radius: 0, y: 7)
+            // The 3D edge is a circle drawn behind the face. A zero-blur .shadow on the whole stack also copied
+            // the lemon and the "Sell a cup" text 7 pt lower, so the label looked doubled (seen on a phone, 0.11.0).
+            .background(Circle().fill(Palette.midnight).offset(y: 7))
           Text("+$1").font(.kTitle).foregroundStyle(Palette.good).keyframeAnimator(initialValue: 0.0, trigger: pop) { v, y in v.offset(y: -y * 60).opacity(pop == 0 ? 0 : 1 - y) } keyframes: { _ in LinearKeyframe(0, duration: 0); LinearKeyframe(1, duration: 0.8) }
         }
       }

@@ -38,6 +38,10 @@ hc=$(grep -rnE 'Requests\.byok\(.*consent: *\.(anthropic|openai|gemini|xai)' Moo
 # 5. No force-unwrapped data lookups in views: synced/league/transferred state can name things this build lacks (0.8.0 crash).
 fu=$(grep -rnE '(companies\[[^]]*\]!|state\.[A-Za-z]+!|\.last!|\.first!)' MoonClub Shared MoonClubWidgets | grep -v 'Tab.allCases' || true)
 [ -z "$fu" ] || { echo "✗ force-unwrapped data in views (use app.company(_:) / if let):"; echo "$fu"; fail=1; }
+# 6. No zero-blur offset .shadow: it copies every glyph and word in the view below itself (the doubled "Sell a cup").
+#    Draw a 3D edge as a shape behind the face instead (see ChunkyStyle / the lemonade button).
+ds=$(grep -rnE '\.shadow\([^)]*radius: *0[,)][^)]*y: *[1-9]' MoonClub MoonClubWidgets Shared --include=*.swift || true)
+[ -z "$ds" ] || { echo "✗ zero-blur offset shadow doubles content (draw the edge as a shape behind):"; echo "$ds"; fail=1; }
 v=$(sed -nE 's/.*MARKETING_VERSION: *"([^"]+)".*/\1/p' project.yml | head -1)
 node scripts/asc.mjs notes "$v" >/dev/null || { echo "✗ release-notes/$v.md missing or invalid (see release-notes/README.md)"; fail=1; }
 grep -rnE 'pushType: *\.token|pushTokenUpdates' MoonClub MoonClubWidgets Shared --include=*.swift && { echo "✗ Live Activities must stay local (no push tokens)"; fail=1; } || true
