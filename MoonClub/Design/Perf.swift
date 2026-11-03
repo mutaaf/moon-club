@@ -88,7 +88,7 @@ enum Ready {
 
 /// Debug `-window WxH`: lays the whole app out in a window of that size (in points), scaled to fit the
 /// screen. The simulator can't rotate or resize from the command line, so this is how landscape, Split View
-/// and Stage Manager sizes are checked and captured. Width ≥ 680 gets the regular size class (split view).
+/// and Stage Manager sizes are checked and captured. Width ≥ 600 gets the regular size class (split view), like iPad Split View and an open iPhone Duo.
 struct DebugWindow: ViewModifier {
   let size: CGSize?
   init() {
@@ -107,7 +107,7 @@ struct DebugWindow: ViewModifier {
       GeometryReader { geo in
         let k = min(1, geo.size.width / size.width, geo.size.height / size.height)
         content
-          .environment(\.horizontalSizeClass, size.width >= 680 ? .regular : .compact)
+          .environment(\.horizontalSizeClass, size.width >= 600 ? .regular : .compact)
           .frame(width: size.width, height: size.height)
           .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
           .scaleEffect(k)

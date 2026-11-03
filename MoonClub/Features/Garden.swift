@@ -190,8 +190,9 @@ struct PlotRow: View {
           Text("Planted \(plot.principal) pts").font(.caption).foregroundStyle(Palette.ink2).lineLimit(1)
         }
         .layoutPriority(1)
+        Spacer(minLength: 4)
         GardenSpark(values: Garden.spark(app.candles[plot.s], from: plot.since, upTo: app.today))
-          .frame(minWidth: 40, maxWidth: 120, minHeight: 34, maxHeight: 34)
+          .frame(minWidth: 40, maxWidth: 160, minHeight: 34, maxHeight: 34)
         VStack(alignment: .trailing, spacing: 2) {
           Text("\(value) pts").font(.kHeadline).monospacedDigit()
           UpDown(change: value - plot.principal).font(.caption)
@@ -199,6 +200,7 @@ struct PlotRow: View {
         .fixedSize()
         Image(systemName: "chevron.right").foregroundStyle(.tertiary)
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
       .padding(14).moonGlass(radius: 20, weight: .thin)
     }
     .buttonStyle(.plain)
