@@ -4,7 +4,7 @@ import MoonClubCore
 /// Luna, the club's moon, drawn in vector (crisp at any size) with five moods. She blinks now and then and
 /// floats gently; both stop under Reduce Motion. The float is a render-server repeat (no per-frame work).
 struct Luna: View {
-  enum Mood { case idle, happy, thinking, cheering, sleepy }
+  enum Mood { case idle, happy, thinking, cheering, sleepy, oops }
   var size: CGFloat = 56
   var wave = false
   var mood: Mood = .idle
@@ -52,7 +52,16 @@ struct Luna: View {
       HStack(spacing: 13 * s) { dot; dot }.offset(x: 2 * s, y: -2 * s)
     case .idle:
       HStack(spacing: 13 * s) { dot; dot }
+    case .oops: // a wince: squeezed eyes
+      HStack(spacing: 13 * s) { squint(left: true); squint(left: false) }
     }
+  }
+  private func squint(left: Bool) -> some View {
+    let s = size / 64
+    return Path { p in
+      p.move(to: .init(x: left ? 0 : 7 * s, y: 0)); p.addLine(to: .init(x: left ? 7 * s : 0, y: 2.2 * s)); p.addLine(to: .init(x: left ? 0 : 7 * s, y: 4.4 * s))
+    }
+    .stroke(Palette.midnight, style: .init(lineWidth: 2 * s, lineCap: .round, lineJoin: .round)).frame(width: 7 * s, height: 4.4 * s)
   }
   private var dot: some View { let s = size / 64; return Capsule().fill(Palette.midnight).frame(width: 5.4 * s, height: (blink ? 0.8 : 6) * s) }
   private func arcEye(up: Bool) -> some View {
@@ -74,6 +83,8 @@ struct Luna: View {
       Ellipse().stroke(Palette.midnight, lineWidth: 1.8 * s).frame(width: 4 * s, height: 4.6 * s).offset(y: 8 * s)
     case .happy:
       Path { p in p.move(to: .init(x: 24.5 * s, y: 37 * s)); p.addQuadCurve(to: .init(x: 39.5 * s, y: 37 * s), control: .init(x: 32 * s, y: 46 * s)) }.stroke(Palette.midnight, style: .init(lineWidth: 2.4 * s, lineCap: .round))
+    case .oops:
+      Ellipse().fill(Palette.midnight).frame(width: 6 * s, height: 4.6 * s).offset(y: 8 * s)
     case .idle:
       Path { p in p.move(to: .init(x: 25.5 * s, y: 38 * s)); p.addQuadCurve(to: .init(x: 38.5 * s, y: 38 * s), control: .init(x: 32 * s, y: 43.5 * s)) }.stroke(Palette.midnight, style: .init(lineWidth: 2.4 * s, lineCap: .round))
     }

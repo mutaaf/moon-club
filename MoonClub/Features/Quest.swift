@@ -13,6 +13,8 @@ struct QuestView: View {
   @State private var chapter = "lemonade"
   @State private var stage = "intro"
   @State private var burst = 0
+  /// Game On HUD for the quest: each stage you finish earns coins and grows the combo.
+  @State private var run = RunModel()
 
   static let lemonade = ["company", "shares", "price", "report"]
   var stages: [String] { chapter == "lemonade" ? Self.lemonade : app.content.questChapters?.CH_STAGES[chapter] ?? [] }
@@ -39,15 +41,23 @@ struct QuestView: View {
         .padding(20).readable(820)
         .animation(.spring(response: 0.5, dampingFraction: 0.86), value: "\(chapter):\(stage)")
       }
-      .background(AuroraField(surface: .quest))
-      .overlay(Celebrate(trigger: burst))
-      .modifier(TaskToolbar())
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) { Button { dismiss() } label: { Label("Close", systemImage: "xmark.circle.fill").font(.title2).symbolRenderingMode(.hierarchical) } }
-        ToolbarItem(placement: .topBarLeading) {
-          Menu { ForEach(chapters) { c in Button(c.title) { go(c.id, "intro") } } } label: { Label("Chapters", systemImage: "books.vertical") }
+      .scrollBounceBehavior(.basedOnSize)
+      .safeAreaInset(edge: .top) {
+        HStack(alignment: .top, spacing: 10) {
+          GameHUD(run: run, title: meta?.title ?? "Quest", done: stageIndex, total: max(stages.count, 1)) { dismiss() }
+          Menu { ForEach(chapters) { c in Button(c.title) { go(c.id, "intro") } } } label: {
+            Image(systemName: "books.vertical.fill").font(.system(size: 16, weight: .heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle())
+          }
+          .padding(.top, 6)
+          .accessibilityLabel("Chapters")
         }
+        .padding(.horizontal, 20).padding(.bottom, 6)
+        .readable(820)
       }
+      .background(AuroraField(surface: .quest))
+      .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
+      .overlay(Celebrate(trigger: burst))
+      .toolbar(.hidden, for: .navigationBar)
     }
     .onAppear(perform: route)
   }
@@ -70,8 +80,10 @@ struct QuestView: View {
     chapter = start; stage = "intro"
   }
   private func go(_ c: String, _ s: String) { chapter = c; stage = s }
+  private var stageIndex: Int { stage == "done" ? stages.count : stages.firstIndex(of: stage) ?? 0 }
   private func finish(_ s: String) {
-    app.mutate { $0.questStage(chapter == "lemonade" ? s : "\(chapter):\(s)") }
+    run.record(true)
+    app.mutate { $0.questStage(chapter == "lemonade" ? s : "\(chapter):\(s)"); $0.play("quest", chapter, today: app.today) }
     if let i = stages.firstIndex(of: s), i + 1 < stages.count { stage = stages[i + 1] }
     else { if chapter == "lemonade" { app.mutate { $0.finishLemonade() } }; stage = "done"; burst += 1 }
   }
@@ -114,7 +126,7 @@ struct QuestView: View {
     switch (chapter, stage) {
     case (_, "intro"):
       Speech(text: chapter == "lemonade" ? q.intro : text.intro)
-      Button("Let's go!") { stage = stages.first ?? "done" }.buttonStyle(PrimaryButtonStyle())
+      Button("Let's go!") { stage = stages.first ?? "done" }.buttonStyle(ChunkyPrimary())
     case (_, "done"):
       VStack(spacing: 14) {
         MoonPhase(phase: chapter == "lemonade" ? 2 : 3, size: 96)
@@ -122,7 +134,7 @@ struct QuestView: View {
         Text(chapter == "lemonade" ? q.finish : text.finish).font(.kRead).multilineTextAlignment(.center)
         ReadAloud(source: .appCopy(chapter == "lemonade" ? q.finish : text.finish))
         if let next = chapters.first(where: { !app.chaptersDone.contains($0.id) && $0.id != chapter }) {
-          Button("Next: \(next.title)") { go(next.id, "intro") }.buttonStyle(PrimaryButtonStyle())
+          Button("Next: \(next.title)") { go(next.id, "intro") }.buttonStyle(ChunkyPrimary())
         }
         Button("Back to the club") { dismiss() }.buttonStyle(SoftButtonStyle())
       }.frame(maxWidth: .infinity)
@@ -164,7 +176,7 @@ struct Speech: View {
 
 struct NextButton: View {
   let title: String; let action: () -> Void
-  var body: some View { Button(title, action: action).buttonStyle(PrimaryButtonStyle()).transition(.move(edge: .bottom).combined(with: .opacity)) }
+  var body: some View { Button(title, action: action).buttonStyle(ChunkyPrimary()).transition(.move(edge: .bottom).combined(with: .opacity)) }
 }
 
 // MARK: Chapter 1 — Lemonade Stand
@@ -345,7 +357,7 @@ struct GrowStage: View {
     .chartXScale(domain: 0...max).chartYScale(domain: .automatic(includesZero: false)).frame(height: 140)
     .chartLegend(.hidden).animation(.snappy, value: years)
     if years < max {
-      Button(t.tap ?? "A year goes by") { years += 1 }.buttonStyle(PrimaryButtonStyle()).sensoryFeedback(lastDown ? .warning : .impact(flexibility: .soft), trigger: years)
+      Button(t.tap ?? "A year goes by") { years += 1 }.buttonStyle(ChunkyPrimary()).sensoryFeedback(lastDown ? .warning : .impact(flexibility: .soft), trigger: years)
     } else {
       if let r = t.remember { Text("\(Image(systemName: "lightbulb.fill")) \(r)").font(.callout).padding(12).background(Palette.moon.opacity(0.7), in: RoundedRectangle(cornerRadius: 14)) }
       NextButton(title: "Next →", action: next)
@@ -434,7 +446,7 @@ struct SnowballStage: View {
       VStack(spacing: 4) { Text("Replant").font(.kHeadline); Ticker(value: sb.replant[season].slices, format: { toFixed($0, 2) + " slices" }, font: .kTitle); Text("pays $\(toFixed(sb.replant[season].pay, 2))").font(.caption) }
         .frame(maxWidth: .infinity, minHeight: 110).background(Palette.mint, in: RoundedRectangle(cornerRadius: 18))
     }.foregroundStyle(Palette.midnight)
-    if season < q.SEASONS { Button("⏭️ \(t.tap ?? "Next season") (\(season + 1) of \(q.SEASONS))") { season += 1 }.buttonStyle(PrimaryButtonStyle()).sensoryFeedback(.impact(flexibility: .soft), trigger: season) }
+    if season < q.SEASONS { Button("⏭️ \(t.tap ?? "Next season") (\(season + 1) of \(q.SEASONS))") { season += 1 }.buttonStyle(ChunkyPrimary()).sensoryFeedback(.impact(flexibility: .soft), trigger: season) }
     else {
       if let r = t.remember { Text("\(Image(systemName: "lightbulb.fill")) \(r)").font(.callout).padding(12).background(Palette.moon.opacity(0.7), in: RoundedRectangle(cornerRadius: 14)) }
       NextButton(title: "Next →", action: next)

@@ -20,6 +20,10 @@ struct WorldView: View {
   @State private var conquered: Set<String> = []
   @State private var burst = 0
   @State private var didScroll = false
+  /// Where Luna's rocket is drawn; it flies along the trail to the next stop after a win.
+  @State private var rocketAt: CGPoint?
+  @State private var rocketKey = ""
+  @State private var rocketTilt: Double = 0
 
   var body: some View {
     let regions = World.regions(app.content)
@@ -55,7 +59,7 @@ struct WorldView: View {
       if let id = app.pendingLesson { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } }
       let a = ProcessInfo.processInfo.arguments
       if let i = a.firstIndex(of: "-lesson"), i + 1 < a.count, lesson == nil { lesson = app.content.lessons.first { $0.id == a[i + 1] } }
-      if let i = a.firstIndex(of: "-play"), i + 1 < a.count, playing == nil { playing = regions.flatMap(\.nodes).first { $0.id == a[i + 1] } }
+      if let i = a.firstIndex(of: "-play"), i + 1 < a.count, playing == nil, lesson == nil, let n = regions.flatMap(\.nodes).first(where: { $0.id == a[i + 1] }) { play(n) }
       #if DEBUG
       // Screen recordings: -conquer wins the current land after a moment (fog lifts, flag, rocket flies on).
       if a.contains("-conquer") {
@@ -125,15 +129,26 @@ struct WorldView: View {
                 .place(layout.banner(ri))
               if open {
                 ForEach(Array(r.nodes.enumerated()), id: \.element.id) { ni, n in
-                  NodeButton(node: n, stars: World.stars(n, app.state, app.content), open: World.nodeOpen(n, in: r, regionOpen: true, app.state, app.content),
-                             current: current.region == ri && current.node == ni, hue: hue(r)) { selected = n }
+                  let nodeOpen = World.nodeOpen(n, in: r, regionOpen: true, app.state, app.content)
+                  NodeButton(node: n, stars: World.stars(n, app.state, app.content), open: nodeOpen,
+                             current: current.region == ri && current.node == ni, hue: hue(r),
+                             tap: { if nodeOpen { play(n) } else { selected = n } }, info: { selected = n })
                     .id(n.id)
                     .place(layout.node(ri, ni, count: r.nodes.count))
                 }
               }
             }
-            if let p = layout.nodeIfAny(current.region, current.node, regions) {
-              RocketLuna().allowsHitTesting(false).place(layout.rocketCenter(current.region, current.node, regions[current.region]))
+            ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
+              if World.conquered(r, app.state, app.content) {
+                PlantedFlag(hue: hue(r)).allowsHitTesting(false).place(layout.decor(ri, angle: -.pi / 2 + (ri % 2 == 0 ? -0.5 : 0.5), radius: 0.5))
+                  .transition(.move(edge: .top).combined(with: .opacity))
+              }
+            }
+            if layout.nodeIfAny(current.region, current.node, regions) != nil {
+              let target = layout.rocketCenter(current.region, current.node, regions[current.region])
+              RocketLuna(skin: Skins.current(app.state)).rotationEffect(.degrees(rocketTilt)).allowsHitTesting(false).place(rocketAt ?? target)
+                .onAppear { rocketAt = target; rocketKey = "\(current.region)-\(current.node)" }
+                .onChange(of: target) { old, new in fly(from: rocketAt ?? old, to: new, key: "\(current.region)-\(current.node)") }
             }
           }
         }
@@ -141,6 +156,10 @@ struct WorldView: View {
         .animation(Motion.safe(Motion.page, rm), value: app.state.stars)
       }
       .defaultScrollAnchor(.bottom)
+      // The first land's banner sits at the very bottom of the map: keep it clear of the floating tab bar,
+      // and keep the top land's banner clear of the header.
+      .contentMargins(.bottom, 96, for: .scrollContent)
+      .contentMargins(.top, 12, for: .scrollContent)
       .background(Color(hex: 0x6FB7E8))
       .simultaneousGesture(MagnifyGesture().updating($pinch) { v, s, _ in s = v.magnification }.onEnded { v in zoom = min(1.7, max(1, zoom * v.magnification)) })
       .safeAreaInset(edge: .top) { WorldHeader(regions: regions) }
@@ -163,6 +182,18 @@ struct WorldView: View {
   }
 
   private func hue(_ r: Region) -> Hue { Hue.named(r.hue) }
+
+  /// After a win the rocket flies to the next stop on a gentle arc (two legs, tilting into the turn).
+  /// A zoom or rotation only moves the stops, so the rocket simply follows without a flight.
+  private func fly(from a: CGPoint, to b: CGPoint, key: String) {
+    guard key != rocketKey, !rm else { rocketAt = b; rocketKey = key; return }
+    rocketKey = key
+    let mid = CGPoint(x: (a.x + b.x) / 2 + (b.y - a.y) * 0.18, y: (a.y + b.y) / 2 - 40)
+    let tilt = max(-35, min(35, Double(b.x - a.x) / 4))
+    withAnimation(.easeIn(duration: 0.45)) { rocketAt = mid; rocketTilt = tilt } completion: {
+      withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { rocketAt = b; rocketTilt = 0 }
+    }
+  }
 }
 
 extension Hue {
@@ -189,7 +220,7 @@ enum MapDecor {
   static func items(for r: Region, _ ri: Int) -> [Item] {
     let symbols: [String]
     switch r.id {
-    case "coast": symbols = ["sun.max.fill", "beach.umbrella.fill", "sailboat.fill", "drop.circle.fill"]
+    case "coast": symbols = ["sun.max.fill", "beach.umbrella.fill", "sailboat.fill", "storefront.fill"]
     case "isle": symbols = ["tree.fill", "leaf.fill", "tree.fill", "archivebox.fill"]
     case "canyon": symbols = ["chart.bar.fill", "mountain.2.fill", "flame.fill", "chart.bar.xaxis"]
     case "trails": symbols = ["signpost.right.fill", "chart.line.uptrend.xyaxis", "figure.hiking", "signpost.left.fill"]
@@ -358,18 +389,20 @@ struct RegionBanner: View {
 struct NodeButton: View {
   let node: WorldNode, stars: Int, open: Bool, current: Bool, hue: Hue
   let tap: () -> Void
+  var info: () -> Void = {}
+  @State private var held = false
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var pulse = false
   var body: some View {
     let d = MapLayout.diameter(node)
-    Button(action: tap) {
+    Button { if held { held = false } else { tap() } } label: {
       // The circle IS the stop's frame (placed at its center); the star pill hangs below as an overlay,
       // at exactly the spot MapLayout.pillFrame reserves for it.
       ZStack {
           if current && !rm {
             Circle().stroke(Hue.gold.color, lineWidth: 3).frame(width: d + 16, height: d + 16).scaleEffect(pulse ? 1.12 : 0.96).opacity(pulse ? 0 : 0.9)
           }
-          Circle().fill(.white).frame(width: d, height: d).shadow(color: .black.opacity(0.18), radius: 6, y: 4)
+          Circle().fill(current ? AnyShapeStyle(LinearGradient(colors: [.white, hue.light], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(.white)).frame(width: d, height: d).shadow(color: (current ? hue.color : .black).opacity(current ? 0.45 : 0.18), radius: current ? 12 : 6, y: 4)
           Circle().strokeBorder(stars > 0 ? Hue.gold.color : current ? Palette.accent : Palette.line, lineWidth: stars > 0 || current ? 4 : 2).frame(width: d, height: d)
           if open {
             Glyph(node.art, size: d * 0.66)
@@ -383,34 +416,49 @@ struct NodeButton: View {
       }
       .frame(width: d, height: d)
       .overlay(alignment: .bottom) {
-        StarRow(stars: stars, size: 11)
-          .frame(width: MapLayout.pill.width, height: MapLayout.pill.height)
-          .background(.white.opacity(0.9), in: Capsule())
-          .offset(y: MapLayout.pillGap + MapLayout.pill.height)
+        // The current stop says PLAY in the star pill's slot (it has no stars yet), so nothing overlaps.
+        Group {
+          if current && open && stars == 0 {
+            Label("PLAY", systemImage: "play.fill").font(.system(size: 11, weight: .black, design: .rounded)).labelStyle(.titleAndIcon)
+              .foregroundStyle(.white)
+              .frame(width: MapLayout.pill.width + 10, height: MapLayout.pill.height + 4)
+              .background(Palette.accent, in: Capsule())
+              .scaleEffect(pulse && !rm ? 1.08 : 1)
+          } else {
+            StarRow(stars: stars, size: 11)
+              .frame(width: MapLayout.pill.width, height: MapLayout.pill.height)
+              .background(.white.opacity(0.9), in: Capsule())
+          }
+        }
+        .offset(y: MapLayout.pillGap + MapLayout.pill.height)
       }
       .contentShape(Circle().inset(by: -10))
     }
     .buttonStyle(PressStyle())
-    .accessibilityLabel("\(node.title). \(open ? "\(stars) of 3 stars" : "Locked")\(current ? ". You are here" : "")")
+    .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in held = true; info() })
+    .sensoryFeedback(.impact(weight: .light), trigger: held)
+    .accessibilityLabel("\(node.title). \(open ? "\(stars) of 3 stars" : "Locked")\(current ? ". You are here. Double tap to play" : "")")
+    .accessibilityAction(named: "About this stop") { info() }
     .onAppear { guard current, !rm, !pulse else { return }; withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { pulse = true } }
   }
 }
 
 /// Luna in her rocket, floating over the node you're on.
 struct RocketLuna: View {
+  var skin: RocketSkin = Skins.all[0]
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var bob = false
   var body: some View {
     ZStack {
       // flame
-      Capsule().fill(LinearGradient(colors: [Hue.lemon.color, Hue.orange.color, Hue.coral.color.opacity(0)], startPoint: .top, endPoint: .bottom))
+      Capsule().fill(LinearGradient(colors: [Hue.lemon.color, Color(hex: skin.flame), Color(hex: skin.flame).opacity(0)], startPoint: .top, endPoint: .bottom))
         .frame(width: 14, height: bob ? 26 : 20).offset(y: 30)
       // body
-      RocketShape().fill(LinearGradient(colors: [.white, Color(hex: 0xDCE3F5)], startPoint: .leading, endPoint: .trailing))
+      RocketShape().fill(LinearGradient(colors: [Color(hex: skin.body), Color(hex: skin.body).blend(with: Color(hex: 0x9AA6C8), by: 0.25)], startPoint: .leading, endPoint: .trailing))
         .overlay(RocketShape().stroke(Palette.midnight.opacity(0.25), lineWidth: 1))
         .frame(width: 40, height: 58)
       // fins
-      HStack(spacing: 30) { Fin().fill(Hue.coral.color).frame(width: 12, height: 18).scaleEffect(x: -1); Fin().fill(Hue.coral.color).frame(width: 12, height: 18) }.offset(y: 20)
+      HStack(spacing: 30) { Fin().fill(Color(hex: skin.fin)).frame(width: 12, height: 18).scaleEffect(x: -1); Fin().fill(Color(hex: skin.fin)).frame(width: 12, height: 18) }.offset(y: 20)
       // window with Luna
       Circle().fill(Color(hex: 0x1C2350)).frame(width: 30, height: 30).overlay(Luna(size: 26, mood: .happy)).offset(y: -4)
     }
@@ -435,6 +483,70 @@ struct RocketShape: Shape {
 }
 struct Fin: Shape {
   func path(in r: CGRect) -> Path { var p = Path(); p.move(to: .init(x: r.minX, y: r.minY)); p.addLine(to: .init(x: r.maxX, y: r.maxY)); p.addLine(to: .init(x: r.minX, y: r.maxY)); p.closeSubpath(); return p }
+}
+
+/// A big flag planted on a conquered land, in the land's color.
+struct PlantedFlag: View {
+  let hue: Hue
+  @Environment(\.accessibilityReduceMotion) private var rm
+  @State private var wave = false
+  var body: some View {
+    ZStack(alignment: .topLeading) {
+      Capsule().fill(Palette.midnight.opacity(0.75)).frame(width: 4, height: 64).offset(x: 0, y: 0)
+      Image(systemName: "flag.fill").font(.system(size: 34, weight: .heavy)).foregroundStyle(hue.color)
+        .overlay(Image(systemName: "star.fill").font(.system(size: 10, weight: .black)).foregroundStyle(.white).offset(x: 2, y: -4))
+        .rotationEffect(.degrees(wave && !rm ? 4 : -2), anchor: .leading)
+        .offset(x: 1, y: -2)
+      Ellipse().fill(.black.opacity(0.18)).frame(width: 22, height: 7).offset(x: -9, y: 60)
+    }
+    .frame(width: 44, height: 70)
+    .shadow(color: hue.color.opacity(0.4), radius: 8)
+    .onAppear { guard !rm else { return }; withAnimation(Motion.gentle.repeatForever()) { wave = true } }
+    .accessibilityHidden(true)
+  }
+}
+
+/// The rocket hangar: skins earned from mission chests (cosmetic only, never bought).
+struct Hangar: View {
+  @Environment(AppModel.self) private var app
+  @Environment(\.dismiss) private var dismiss
+  var body: some View {
+    let have = Set(Skins.unlocked(app.state).map(\.id))
+    let current = Skins.current(app.state).id
+    VStack(spacing: 14) {
+      HStack {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Rocket hangar").font(.kTitle)
+          Text("Open a mission chest to unlock the next rocket.").font(.callout).foregroundStyle(Palette.ink2)
+        }
+        Spacer()
+        Button { dismiss() } label: { Image(systemName: "xmark").font(.headline.weight(.heavy)).frame(width: 40, height: 40).background(.thinMaterial, in: Circle()) }
+          .buttonStyle(PressStyle()).accessibilityLabel("Close")
+      }
+      LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
+        ForEach(Skins.all) { s in
+          let unlocked = have.contains(s.id)
+          Button { if unlocked { app.mutate { $0.pickSkin(s.id, nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } } } label: {
+            VStack(spacing: 6) {
+              ZStack {
+                RocketMark(skin: s, size: 54).opacity(unlocked ? 1 : 0.25)
+                if !unlocked { Image(systemName: "lock.fill").font(.headline).foregroundStyle(Palette.ink2) }
+              }
+              Text(s.name).font(.caption.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 10)
+            .background(current == s.id ? Palette.accent.opacity(0.15) : Palette.card.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(current == s.id ? Palette.accent : Palette.line, lineWidth: current == s.id ? 2.5 : 1))
+          }
+          .buttonStyle(PressStyle())
+          .disabled(!unlocked)
+          .accessibilityLabel("\(s.name). \(unlocked ? (current == s.id ? "Flying now" : "Tap to fly it") : "Locked")")
+        }
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(20)
+  }
 }
 
 /// Fog over a land you haven't reached: soft, layered clouds.
@@ -471,19 +583,29 @@ struct Clouds: View {
 struct WorldHeader: View {
   let regions: [Region]
   @Environment(AppModel.self) private var app
+  @State private var hangar = false
   var body: some View {
     let t = World.totalStars(app.state, app.content)
     let won = regions.filter { World.conquered($0, app.state, app.content) }.count
-    HStack(spacing: 10) {
+    let streak = Streak.play(app.state, today: app.today)
+    HStack(spacing: 8) {
       VStack(alignment: .leading, spacing: 0) {
-        Text("Market World").font(.system(.title3, design: .rounded).weight(.heavy))
-        Text("\(won) of \(regions.count) lands won").font(.caption).foregroundStyle(.secondary)
+        Text("Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
+        Label("\(won) of \(regions.count) lands", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
       }
       Spacer()
-      Label("\(t.have)", systemImage: "star.fill").font(.subheadline.weight(.bold)).monospacedDigit()
+      Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
+        .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
+        .accessibilityLabel("\(streak) day streak")
+      Label("\(t.have)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
         .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
         .contentTransition(.numericText(value: Double(t.have)))
         .accessibilityLabel("\(t.have) stars")
+      Button { hangar = true } label: {
+        RocketMark(skin: Skins.current(app.state), size: 30).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
+      }
+      .accessibilityLabel("Rocket hangar")
+      .sheet(isPresented: $hangar) { Hangar().presentationDetents([.medium]).presentationCornerRadius(32) }
       NavigationLink { SchoolView() } label: {
         Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
       }
@@ -514,7 +636,7 @@ struct NodePanel: View {
         }
         StarRow(stars: stars, size: 24)
         if open {
-          Button(stars > 0 ? "Play again" : node.isBoss ? "Take on the boss" : "Play") { play(node) }.buttonStyle(PrimaryButtonStyle())
+          Button(stars > 0 ? "Play again" : node.isBoss ? "Take on the boss" : "Play") { play(node) }.buttonStyle(ChunkyPrimary())
         } else {
           Label(node.isBoss ? "Win a star on every spot in \(r.name) first." : "Win a star on the spot before this one.", systemImage: "lock.fill")
             .font(.callout.weight(.semibold)).foregroundStyle(Palette.ink2).multilineTextAlignment(.center)
@@ -546,7 +668,8 @@ struct NodePlayer: View {
   let regions: [Region]
   @Environment(AppModel.self) private var app
   var body: some View {
-    let finish: (Int) -> Void = { s in app.mutate { $0.earn(node.id, stars: s) } }
+    let kind = node.isBoss ? "boss" : { if case .game = node.kind { return "game" }; return "node" }()
+    let finish: (Int) -> Void = { s in app.mutate { $0.earn(node.id, stars: s); $0.play(kind, node.id, today: app.today) } }
     let rounds = Rounds(series: Array(app.candles.values).sorted { $0.s < $1.s }, seed: node.id.hashValueStable &+ app.today.hashValueStable)
     switch node.kind {
     case let .game(k):

@@ -37,6 +37,7 @@ struct RootView: View {
       WhatsNewModal(news: whatsNew) { whatsNew = [] }
     }
     .environment(\.openQuest, OpenQuest { quest = $0 })
+    .environment(\.openTab, OpenTab { t in withAnimation(Motion.page) { tab = t } })
     .task { await app.loadMarket() }
     .onAppear {
       let args = ProcessInfo.processInfo.arguments

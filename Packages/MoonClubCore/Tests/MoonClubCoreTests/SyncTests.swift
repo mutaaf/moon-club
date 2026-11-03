@@ -35,6 +35,9 @@ final class SyncTests: XCTestCase {
     for e in [1, 3, 5] where g.bool() { s.league.append(LeaguePlayer(emoji: e, guesses: [LeagueGuess(s: g.pick(Self.syms), d: g.pick(Self.days), pick: g.pick([.beat, .miss]))])) }
     s.recapSeen = g.bool() ? g.pick(["2026-10-19", "2026-10-26"]) : nil
     if g.bool() { for n in ["canyon-build", "canyon-read", "trails-spot", "coast-boss"] where g.bool() { s.earn(n, stars: g.int(4)) } }
+    if g.bool() { for d in Self.at where g.bool() { s.play(g.pick(["lesson", "game", "guess"]), g.pick(["a", "b"]), today: d) } }
+    if g.bool() { for d in Self.at where g.bool() { s.openChest(today: d) } }
+    if g.bool() { s.pickSkin(g.pick(["classic", "mint", "galaxy"]), nowMillis: g.pick([100, 200, 300])) }
     return s
   }
 

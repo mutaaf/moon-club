@@ -11,12 +11,18 @@ import MoonClubCore
 @MainActor
 final class CardFitTests: XCTestCase {
   struct Device { let name: String; let width: CGFloat; let height: CGFloat; var chrome: CGFloat = 250 }
-  // Card space = screen height − status/nav bar − lesson progress − pinned buttons − tab bar/home indicator.
+  // Card space = screen height − status bar − Game On HUD (~96) − pinned buttons (~76) − home indicator.
+  // Play is full screen (no tab bar, no navigation bar) since 0.10.
   static let devices = [
-    Device(name: "iPhone SE", width: 375, height: 667, chrome: 225),   // no notch, no home indicator
-    Device(name: "iPhone 17", width: 402, height: 874),
-    Device(name: "iPhone Duo outer", width: 384, height: 840),
-    Device(name: "iPad", width: 720, height: 1100),
+    Device(name: "iPhone SE", width: 375, height: 667, chrome: 204),   // no notch, no home indicator (measured on the SE sim: status 20 + HUD ~99 + buttons ~83, plus 2 to spare)
+    Device(name: "iPhone 17", width: 402, height: 874, chrome: 270),
+    Device(name: "iPhone Duo outer", width: 384, height: 840, chrome: 270),
+    Device(name: "iPad", width: 720, height: 1100, chrome: 270),
+  ]
+  /// Whole play screens (HUD + card/chart + buttons) at their smallest: this is what must fit the screen.
+  static let screens = [
+    Device(name: "iPhone SE", width: 375, height: 667, chrome: 20),    // status bar
+    Device(name: "iPhone 17", width: 402, height: 874, chrome: 62 + 34),
   ]
   static let chrome: CGFloat = 250
 
@@ -29,7 +35,7 @@ final class CardFitTests: XCTestCase {
   }
 
   func height(_ v: some View, width: CGFloat, type: DynamicTypeSize, app: AppModel) -> CGFloat {
-    let host = UIHostingController(rootView: v.padding(24).environment(app).environment(\.dynamicTypeSize, type))
+    let host = UIHostingController(rootView: v.padding(20).environment(app).environment(\.dynamicTypeSize, type))
     return host.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
   }
 
@@ -41,8 +47,9 @@ final class CardFitTests: XCTestCase {
       let room = d.height - d.chrome
       for l in c.lessons {
         for (i, s) in l.steps.enumerated() {
-          let v = StepContent(step: s, art: true, seed: i, picked: .constant(nil), picks: .constant([:]))
-          let h = height(v, width: cardWidth, type: .xxxLarge, app: app)
+          // The art stage grows into spare room; what must fit is the card at its smallest art.
+          let v = StepContent(step: s, art: true, seed: i, picked: .constant(nil), picks: .constant([:]), artMax: 150)
+          let h = height(v, width: cardWidth, type: d.name == "iPhone SE" ? .xxLarge : .xxxLarge, app: app)
           if h > room { misfits.append("\(d.name) \(l.id)#\(i): \(Int(h)) > \(Int(room))") }
         }
       }
@@ -50,12 +57,47 @@ final class CardFitTests: XCTestCase {
     XCTAssertTrue(misfits.isEmpty, "Cards that would need scrolling:\n" + misfits.joined(separator: "\n"))
   }
 
+  /// The smallest height a whole screen can be laid out at (flexible parts — charts, art, spacers — at
+  /// their minimum; text at full size). If it's taller than the screen, something would be cut off.
+  func minHeight(_ v: some View, width: CGFloat, app: AppModel) -> CGFloat {
+    let host = UIHostingController(rootView: NavigationStack { v }.environment(app).environment(\.dynamicTypeSize, .large))
+    return host.sizeThatFits(in: CGSize(width: width, height: 1)).height
+  }
+
+  func testEveryPlayScreenFitsWithoutScrolling() throws {
+    let c = try content(), app = model(c)
+    let regions = World.regions(c)
+    var misfits: [String] = [], checked = 0
+    for d in Self.screens {
+      let room = d.height - d.chrome
+      for n in regions.flatMap(\.nodes) {
+        switch n.kind { case .game, .review, .timeMachine: break; default: continue }
+        let h = minHeight(NodePlayer(node: n, regions: regions), width: d.width, app: app); checked += 1
+        if h > room { misfits.append("\(d.name) \(n.id): \(Int(h)) > \(Int(room))") }
+      }
+      for l in c.lessons {
+        let h = minHeight(LessonPlayer(lesson: l), width: d.width, app: app); checked += 1
+        if h > room { misfits.append("\(d.name) lesson \(l.id): \(Int(h)) > \(Int(room))") }
+      }
+    }
+    XCTAssertGreaterThan(checked, 40)
+    XCTAssertTrue(misfits.isEmpty, "Play screens that would need scrolling:\n" + misfits.joined(separator: "\n"))
+  }
+
+  func testArtReviewListAndNoMisleadingPictures() {
+    // The whole emoji → picture map, for a human to skim (printed in the test log).
+    print("ART REVIEW\n" + Art.reviewList.joined(separator: "\n"))
+    for (k, bad) in Art.neverAgain { XCTAssertNotEqual(Art.spec(k).symbol, bad, "\(k) must not be drawn as \(bad)") }
+    XCTAssertEqual(Art.spec("💰").symbol, "dollarsign.circle.fill")
+    XCTAssertEqual(Art.spec("🍋").symbol, "custom.lemon")
+  }
+
   func testNoCardHasAScrollViewInside() throws {
     // Source check: the card-content views never contain a ScrollView (the page may scroll, a card may not).
     let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-    for f in ["MoonClub/Features/School.swift", "MoonClub/Features/Story.swift", "MoonClub/Features/WorldGames.swift", "MoonClub/Features/WorldBosses.swift", "MoonClub/Features/WhatsNewModal.swift"] {
+    for f in ["MoonClub/Features/School.swift", "MoonClub/Features/Story.swift", "MoonClub/Features/WorldGames.swift", "MoonClub/Features/WorldBosses.swift", "MoonClub/Features/WhatsNewModal.swift", "MoonClub/Features/Missions.swift", "MoonClub/Design/GameKit.swift"] {
       let src = try String(contentsOf: root.appendingPathComponent(f), encoding: .utf8)
-      for marker in ["struct StepContent", "struct StoryCard", "struct ChartCard", "struct GameShell", "struct CheckView", "struct SortView"] {
+      for marker in ["struct StepContent", "struct StoryCard", "struct ChartCard", "struct GameShell", "struct CheckView", "struct SortView", "struct TodaysMissions", "struct RunResults", "struct GameHUD", "struct ArtPanel", "struct TimeMachineBoss"] {
         guard let r = src.range(of: marker) else { continue }
         let body = src[r.lowerBound...].prefix(4000)
         let end = body.range(of: "\n}\n").map { body[..<$0.lowerBound] } ?? body
