@@ -275,6 +275,7 @@ struct MysteryTag: View {
     .background(LinearGradient(colors: [Hue.lemon.color, Hue.gold.color], startPoint: .top, endPoint: .bottom), in: Capsule())
     .shadow(color: Hue.gold.color.opacity(0.7), radius: spin ? 8 : 3)
     .accessibilityLabel("Mystery stop, \(Mystery.points) bonus points today")
-    .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 0.9).repeatForever()) { spin = true } }
+    // A few wiggles, then it rests (an endless loop with an animated shadow kept the whole map redrawing).
+    .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 0.9).repeatCount(6)) { spin = true } }
   }
 }

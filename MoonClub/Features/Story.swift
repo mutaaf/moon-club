@@ -124,14 +124,20 @@ struct StoryColumns: View {
   let width: CGFloat
   var body: some View {
     let n = max(1, min(3, Int((width + 18) / (300 + 18))))
+    // Exact column widths: flexible columns let SwiftUI measure a card's text at one width and place it at
+    // another, which truncated lines ("Makes Disney movies, Pix…").
+    let colW = max(0, (width - 18 * CGFloat(n - 1)) / CGFloat(n)).rounded(.down)
     HStack(alignment: .top, spacing: 18) {
       ForEach(0..<n, id: \.self) { col in
         VStack(spacing: 18) {
-          ForEach(Array(cards.enumerated()).filter { $0.offset % n == col }, id: \.offset) { _, c in StoryCard(card: c) }
+          ForEach(Array(cards.enumerated()).filter { $0.offset % n == col }, id: \.offset) { _, c in
+            StoryCard(card: c).fixedSize(horizontal: false, vertical: true)
+          }
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(width: colW, alignment: .top)
       }
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 

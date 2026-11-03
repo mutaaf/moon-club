@@ -180,6 +180,21 @@ final class CardFitTests: XCTestCase {
     XCTAssertTrue(misfits.isEmpty, misfits.joined(separator: "\n"))
   }
 
+  /// World on iPad: the map never gets narrower than 360 pt beside the stop preview, landscape windows give
+  /// the map most of the room, and narrow windows show the map alone (the preview opens as a sheet).
+  func testWorldMapKeepsAReadableWidth() {
+    let none = FoldInfo()
+    for size in [CGSize(width: 712, height: 1376), CGSize(width: 1032, height: 1376), CGSize(width: 834, height: 1194), CGSize(width: 1056, height: 1032), CGSize(width: 1376, height: 1032), CGSize(width: 900, height: 700)] {
+      guard let s = WorldView.panelSplit(size: size, fold: none) else { XCTFail("\(size) should show the preview beside the map"); continue }
+      XCTAssertGreaterThanOrEqual(s.lead, 360, "map width at \(size)")
+      XCTAssertGreaterThanOrEqual(s.trail, 280, "preview width at \(size)")
+      XCTAssertEqual(s.lead + s.gap + s.trail, size.width, accuracy: 0.5)
+      if size.width > size.height { XCTAssertGreaterThan(s.lead, s.trail, "landscape: the map gets most of the room") }
+    }
+    XCTAssertNil(WorldView.panelSplit(size: CGSize(width: 450, height: 1032), fold: none), "Slide Over width: map alone")
+    XCTAssertNil(WorldView.panelSplit(size: CGSize(width: 402, height: 874), fold: none), "iPhone: map alone")
+  }
+
   /// Read the Day: equal prices share one label and labels are pushed apart, so "Start" and "Low" never overlap.
   func testBigCandleLabelsNeverOverlap() {
     let flat = BigCandle.labels(o: 100, h: 104, l: 100, c: 102)

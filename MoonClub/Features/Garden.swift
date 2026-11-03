@@ -315,7 +315,7 @@ struct PlantSheet: View {
     .onAppear { amount = Double(min(max(Garden.minPlant, room / 2), max(room, Garden.minPlant))) }
     .confirmationDialog(pick.map { "Plant \(Int(amount)) points in \(app.company($0).nick)?" } ?? "", isPresented: $asking, titleVisibility: .visible) {
       Button("Yes, plant them") {
-        guard let pick, app.plant(pick, points: Int(amount)) else { return }
+        guard let pick, app.plant(pick, points: min(Int(amount), app.gardenAllowance)) else { return }
         burst += 1
         Task { try? await Task.sleep(for: .milliseconds(700)); dismiss() }
       }

@@ -140,6 +140,8 @@ struct RootView: View {
     }
     await phase("piggyIdle3s") { tab = .piggy; try? await Task.sleep(for: .seconds(3)) }
     await phase("worldIdle3s") { tab = .school; try? await Task.sleep(for: .seconds(3)) }
+    try? await Task.sleep(for: .seconds(5))
+    await phase("worldSettled3s") { try? await Task.sleep(for: .seconds(3)) }
     // Steady state: back on the Story after its aurora has settled (it drifts for 6 s after a screen appears).
     tab = .story; try? await Task.sleep(for: .seconds(7))
     await phase("storySettled3s") { try? await Task.sleep(for: .seconds(3)) }

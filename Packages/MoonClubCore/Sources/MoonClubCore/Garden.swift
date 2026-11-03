@@ -193,11 +193,11 @@ public enum Garden {
   /// A calm habit card, a different one each day.
   public static let wisdom = [
     "Gardens grow slowly. Checking once a day is plenty, and once a week is even better.",
-    "Prices wiggle every day. A wiggle is not a story.",
+    "Prices wiggle every day. Peeking every minute won't make them grow faster.",
     "Patient planters look at months, not minutes.",
-    "Up days and down days both happen. That's normal!",
-    "Patterns are clues, not promises. Nobody knows what comes next.",
-    "A down day is like a rainy day. It doesn't mean you made a mistake.",
+    "Up days and down days both happen. Checking less helps you stay calm.",
+    "Plant, then go play! Your garden will still be here tomorrow.",
+    "A down day is like a rainy day. Checking less helps you stay calm.",
   ]
   public static func wisdom(today: String) -> String {
     let n = today.unicodeScalars.reduce(0) { $0 + Int($1.value) }

@@ -33,23 +33,11 @@ struct WorldView: View {
     let cur = World.current(regions, app.state, app.content)
     let currentNode = regions.isEmpty ? nil : regions[cur.region].nodes[cur.node]
     GeometryReader { geo in
-      let split = fold.split(minPage: 300)
-      // Wide window, no fold (iPad, Stage Manager): the map gets most of the room (never a narrow strip
-      // that truncates its header) and the stop preview a fixed, readable column.
-      let panel = min(440, max(300, geo.size.width * 0.36))
+      let side = WorldView.panelSplit(size: geo.size, fold: fold)
       Group {
-        if fold.fold == nil, geo.size.width >= 360 + 300 + 1 {
-          // Laid out by PageSplit like the fold layout (a plain HStack here kept the map re-rendering every
-          // frame on iPad: ~29 ms frames vs 16.7 measured with -bench).
-          PageSplit(split: FoldInfo.Split(lead: geo.size.width - panel, gap: 0, trail: panel), fill: true) {
-            map(regions, current: cur, width: geo.size.width - panel)
-            NodePanel(node: selected ?? currentNode, regions: regions, play: play)
-              .padding(.vertical, 12)
-          }
-        } else if let split {
-          // iPhone Duo open / iPad: the map on one page, the level preview on the other — never on the fold.
-          PageSplit(split: split, fill: true) {
-            map(regions, current: cur, width: split.lead)
+        if let side {
+          PageSplit(split: side, fill: true) {
+            map(regions, current: cur, width: side.lead)
             NodePanel(node: selected ?? currentNode, regions: regions, play: play)
               .padding(.vertical, 12)
           }
@@ -58,7 +46,7 @@ struct WorldView: View {
         }
       }
       .foldProbe($fold)
-      .sheet(item: Binding(get: { fold.split(minPage: 300) == nil && !(fold.fold == nil && geo.size.width >= 661) ? selected : nil }, set: { selected = $0 })) { n in
+      .sheet(item: Binding(get: { side == nil ? selected : nil }, set: { selected = $0 })) { n in
         NodePanel(node: n, regions: regions, play: { selected = nil; play($0) })
           .padding(.top, 8)
           .presentationDetents([.height(360)])
@@ -107,6 +95,19 @@ struct WorldView: View {
   }
 
   // MARK: The map
+
+  /// Where the map and the stop preview go (nil = the map alone; the preview opens as a sheet).
+  ///  • a fold (iPhone Duo open): one page each side of it, never on the fold
+  ///  • a landscape-shaped window: the map gets most of the room, the preview a fixed 300–440 pt column
+  ///  • a portrait-shaped window: an even split, but the map never narrower than 360 pt (portrait iPad
+  ///    with the sidebar shown left it 334 pt), and the preview at least 280 pt
+  static func panelSplit(size: CGSize, fold: FoldInfo) -> FoldInfo.Split? {
+    if fold.fold != nil { return fold.split(minPage: 300) }
+    let w = size.width
+    if w > size.height, w >= 360 + 300 { let panel = min(440, max(300, w * 0.36)); return .init(lead: w - panel, gap: 0, trail: panel) }
+    if w >= 360 + 32 + 280 { let lead = max(360, (w - 32) / 2); return .init(lead: lead, gap: 32, trail: w - 32 - lead) }
+    return nil
+  }
 
   private func map(_ regions: [Region], current: (region: Int, node: Int), width: CGFloat) -> some View {
     let z = min(1.7, max(1, zoom * pinch))
