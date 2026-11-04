@@ -7,6 +7,17 @@ enum Tab: String, CaseIterable, Identifiable {
   var title: String { ["Story", "Guess", "Piggy Bank", "World", "Ask Luna"][Tab.allCases.firstIndex(of: self)!] }
   var icon: String { ["book.pages.fill", "target", "banknote.fill", "map.fill", "moon.stars.fill"][Tab.allCases.firstIndex(of: self)!] }
   var surface: Surface { [.story, .guess, .piggy, .school, .luna][Tab.allCases.firstIndex(of: self)!] }
+  /// The tab a deep link lands on. Links that change settings (`needsGrownUp`) have none: they go through the gate.
+  init?(link: DeepLink) {
+    switch link {
+    case .home: self = .story
+    case .world, .lesson: self = .school
+    case .guess, .gameNight: self = .guess
+    case .piggy, .garden: self = .piggy
+    case .luna: self = .luna
+    case .league, .pack: return nil
+    }
+  }
 }
 
 /// Compact width (iPhone, iPhone Duo closed): a TabView — on iPhone Duo its bar moves to the side.
@@ -22,6 +33,8 @@ struct RootView: View {
   }()
   @State private var gate = false
   @State private var grownUps = false
+  /// A settings link (Family League code, lesson pack) waiting for the parental gate; shown in the grown-up corner.
+  @State private var grownUpsLink: DeepLink?
   @State private var quest: String?
   @State private var whatsNew: [ReleaseNews] = []
   @State private var locker: LockerTab?
@@ -71,8 +84,8 @@ struct RootView: View {
       }
     }
     .onChange(of: phase) { old, new in if new == .active && old == .background { bedtime.newSession() } }
-    .sheet(isPresented: $gate) { ParentGate { gate = false; grownUps = true } }
-    .fullScreenCover(isPresented: $grownUps, onDismiss: { app.refreshBrain() }) { GrownUpsView() }
+    .sheet(isPresented: $gate, onDismiss: { if !grownUps { grownUpsLink = nil } }) { ParentGate { gate = false; grownUps = true } }
+    .fullScreenCover(isPresented: $grownUps, onDismiss: { grownUpsLink = nil; app.refreshBrain() }) { GrownUpsView(link: grownUpsLink) }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
     .fullScreenCover(isPresented: Binding(get: { !whatsNew.isEmpty }, set: { if !$0 { whatsNew = [] } })) {
       WhatsNewModal(news: whatsNew) { whatsNew = [] }
@@ -102,6 +115,10 @@ struct RootView: View {
       if quest == nil { whatsNew = WhatsNewStore.pending() }
       #if DEBUG
       if args.contains("-demo") && args.contains("-grownups") { grownUps = true } // screenshots only; release builds always use the gate
+      // Screenshots: -link <url> follows a deep link at launch; with -grownups a settings link shows its offer directly.
+      if args.contains("-demo"), let i = args.firstIndex(of: "-link"), i + 1 < args.count, let u = URL(string: args[i + 1]) {
+        if args.contains("-grownups") { let l = app.open(u); if l.needsGrownUp { grownUpsLink = l } } else { Task { try? await Task.sleep(for: .seconds(1)); follow(u) } }
+      }
       if args.contains("-demo") && args.contains("-liveactivity") { LiveActivities.demo() } // simulator check of the real Live Activity
       // Screenshots: -locker badges|shop|points [-slot rocket|hat|…] opens the Moon Locker.
       if args.contains("-demo"), let i = args.firstIndex(of: "-locker"), i + 1 < args.count { locker = LockerTab(rawValue: args[i + 1]) }
@@ -120,9 +137,26 @@ struct RootView: View {
       }
       #endif
     }
-    .onOpenURL { url in if let t = app.open(url) { tab = t } }
+    // Universal links (mutaafaziz.com/metaphases/kids/…) and moonclub:// both arrive here (docs/LINKS.md).
+    .onOpenURL { url in follow(url) }
+    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { a in if let url = a.webpageURL { follow(url) } }
     .tint(Palette.accent)
     .modifier(TracksHinge(duo: duo))
+  }
+
+  /// Follow a link from outside the app. Kid places switch the tab (closing the grown-up corner, a quest or the
+  /// locker on the way). Settings never skip the gate: the gate opens, and only a grown-up who passes it sees the
+  /// link's offer in the grown-up corner. Unknown links resolve to Home (MoonClubCore `DeepLink`).
+  private func follow(_ url: URL) {
+    let link = app.open(url)
+    if link.needsGrownUp {
+      grownUps = false; quest = nil; locker = nil
+      grownUpsLink = link
+      gate = true
+      return
+    }
+    grownUps = false; gate = false; quest = nil; locker = nil
+    if let t = Tab(link: link) { withAnimation(Motion.page) { tab = t } }
   }
 
   /// Debug `-bench`: one fixed script so performance can be compared before and after a change.

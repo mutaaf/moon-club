@@ -5,7 +5,7 @@
 //   node scripts/asc.mjs whoami            check the key works and list the apps it can see
 //   node scripts/asc.mjs bundle            register com.mutaafaziz.moonclub (idempotent)
 //   node scripts/asc.mjs ship <build>      wait for processing, set the release notes, hand the build to testers
-//   node scripts/asc.mjs capabilities      enable the bundle id's capabilities (iCloud key-value storage)
+//   node scripts/asc.mjs capabilities      enable the bundle id's capabilities (iCloud key-value storage, associated domains)
 //   node scripts/asc.mjs signing           create/install an Apple Distribution cert + one App Store profile per bundle id (no cloud signing)
 //   node scripts/asc.mjs notes [version]   print the TestFlight notes that would be sent (lint)
 //
@@ -242,18 +242,23 @@ async function crew() {
 }
 
 /** Capabilities the app's entitlements need, enabled on the bundle id (idempotent).
- *  ICLOUD: key-value storage for opt-in progress sync (com.apple.developer.ubiquity-kvstore-identifier). */
+ *  ICLOUD: key-value storage for opt-in progress sync (com.apple.developer.ubiquity-kvstore-identifier).
+ *  ASSOCIATED_DOMAINS: universal links, applinks:mutaafaziz.com (docs/LINKS.md). */
+const CAPABILITIES = {
+  ICLOUD: [{ key: "ICLOUD_VERSION", options: [{ key: "XCODE_6" }] }],
+  ASSOCIATED_DOMAINS: undefined,
+};
 async function capabilities(bundleIdId) {
   const id = bundleIdId ?? (await api("GET", `/v1/bundleIds?filter[identifier]=${BUNDLE}`)).data.find((x) => x.attributes.identifier === BUNDLE).id;
   const have = new Set((await api("GET", `/v1/bundleIds/${id}/bundleIdCapabilities`)).data.map((c) => c.attributes.capabilityType));
-  for (const capabilityType of ["ICLOUD"]) {
+  for (const [capabilityType, settings] of Object.entries(CAPABILITIES)) {
     if (have.has(capabilityType)) continue;
     await api("POST", "/v1/bundleIdCapabilities", { data: { type: "bundleIdCapabilities",
-      attributes: { capabilityType, settings: [{ key: "ICLOUD_VERSION", options: [{ key: "XCODE_6" }] }] },
+      attributes: { capabilityType, ...(settings ? { settings } : {}) },
       relationships: { bundleId: { data: { type: "bundleIds", id } } } } });
     console.log(`✓ enabled ${capabilityType} on ${BUNDLE}`);
   }
-  console.log(`✓ capabilities: ${[...new Set([...have, "ICLOUD"])].join(", ")}`);
+  console.log(`✓ capabilities: ${[...new Set([...have, ...Object.keys(CAPABILITIES)])].join(", ")}`);
 }
 
 /** TestFlight "Test Information" + Beta App Review contact, needed once before the first external review.

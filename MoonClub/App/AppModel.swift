@@ -218,14 +218,23 @@ final class AppModel {
     if s != state { commit(s, push: true) } else { WidgetPublisher.publish(self) } // a widget guess syncs like any other
   }
 
-  /// moonclub://tab/<name> and moonclub://lesson/<id> (widgets, Live Activities). In-app only.
-  func open(_ url: URL) -> Tab? {
-    guard url.scheme == MoonLink.scheme else { return nil }
-    switch url.host {
-    case "tab": return Tab(rawValue: url.lastPathComponent)
-    case "lesson": pendingLesson = url.lastPathComponent; return .school
-    default: return nil
+  /// Game Night to open from a deep link (GuessView consumes it).
+  var pendingGameNight = false
+
+  /// A link from outside the app: a universal link (mutaafaziz.com/metaphases/kids/…) or moonclub:// (widgets,
+  /// Live Activities). Resolves it against this build's content (MoonClubCore `DeepLink`: unknown or malformed
+  /// links are `.home`), sets what the screens consume, and returns it for RootView to pick the tab. Links that
+  /// change settings (`needsGrownUp`) set nothing here: RootView shows the parental gate first.
+  func open(_ url: URL) -> DeepLink {
+    let l = DeepLink.resolve(url, in: content)
+    switch l {
+    case .lesson(let id): pendingLesson = id
+    case .gameNight: pendingGameNight = true
+    case .piggy: UserDefaults.standard.set(PiggySide.coins.rawValue, forKey: PiggySide.key)
+    case .garden: UserDefaults.standard.set(PiggySide.garden.rawValue, forKey: PiggySide.key)
+    default: break
     }
+    return l
   }
 
   func loadMarket() async {

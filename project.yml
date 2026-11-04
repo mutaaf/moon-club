@@ -29,6 +29,8 @@ targets:
         # iCloud key-value storage: opt-in progress sync on the family's own devices (MoonClub/Live/CloudSync.swift)
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
         keychain-access-groups: ["$(AppIdentifierPrefix)com.mutaafaziz.moonclub.shared"]
+        # Universal links: mutaafaziz.com/metaphases/kids/… opens the app (AASA served by mutaafaziz-site; docs/LINKS.md)
+        com.apple.developer.associated-domains: ["applinks:mutaafaziz.com"]
     info:
       path: MoonClub/Info.plist
       properties:

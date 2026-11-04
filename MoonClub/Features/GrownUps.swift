@@ -38,12 +38,15 @@ struct ParentGate: View {
 }
 
 struct GrownUpsView: View {
+  /// A settings link that brought the grown-up here (after the gate): a Family League code or a lesson pack.
+  var link: DeepLink? = nil
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
   var body: some View {
     NavigationStack {
       ScrollViewReader { proxy in
       List {
+        if let link, link.needsGrownUp { LinkOffer(link: link) }
         Section {
           HStack(spacing: 14) { Luna(size: 54); VStack(alignment: .leading) { Text("Moon Club").font(.kTitle); Text("Metaphases Kids · prototype").font(.caption).foregroundStyle(.secondary) } }
         }
@@ -92,6 +95,12 @@ struct GrownUpsView: View {
           Text("Each player picks an emoji instead of a name. A code holds only the company, the date and the guess. Codes work with the website too.")
         }
         SyncSections()
+        Section { ShareLinks().id("share") } header: { Text("Share") } footer: {
+          Text("Links open the same place in Moon Club, or the same page on the website if the app isn't installed. A link names a lesson, never your child.")
+        }
+        if !Partners.shown.isEmpty {
+          Section { PartnerPicks() } header: { Text("Grown-up picks") } footer: { Text(Partners.disclosure) }
+        }
         Section("Conversation starters") {
           bullet("“Which companies do we buy things from every week?”")
           bullet("“If you had $10, would you save it or invest it? Why?”")
@@ -108,6 +117,7 @@ struct GrownUpsView: View {
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-askReset") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("reset", anchor: .bottom) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPacks") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("packs", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollSync") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("sync", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollShare") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("share", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
       #endif
       }
@@ -180,6 +190,11 @@ struct LeagueSettings: View {
         Text("2. Send this code to the other device").font(.subheadline.weight(.semibold))
         Text(code).font(.system(.body, design: .monospaced).weight(.semibold)).textSelection(.enabled)
         HStack { Button("Copy") { UIPasteboard.general.string = code }; Spacer(); ShareLink(item: code) { Label("Share", systemImage: "square.and.arrow.up") } }
+        // The same code as a link: it opens the other device's Moon Club at its own parental gate (or the website).
+        ShareLink(item: DeepLink.league(code).webURL(ref: Campaign.league), subject: Text("Join our Moon Club family league"),
+                  message: Text("Tap to add my guesses to your Moon Club family league. A grown-up says OK first.")) {
+          Label("Share as a link", systemImage: "link")
+        }
       }
     }
     VStack(alignment: .leading, spacing: 6) {
@@ -242,6 +257,110 @@ struct GardenLimitSetting: View {
   var body: some View {
     Picker("Plant each day, at most", selection: Binding(get: { app.state.gardenLimitPct }, set: { v in app.mutate { $0.setGardenLimit(v, nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } })) {
       ForEach(Garden.limitChoices, id: \.self) { p in Text(p == 0 ? "Planting paused" : "\(p)% of their points").tag(p) }
+    }
+  }
+}
+
+/// What a settings link offers, shown at the top of the grown-up corner only after the gate was passed.
+/// Nothing happens until the grown-up taps the button.
+struct LinkOffer: View {
+  let link: DeepLink
+  @Environment(AppModel.self) private var app
+  @State private var done: String?
+  var body: some View {
+    switch link {
+    case .league(let code):
+      Section {
+        switch League.decode(code, companies: app.content.companies, players: app.content.players.count) {
+        case let .success(p):
+          let name = app.content.playerNames.indices.contains(p.emoji) ? app.content.playerNames[p.emoji] : "A player"
+          HStack(spacing: 12) {
+            if app.content.players.indices.contains(p.emoji) { Glyph(app.content.players[p.emoji], size: 36) }
+            VStack(alignment: .leading) {
+              Text("\(name) wants to join").font(.headline)
+              Text("\(p.guesses.count) \(p.guesses.count == 1 ? "guess" : "guesses"). The code holds only companies, dates and guesses.").font(.caption).foregroundStyle(.secondary)
+            }
+          }
+          if p.emoji == app.state.me {
+            Text("That's this device's own player. Each player needs a different emoji.").font(.callout).foregroundStyle(Palette.bad)
+          } else if let done {
+            Text(done).font(.callout).foregroundStyle(Palette.good)
+          } else {
+            Button("Add to our family league") { app.mutate { $0.addPlayer(p) }; done = "\(name) joined. Their guesses show on Guess." }
+              .accessibilityIdentifier("link-league-add")
+          }
+        case let .failure(e):
+          Text(e.message).font(.callout).foregroundStyle(Palette.bad)
+        }
+      } header: { Text("From a link: family league") }
+    case .pack(let id):
+      Section {
+        if let p = app.packs.first(where: { $0.id == id }) {
+          VStack(alignment: .leading, spacing: 3) {
+            Text(p.title).font(.headline)
+            if let badge = p.hostBadge, let c = p.creator { Text("\(badge): \(c.name). \(c.bio)").font(.caption) }
+            Text("Adds \(p.lessonCount) lessons and a new island on the map. Every pack is checked by a teacher and a markets expert.").font(.caption).foregroundStyle(.secondary)
+          }
+          if app.packOn(id) {
+            Text(done ?? "This pack is on.").font(.callout).foregroundStyle(Palette.good)
+          } else {
+            Button("Turn on this pack") { app.setPack(id, on: true); done = "Turned on. Look for its island on the World map." }
+              .accessibilityIdentifier("link-pack-on")
+          }
+        }
+      } header: { Text("From a link: lesson pack") }
+    default:
+      EmptyView()
+    }
+  }
+}
+
+/// Share links into the club (grown-ups only). Each carries an allow-listed `ref` so the App Store button on the
+/// web page can credit the channel in App Analytics, in aggregate (docs/LINKS.md). Nothing about the child.
+struct ShareLinks: View {
+  @Environment(AppModel.self) private var app
+  @State private var lessonId = ""
+  var body: some View {
+    let lessons = app.content.lessons
+    let pick = lessons.first { $0.id == lessonId } ?? lessons.first
+    if let pick {
+      Picker("Lesson", selection: Binding(get: { pick.id }, set: { lessonId = $0 })) {
+        ForEach(lessons) { l in Text(l.title).tag(l.id) }
+      }
+      .accessibilityIdentifier("share-lesson-pick")
+      ShareLink(item: DeepLink.lesson(pick.id).webURL(ref: Campaign.share), subject: Text("A one-minute money lesson: \(pick.title)"),
+                message: Text("Try this one-minute Moon Club lesson: \(pick.title). Pretend money only, no ads.")) {
+        Label("Share this lesson", systemImage: "square.and.arrow.up")
+      }
+      .accessibilityIdentifier("share-lesson")
+    }
+    ShareLink(item: DeepLink.home.webURL(ref: Campaign.share), subject: Text("Moon Club: money, explained for kids"),
+              message: Text("Moon Club teaches kids how money works with one-minute lessons and pretend money. No ads, no sign-up.")) {
+      Label("Share Moon Club", systemImage: "moon.stars")
+    }
+    ForEach(app.packs) { p in
+      ShareLink(item: DeepLink.pack(p.id).webURL(ref: Campaign.pack(p.id)), subject: Text(p.title),
+                message: Text("A Moon Club lesson pack: \(p.title). A grown-up turns it on.")) {
+        Label("Share “\(p.title)”", systemImage: "books.vertical")
+      }
+    }
+  }
+}
+
+/// Grown-up picks (affiliate slot). Ships EMPTY: `Partners.list` in MoonClubCore. Shown only here, behind the
+/// gate, under `Partners.disclosure`. Plain https links that open in Safari: no SDK, no pixel, nothing about the child.
+struct PartnerPicks: View {
+  var body: some View {
+    ForEach(Partners.shown) { p in
+      if let url = URL(string: p.url) {
+        Link(destination: url) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(p.title).font(.subheadline.weight(.semibold))
+            Text(p.blurb).font(.caption).foregroundStyle(.secondary)
+            Text("Partner link").font(.caption2.weight(.bold)).foregroundStyle(Palette.ink2)
+          }
+        }
+      }
     }
   }
 }
