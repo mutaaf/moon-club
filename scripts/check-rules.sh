@@ -9,6 +9,7 @@
 #     c. nobody hard-codes consent: every Requests.byok call passes the saved consent.
 #  4. Every MARKETING_VERSION has fun, link-free release notes (release-notes/<version>.md, ≤ 4000 chars).
 #  5. Widgets/Live Activities: only moonclub:// deep links, no web URLs, no push tokens.
+#  7. Grown-up picks (affiliate slot, MoonClubCore Partners.swift) are drawn only in GrownUps.swift, behind the gate.
 #  6. App Store builds (STORE_BUILD) never offer a grown-up's own AI or voice key: every own-key entry point checks
 #     Distribution.allowsOwnKeys (MoonClub/App/Distribution.swift, docs/APPSTORE.md "Kids Category").
 set -e
@@ -52,5 +53,9 @@ for f in MoonClub/Features/BrainPicker.swift MoonClub/Features/GrownUps.swift Mo
   grep -q 'Distribution.allowsOwnKeys' "$f" || { echo "✗ $f: own-key features must be gated on Distribution.allowsOwnKeys (App Store builds)"; fail=1; }
 done
 grep -q 'option(.byok' MoonClub/Features/BrainPicker.swift && ! grep -B1 'option(.byok' MoonClub/Features/BrainPicker.swift | grep -q 'Distribution.allowsOwnKeys' && { echo "✗ the BYOK option in BrainPicker must sit inside 'if Distribution.allowsOwnKeys'"; fail=1; } || true
+# 7
+pp=$(grep -rnE 'Partners\.(list|shown)|PartnerPicks\(' MoonClub MoonClubWidgets Shared --include=*.swift | grep -v '^MoonClub/Features/GrownUps.swift' || true)
+[ -z "$pp" ] || { echo "✗ partner (affiliate) links outside the grown-up corner:"; echo "$pp"; fail=1; }
+grep -rnE 'import (Impact|Branch|Adjust|Kochava|AppsFlyerLib|Singular)' MoonClub MoonClubWidgets Shared Packages && { echo "✗ attribution SDK import"; fail=1; } || true
 [ $fail -eq 0 ] && echo "✓ kids-safety rules hold"
 exit $fail

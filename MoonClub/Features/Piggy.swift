@@ -5,7 +5,7 @@ import MoonClubCore
 /// Pretend Piggy Bank: 🌙 $1,000 pretend coins across up to 5 companies, following real prices.
 struct PiggyView: View {
   @Environment(AppModel.self) private var app
-  @AppStorage("moonclub.piggySide") private var side: PiggySide = {
+  @AppStorage(PiggySide.key) private var side: PiggySide = {
     #if DEBUG
     if ProcessInfo.processInfo.arguments.contains("-coins") { return .coins }
     #endif

@@ -39,6 +39,8 @@ extension AppModel {
 /// the app) grow in the Moon Garden; the pretend coins (a $1,000 practice piggy) stay in the Piggy Bank.
 enum PiggySide: String, CaseIterable, Identifiable {
   case garden, coins
+  /// The Piggy tab remembers its side here (deep links set it too).
+  static let key = "moonclub.piggySide"
   var id: String { rawValue }
   var title: String { self == .garden ? "Moon Garden" : "Pretend coins" }
   var icon: String { self == .garden ? "leaf.fill" : "banknote.fill" }

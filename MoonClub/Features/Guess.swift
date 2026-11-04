@@ -40,6 +40,9 @@ struct GuessView: View {
     .refreshable { await app.loadMarket() }
     .sheet(item: Binding(get: { word.map(Ident.init) }, set: { word = $0?.id })) { WordSheet(key: $0.id) }
     .fullScreenCover(isPresented: $gameNight) { GameNightView() }
+    // Deep link (moonclub://gamenight, mutaafaziz.com/metaphases/kids/gamenight).
+    .onAppear { if app.pendingGameNight { app.pendingGameNight = false; gameNight = true } }
+    .onChange(of: app.pendingGameNight) { _, on in if on { app.pendingGameNight = false; gameNight = true } }
     #if DEBUG
     .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
     #endif
