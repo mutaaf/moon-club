@@ -282,6 +282,7 @@ final class CardFitTests: XCTestCase {
     for l in c.lessons { for s in l.steps {
       if case let .say(e, _) = s { keys.insert(e) }
       if case let .sort(_, _, items, _) = s { keys.formUnion(items.map(\.emoji)) }
+      if case let .example(x) = s { keys.insert(x.emoji) }
     } }
     // Lesson packs: every glyph Core and every bundled pack declares, and the why-card clue art.
     keys.formUnion(c.glyphs ?? []); for p in c.bundledPacks { keys.formUnion(p.glyphs) }

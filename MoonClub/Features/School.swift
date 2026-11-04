@@ -14,6 +14,7 @@ struct SchoolView: View {
       VStack(alignment: .leading, spacing: 22) {
         Hero(eyebrow: "\(done.count) of \(app.content.lessons.count) done · about a minute each", title: "Moon", accent: "School", emoji: "🎓")
         StartHere()
+        RefreshCard()
         if let next {
           NavigationLink(value: next) {
             HStack(spacing: 14) {
@@ -45,7 +46,14 @@ struct SchoolView: View {
               NavigationLink(value: l) {
                 HStack(spacing: 12) {
                   Glyph(l.emoji, size: 40).frame(width: 44)
-                  VStack(alignment: .leading, spacing: 2) { Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink); Text("\(l.steps.count) steps · 1 min").font(.caption).foregroundStyle(.secondary) }
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink)
+                    HStack(spacing: 6) {
+                      Text("\(l.steps.count) steps · 1 min").font(.caption).foregroundStyle(.secondary)
+                      if l.since != nil && l.since == app.baseContent.pack?.version { LessonTag(text: "New", fill: Palette.moon) }
+                      if app.content.isOptional(l) { LessonTag(text: "Challenge", fill: Palette.lavender) }
+                    }
+                  }
                   Spacer()
                   MoonPhase(phase: done.contains(l.id) ? 4 : 0, size: 24)
                 }
@@ -53,7 +61,7 @@ struct SchoolView: View {
                 .modifier(ZoomSource(id: l.id, ns: zoom))
               }
               .buttonStyle(.plain)
-              .accessibilityLabel("\(l.title). \(done.contains(l.id) ? "Finished" : "Not started")")
+              .accessibilityLabel("\(l.title). \(app.content.isOptional(l) ? "Challenge. " : "")\(done.contains(l.id) ? "Finished" : "Not started")")
             }
           }
         }
@@ -79,6 +87,15 @@ extension SchoolView {
     guard let id = app.pendingLesson else { return }
     app.pendingLesson = nil
     deep = app.content.lessons.first { $0.id == id }
+  }
+}
+
+/// A small pill on a lesson row: "New" (added in this version) or "Challenge" (the optional Full Moons track).
+struct LessonTag: View {
+  let text: String; let fill: Color
+  var body: some View {
+    Text(text).font(.caption2.weight(.bold)).foregroundStyle(Palette.midnight)
+      .padding(.horizontal, 7).padding(.vertical, 2).background(fill, in: Capsule())
   }
 }
 
@@ -127,6 +144,8 @@ struct LessonPlayer: View {
   @State private var step = 0
   @State private var answers: [Int: Int] = [:]
   @State private var sorts: [Int: [Int: Int]] = [:]
+  /// Worked-example lines revealed / growth years grown, per step (one tap each).
+  @State private var reveals: [Int: Int] = [:]
   @State private var burst = 0
   @State private var run = RunModel()
   @State private var attempt = 0
@@ -138,6 +157,22 @@ struct LessonPlayer: View {
     case .say: return true
     case .check: return answers[step] != nil
     case let .sort(_, _, items, _): return items.indices.allSatisfy { sorts[step]?[$0] != nil }
+    case .example, .grow: return (reveals[step] ?? 0) >= lesson.steps[step].reveals
+    }
+  }
+  /// One more line of a worked example, or one more year of growth.
+  func reveal() {
+    guard !done, (reveals[step] ?? 0) < lesson.steps[step].reveals else { return }
+    withAnimation(Motion.safe(Motion.card, rm)) { reveals[step, default: 0] += 1 }
+  }
+  /// The primary button's words while a worked example or a growth picture still has taps left.
+  var revealLabel: String? {
+    guard !done, !ready else { return nil }
+    let n = reveals[step] ?? 0
+    switch lesson.steps[step] {
+    case let .example(x): return "Show step \(n + 1) of \(x.lines.count)"
+    case let .grow(g): return "Grow a year (\(n + 1) of \(g.years))"
+    default: return nil
     }
   }
 
@@ -160,6 +195,11 @@ struct LessonPlayer: View {
     .playChrome()
     #if DEBUG
     .onAppear { let a = ProcessInfo.processInfo.arguments; if let i = a.firstIndex(of: "-step"), i + 1 < a.count, let n = Int(a[i + 1]) { step = min(n, lesson.steps.count - 1) } } // screenshots
+    .onAppear { // screenshots: -reveal k shows k lines of a worked example / k years of growth on the -step step
+      let a = ProcessInfo.processInfo.arguments
+      let k = a.firstIndex(of: "-step").flatMap { $0 + 1 < a.count ? Int(a[$0 + 1]) : nil }.map { min($0, lesson.steps.count - 1) } ?? 0
+      if let i = a.firstIndex(of: "-reveal"), i + 1 < a.count, let n = Int(a[i + 1]) { reveals[k] = min(n, lesson.steps[k].reveals) }
+    }
     #endif
     .onAppear { LiveActivities.lesson(lesson, step: step) }
     .onDisappear { if !done { LiveActivities.lessonLeft(lesson) } }
@@ -212,7 +252,11 @@ struct LessonPlayer: View {
         Button { go(-1) } label: { Image(systemName: "chevron.left").font(.headline.weight(.heavy)).frame(width: 24) }
           .buttonStyle(ChunkyStyle(face: Palette.card, edge: Palette.line, ink: Palette.ink)).frame(width: 64)
           .disabled(step == 0).opacity(step == 0 ? 0.5 : 1).accessibilityLabel("Back")
-        Button(step == lesson.steps.count - 1 ? "Finish" : "Next") { go(1) }.buttonStyle(ChunkyPrimary()).disabled(!ready).opacity(ready ? 1 : 0.55)
+        if let label = revealLabel {
+          Button(label) { reveal() }.buttonStyle(ChunkyPrimary()).sensoryFeedback(.increase, trigger: reveals[step] ?? 0)
+        } else {
+          Button(step == lesson.steps.count - 1 ? "Finish" : "Next") { go(1) }.buttonStyle(ChunkyPrimary()).disabled(!ready).opacity(ready ? 1 : 0.55)
+        }
       }
     }
     .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 6)
@@ -267,6 +311,10 @@ struct LessonPlayer: View {
       } else if case let .say(emoji, _) = lesson.steps[step] {
         Glyph(emoji, size: 156, style: .halo).enterOnce("say-\(lesson.id)-\(step)")
         Luna(size: 64, wave: true)
+      } else if case let .example(x) = lesson.steps[step] {
+        Eyebrow(text: "Let's work it out")
+        Glyph(x.emoji, size: 120, style: .halo)
+        Luna(size: 64, wave: true, mood: .thinking)
       } else if let said = lastSay {
         Eyebrow(text: "Luna said")
         Glyph(said.emoji, size: 84, style: .halo)
@@ -295,7 +343,7 @@ struct LessonPlayer: View {
   /// The iPhone Duo is open (book pose or flat), so the lesson is a two-page storybook on the inner display.
   var bookOpen: Bool { duo?.reading.map { $0.status != .closed } ?? false }
 
-  func isQuiz(_ i: Int) -> Bool { if case .say = lesson.steps[i] { return false }; return true }
+  func isQuiz(_ i: Int) -> Bool { lesson.steps[i].isQuiz }
   func go(_ d: Int) {
     withAnimation(Motion.safe(Motion.card, rm)) { step = max(0, step + d) }
     run.nextRound()
@@ -307,13 +355,14 @@ struct LessonPlayer: View {
     } else { LiveActivities.lesson(lesson, step: step) }
   }
   func retry() {
-    withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); step = 0; answers = [:]; sorts = [:]; attempt += 1; tucked = false }
+    withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); step = 0; answers = [:]; sorts = [:]; reveals = [:]; attempt += 1; tucked = false }
   }
 
   func stepView(_ s: Step, art: Bool = true) -> some View {
     StepContent(step: s, art: art, seed: step + lesson.id.count,
                 picked: Binding(get: { answers[step] }, set: { if answers[step] == nil { answers[step] = $0 } }),
-                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), stageKey: lastSay?.emoji)
+                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), stageKey: lastSay?.emoji,
+                progress: reveals[step] ?? 0, advance: { reveal() })
   }
 }
 
@@ -332,6 +381,10 @@ struct StepContent: View {
   /// The quiz stage's biggest height (0 = none; CardFitTests measures quiz steps without it, since it
   /// only ever takes room the words and answers leave).
   var quizArtMax: CGFloat = 360
+  /// Lines revealed (worked example) or years grown (grow step).
+  var progress = 0
+  /// Tapping the growth picture grows a year too.
+  var advance: (() -> Void)? = nil
   var body: some View {
     switch step {
     case let .say(emoji, text):
@@ -353,9 +406,110 @@ struct StepContent: View {
         if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "🤔", maxHeight: quizArtMax, minHeight: 0, mood: .thinking).padding(.bottom, 16) }
         SortView(q: q, buckets: buckets, items: items, why: why, picks: $picks)
       }
+    case let .example(x):
+      ExampleView(example: x, shown: progress, art: art)
+    case let .grow(g):
+      GrowView(grow: g, grown: progress, advance: advance)
     }
   }
 }
+
+/// A worked example ("Let's work it out"): the setup, then each line of working, revealed one tap at a time.
+/// Hidden lines keep their room (a soft bar), so the card never jumps and always fits.
+struct ExampleView: View {
+  let example: Example
+  let shown: Int
+  var art = true
+  @Environment(\.accessibilityReduceMotion) private var rm
+  var body: some View {
+    VStack(spacing: 10) {
+      // The picture rides next to the eyebrow (a full art stage made the card too tall on iPhone SE).
+      HStack(spacing: 10) {
+        if art { Glyph(example.emoji, size: 40) }
+        Eyebrow(text: "Let's work it out")
+      }
+      Text(example.text).font(.system(.title3, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+      VStack(spacing: 8) {
+        ForEach(example.lines.indices, id: \.self) { i in
+          let on = i < shown
+          HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("\(i + 1)").font(.caption.weight(.heavy).monospacedDigit())
+              .frame(width: 26, height: 26).background(Circle().fill(on ? Palette.mint : Palette.line.opacity(0.6))).foregroundStyle(Palette.midnight)
+            Text(example.lines[i]).font(.system(.headline, design: .rounded).monospacedDigit()).foregroundStyle(Palette.ink)
+              .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+              .opacity(on ? 1 : 0)
+              .overlay(alignment: .leading) { if !on { Capsule().fill(Palette.line.opacity(0.7)).frame(width: 90, height: 10) } }
+          }
+          .padding(.horizontal, 12).padding(.vertical, 7)
+          .background(on ? Palette.mint.opacity(0.45) : Palette.line.opacity(0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+          .scaleEffect(on || rm ? 1 : 0.98)
+          .accessibilityHidden(!on)
+        }
+      }
+      ReadAloud(source: .appCopy(([example.text] + example.lines.prefix(shown)).joined(separator: ". ")))
+    }
+  }
+}
+
+/// Year-by-year growth the child grows with a tap: a Moon Garden plant (savings), a price tag (prices going
+/// up) or an IOU (money owed), with an optional faint comparison row. Pretend whole numbers from `Growth`.
+struct GrowView: View {
+  let grow: Grow
+  let grown: Int
+  var advance: (() -> Void)? = nil
+  @Environment(\.accessibilityReduceMotion) private var rm
+  var ink: Color { grow.show == "price" ? Hue.orange.color : grow.show == "owe" ? Hue.berry.color : Hue.mint.color }
+  var icon: String { grow.show == "price" ? "tag.fill" : grow.show == "owe" ? "doc.plaintext.fill" : "leaf.fill" }
+  func money(_ v: Int) -> String { "$" + v.formatted(.number.grouping(.automatic)) }
+  var body: some View {
+    let rows = Growth.rows(grow)
+    let top = Double(max(rows.main.max() ?? 1, rows.vs?.max() ?? 1, 1))
+    let y = min(grown, grow.years)
+    VStack(spacing: 10) {
+      Eyebrow(text: "Pretend numbers · tap to grow")
+      Text(grow.text).font(.system(.title3, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+      HStack(alignment: .bottom, spacing: 3) {
+        ForEach(0...grow.years, id: \.self) { i in
+          let on = i <= y
+          VStack(spacing: 3) {
+            Image(systemName: icon).font(.caption2.weight(.bold)).foregroundStyle(ink).opacity(i == y ? 1 : 0)
+            HStack(alignment: .bottom, spacing: 1.5) {
+              if let vs = rows.vs { RoundedRectangle(cornerRadius: 3).fill(Palette.ink2.opacity(0.25)).frame(height: on ? max(3, 82 * Double(vs[i]) / top) : 3) }
+              RoundedRectangle(cornerRadius: 4).fill(LinearGradient(colors: [ink.opacity(0.75), ink], startPoint: .top, endPoint: .bottom))
+                .frame(height: on ? max(3, 82 * Double(rows.main[i]) / top) : 3).opacity(on ? 1 : 0.35)
+            }
+            .frame(height: 84, alignment: .bottom)
+            Text(i == 0 ? "Now" : "\(i)").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.6)
+          }
+          .frame(maxWidth: .infinity)
+        }
+      }
+      .padding(10)
+      .background(Palette.line.opacity(0.18), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .contentShape(Rectangle())
+      .onTapGesture { advance?() }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("\(grow.label): \(money(rows.main[0])) now, \(money(rows.main[y])) after \(y) year\(y == 1 ? "" : "s").\(rows.vs.map { " \(grow.vs?.label ?? ""): \(money($0[y]))." } ?? "")")
+      .accessibilityAddTraits(.isButton)
+      .accessibilityAction { advance?() }
+      VStack(alignment: .leading, spacing: 4) {
+        legend(color: ink, label: grow.label, value: rows.main[y])
+        if let vs = rows.vs, let v = grow.vs { legend(color: Palette.ink2.opacity(0.35), label: v.label, value: vs[y]) }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .animation(rm ? nil : Motion.tap, value: y)
+    }
+  }
+  private func legend(color: Color, label: String, value: Int) -> some View {
+    HStack(spacing: 8) {
+      RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 14, height: 14)
+      Text(label).font(.subheadline.weight(.semibold))
+      Spacer(minLength: 4)
+      Text(money(value)).font(.system(.headline, design: .rounded).monospacedDigit()).contentTransition(.numericText())
+    }
+  }
+}
+
 
 /// The picture at the top of a lesson card: the art on a soft color stage, with Luna peeking in. It takes
 /// the room the words leave (between a minimum and a maximum), so the card always looks composed.

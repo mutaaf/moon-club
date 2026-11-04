@@ -14,6 +14,8 @@ struct WorldView: View {
   @State private var selected: WorldNode?
   @State private var playing: WorldNode?
   @State private var lesson: Lesson?
+  /// Debug `-library`: open Moon School (the lesson list) for screenshots.
+  @State private var library = false
   /// The tapped stop zooms into its game (and back out to the stop).
   @Namespace private var stopNS
   @State private var zoom: CGFloat = 1
@@ -71,6 +73,7 @@ struct WorldView: View {
     }
     .navigationDestination(item: $playing) { n in NodePlayer(node: n, regions: regions).zoomFrom(n.id, in: stopNS) }
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
+    .navigationDestination(isPresented: $library) { SchoolView() }
     .onAppear {
       conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
       atlasPage = cur.region
@@ -79,6 +82,7 @@ struct WorldView: View {
       if let i = a.firstIndex(of: "-lesson"), i + 1 < a.count, lesson == nil { lesson = app.content.lessons.first { $0.id == a[i + 1] } }
       if let i = a.firstIndex(of: "-play"), i + 1 < a.count, playing == nil, lesson == nil, let n = regions.flatMap(\.nodes).first(where: { $0.id == a[i + 1] }) { play(n) }
       #if DEBUG
+      if a.contains("-library") { library = true }
       // Screen recordings: -conquer wins the current land after a moment (fog lifts, flag, rocket flies on).
       if a.contains("-conquer") {
         Task {

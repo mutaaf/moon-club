@@ -13,7 +13,7 @@ final class WorldTests: XCTestCase {
     XCTAssertEqual(rs.map(\.id), ["coast", "isle", "canyon", "trails", "peaks", "sea", "castle"])
     for r in rs {
       XCTAssertTrue(r.boss.isBoss, r.id)
-      XCTAssertTrue((3...8).contains(r.nodes.count), "\(r.id) has \(r.nodes.count) nodes")
+      XCTAssertTrue((3...12).contains(r.nodes.count), "\(r.id) has \(r.nodes.count) nodes")
       XCTAssertEqual(r.nodes.filter(\.isBoss).count, 1, r.id)
     }
     let ids = rs.flatMap(\.nodes).map(\.id)
@@ -40,7 +40,7 @@ final class WorldTests: XCTestCase {
     XCTAssertEqual(World.stars(rs[0].nodes[1], s, content), 1)
     for l in content.lessons where l.unit == "money" { s.finishLesson(l.id, today: "2026-11-02") }
     XCTAssertEqual(World.stars(rs[0].nodes[1], s, content), 3)
-    for l in content.lessons where ["companies", "shares", "piggy"].contains(l.unit) { s.finishLesson(l.id, today: "2026-11-02") }
+    for l in content.lessons where ["earning", "goals", "spending", "safety", "companies", "shares", "piggy"].contains(l.unit) { s.finishLesson(l.id, today: "2026-11-02") }
     XCTAssertTrue(World.nodeOpen(rs[0].boss, in: rs[0], regionOpen: true, s, content))
     s.earn("coast-boss", stars: 2)
     XCTAssertTrue(World.conquered(rs[0], s, content))
@@ -135,6 +135,14 @@ final class WorldTests: XCTestCase {
           for i in items { XCTAssertLessThanOrEqual(i.text.count, 42, "\(l.id): \(i.text)") }
           for x in b { XCTAssertLessThanOrEqual(x.count, 14, l.id) }
           XCTAssertLessThanOrEqual(why.count, 100, l.id)
+        case let .example(x):
+          XCTAssertLessThanOrEqual(x.text.count, 110, "\(l.id): \(x.text)")
+          XCTAssertTrue((2...4).contains(x.lines.count), l.id)
+          for line in x.lines { XCTAssertLessThanOrEqual(line.count, 42, "\(l.id): \(line)") }
+        case let .grow(g):
+          XCTAssertLessThanOrEqual(g.text.count, 110, "\(l.id): \(g.text)")
+          XCTAssertLessThanOrEqual(g.label.count, 20, l.id); XCTAssertLessThanOrEqual(g.vs?.label.count ?? 0, 20, l.id)
+          XCTAssertTrue((2...10).contains(g.years), l.id)
         }
       }
     }

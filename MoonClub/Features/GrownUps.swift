@@ -58,10 +58,12 @@ struct GrownUpsView: View {
           bullet("Saving vs investing, dividends, and why spreading money out is safer.")
           bullet("Patience, and the difference between hype and facts.")
           bullet("Why prices move: report cards, the whole market, groups of companies, or a normal wiggle. And that \"we're not sure\" is an honest answer.")
-          bullet("Two tracks: Little Moons (6–8) and Big Moons (9–11). Questions a child misses come back at Review stops on the map.")
+          bullet("Earning, saving goals, smart spending, giving, borrowing and interest, prices over time, insurance and spotting scams, mapped to the Jump$tart national standards.")
+          bullet("Worked examples (“Let's work it out”) and growth pictures that grow one year per tap: savings, rising prices and money owed.")
+          bullet("Three tracks: Little Moons (6–8), Big Moons (9–11) and Full Moons, an optional challenge with percents and fees. Missed questions come back at Review stops, and a lesson that slipped away comes back as Luna's refresh.")
         }
         Section { LearningReport().id("packs") } header: { Text("What your child is learning") } footer: {
-          Text("Worked out on this device from finished lessons and Review stop answers. Nothing is sent anywhere.")
+          Text("Worked out on this device from finished lessons and Review stop answers. Nothing is sent anywhere. Open a unit for its dinner table talk: a few questions to ask at home.")
         }
         Section { PackSettings() } header: { Text("Lesson packs") } footer: {
           Text("Every pack is checked by a teacher and a markets expert, and follows the same rules: pretend money, no links, no ads, no advice. Guest hosts are always shown as guests, and never ask kids to follow or buy anything.")
@@ -106,6 +108,7 @@ struct GrownUpsView: View {
           bullet("“If you had $10, would you save it or invest it? Why?”")
           bullet("“Why do you think the price went down even though they beat?”")
           bullet("“How could we check if a video about a stock is true?”")
+          bullet("Every unit has more in “What your child is learning” above.")
         }
         Section("More") {
           Link(destination: URL(string: "https://mutaafaziz.com/metaphases/kids")!) { Label("Metaphases Kids on the web", systemImage: "safari") }

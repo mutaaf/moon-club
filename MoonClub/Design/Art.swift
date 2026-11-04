@@ -93,6 +93,14 @@ enum Art {
     "⚖️": .init(symbol: "scalemass.fill", hue: .teal), "🔁": .init(symbol: "arrow.triangle.2.circlepath", hue: .grape),
     "👥": .init(symbol: "person.3.fill", hue: .sky), "🌍": .init(symbol: "globe.americas.fill", hue: .teal),
     "📏": .init(symbol: "ruler.fill", hue: .orange), "🧪": .init(symbol: "testtube.2", hue: .mint), "💤": .init(symbol: "moon.zzz.fill", hue: .grape), "🌕": .init(symbol: "circle.fill", hue: .gold),
+    // 0.15 curriculum: earning, spending, borrowing, prices over time, staying safe
+    "🏛️": .init(symbol: "building.columns.circle.fill", hue: .ink), "🏫": .init(symbol: "building.2.crop.circle.fill", hue: .sky),
+    "🚒": .init(symbol: "fire.extinguisher.fill", hue: .coral), "📚": .init(symbol: "books.vertical.fill", hue: .ink),
+    "☔": .init(symbol: "umbrella.fill", hue: .sky), "🌧️": .init(symbol: "cloud.rain.fill", hue: .slate),
+    "💳": .init(symbol: "creditcard.fill", hue: .ink), "💎": .init(symbol: "diamond.fill", hue: .sky),
+    "🐶": .init(symbol: "dog.fill", hue: .choco), "⛑️": .init(symbol: "shield.lefthalf.filled", hue: .orange),
+    "🔒": .init(symbol: "lock.fill", hue: .slate), "🤫": .init(symbol: "ellipsis.bubble.fill", hue: .grape),
+    "🎨": .init(symbol: "paintpalette.fill", hue: .berry), "🛡️": .init(symbol: "checkmark.shield.fill", hue: .teal),
   ]
   static let fallback = ArtSpec(symbol: "sparkles", hue: .grape)
   static func spec(_ key: String) -> ArtSpec {

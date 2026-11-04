@@ -67,17 +67,40 @@ public enum Review {
     return out
   }
 
-  /// Mastery of a unit, from finished lessons and the review boxes of its questions.
+  /// Mastery of a unit, from finished lessons and the review boxes of its questions. Optional (challenge)
+  /// lessons never hold mastery back, and their questions don't count against it.
   public static func mastery(_ unit: String, _ s: KidsState, _ c: KidsContent) -> Mastery {
-    let ls = c.lessons.filter { $0.unit == unit }
+    let ls = c.requiredLessons(unit)
     let done = ls.filter { s.lessons.contains($0.id) }.count
     guard done > 0 else { return .notStarted }
     guard done == ls.count else { return .learning }
-    let its = items(c).filter { $0.unit == unit }
+    let required = Set(ls.map(\.id))
+    let its = items(c).filter { $0.unit == unit && required.contains($0.lesson) }
     guard !its.isEmpty else { return .mastered }
     let known = its.filter { entry(s, $0.id).map { $0.box >= 2 } ?? true }.count
     let pass = c.assessments?.first { $0.unit == unit }?.pass ?? config(c).pass
     return Double(known) / Double(its.count) >= pass ? .mastered : .practicing
+  }
+
+  /// Lessons worth replaying ("Luna's refresh"): a finished lesson comes back when retrieval failed AFTER it was
+  /// learned (a question missed at a Review stop, or on a later replay, still in box 0), or when most of its
+  /// questions were missed the day it was played. Replaying it today clears the first case, since the miss is
+  /// then older than the last play. Ordered like the curriculum; at most `limit`.
+  public static func refresh(_ s: KidsState, _ c: KidsContent, limit: Int = 3) -> [Lesson] {
+    var lastPlay: [String: String] = [:]
+    for e in s.played ?? [] {
+      let p = e.split(separator: "|", maxSplits: 2).map(String.init)
+      if p.count == 3, p[1] == "lesson", p[0] > (lastPlay[p[2]] ?? "") { lastPlay[p[2]] = p[0] }
+    }
+    let byLesson = Dictionary(grouping: items(c), by: \.lesson)
+    return c.lessons.filter { l in
+      guard s.lessons.contains(l.id), let its = byLesson[l.id], !its.isEmpty else { return false }
+      let last = max(lastPlay[l.id] ?? "", s.lessonDates[l.id] ?? "")
+      let zero = its.compactMap { entry(s, $0.id) }.filter { $0.box == 0 }
+      let missedLater = zero.contains { $0.day > last }
+      let struggled = zero.filter { $0.day == last }.count * 2 > its.count && its.count >= 2
+      return missedLater || struggled
+    }.prefix(limit).map { $0 }
   }
 }
 

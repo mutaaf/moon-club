@@ -10,22 +10,26 @@ import Foundation
 import CryptoKit
 #endif
 
-public struct PackLesson: Codable, Hashable, Sendable { public let id: String; public let title: String; public let emoji: String; public let track: String?; public let objectives: [String]?; public let steps: [Step] }
-public struct PackUnit: Codable, Hashable, Sendable { public let id: String; public let title: String; public let emoji: String; public let blurb: String; public let track: String?; public let objectives: [String]?; public let lessons: [PackLesson] }
+public struct PackLesson: Codable, Hashable, Sendable { public let id: String; public let title: String; public let emoji: String; public let track: String?; public let objectives: [String]?; public var since: String? = nil; public let steps: [Step] }
+public struct PackUnit: Codable, Hashable, Sendable { public let id: String; public let title: String; public let emoji: String; public let blurb: String; public let track: String?; public let objectives: [String]?; public var talk: [String]? = nil; public let lessons: [PackLesson] }
 public struct PackNode: Codable, Hashable, Sendable { public let id: String; public let title: String; public let art: String; public let kind: String; public let ref: String? }
 public struct RegionSpec: Codable, Hashable, Sendable { public let id: String; public let name: String; public let blurb: String; public let art: String; public let hue: String; public let nodes: [PackNode] }
 public struct PackPerson: Codable, Hashable, Sendable { public let name: String; public let role: String; public let signedOff: String?; public let note: String? }
 public struct PackCreator: Codable, Hashable, Sendable { public let name: String; public let fictional: Bool; public let bio: String; public let voice: String }
 public struct PackObjective: Codable, Hashable, Sendable { public let id: String; public let text: String; public let standards: [String] }
-public struct PackTrack: Codable, Hashable, Sendable { public let id: String; public let title: String; public let blurb: String }
+/// `optional`: a challenge track whose lessons never gate map stars, mastery or boss quizzes.
+public struct PackTrack: Codable, Hashable, Sendable { public let id: String; public let title: String; public let blurb: String; public var optional: Bool? = nil }
 public struct PackRequires: Codable, Hashable, Sendable { public let content: Int; public let app: String?; public let core: String? }
 public struct PackAges: Codable, Hashable, Sendable { public let min: Int; public let max: Int }
 public struct GameSpec: Codable, Hashable, Sendable { public let id: String; public let unit: String; public let rounds: Int }
 public struct GuessCourse: Codable, Hashable, Sendable {
   public struct Reveal: Codable, Hashable, Sendable { public let beatUp, beatDown, missDown, missUp, unknown, inLine, tryAgain: String }
   public let unit: String; public let ladder: [String]; public let tips: [String: String]; public let reveal: Reveal
+  /// After a reveal, the lesson that explains it (reveal key → lesson id).
+  public var learn: [String: String]? = nil
 }
-public struct PiggyCourse: Codable, Hashable, Sendable { public let unit: String; public let ladder: [String]; public let peekLimit: Int; public let tips: [String: String] }
+/// `garden`: the Moon Garden side's own ladder (growth, baskets, fees).
+public struct PiggyCourse: Codable, Hashable, Sendable { public let unit: String; public let ladder: [String]; public var garden: [String]? = nil; public let peekLimit: Int; public let tips: [String: String] }
 public struct ReviewConfig: Codable, Hashable, Sendable {
   public let intervals: [Int]; public let retireAt: Int; public let perStop: Int; public let pass: Double
   public init(intervals: [Int], retireAt: Int, perStop: Int, pass: Double) { self.intervals = intervals; self.retireAt = retireAt; self.perStop = perStop; self.pass = pass }
@@ -72,7 +76,9 @@ public struct LessonPack: Codable, Hashable, Sendable, Identifiable {
 public struct PackIssue: Hashable, Sendable { public let code: String; public let at: String; public let msg: String }
 
 /// Card fit limits (characters): the same as the web's FIT and what CardFitTests lays out at iPhone SE size.
-public enum Fit { public static let title = 40, say = 110, q = 90, option = 42, why = 100, sortQ = 60 }
+public enum Fit { public static let title = 40, say = 110, q = 90, option = 42, why = 100, sortQ = 60, bucket = 14, label = 20, talk = 160 }
+/// Bounds for a `grow` step (the web's GROW).
+public enum GrowBounds { public static let minYears = 2, maxYears = 10; public static let maxRate = 30.0, maxStart = 100000.0 }
 
 public enum PackRules {
   public static let format = 1
@@ -124,6 +130,7 @@ public enum PackRules {
     for t in p.tracks { add("tracks.\(t.id)", t.title); add("tracks.\(t.id)", t.blurb) }
     for u in p.units {
       add("units.\(u.id)", u.title); add("units.\(u.id)", u.blurb)
+      for (i, t) in (u.talk ?? []).enumerated() { add("units.\(u.id).talk.\(i)", t) }
       for l in u.lessons {
         add("lessons.\(l.id)", l.title)
         for (i, s) in l.steps.enumerated() {
@@ -132,6 +139,8 @@ public enum PackRules {
           case let .say(_, text): add(at, text)
           case let .check(c): add(at, c.q); add(at, c.why); for (k, o) in c.options.enumerated() { add(at, o, k != c.answer) }
           case let .sort(q, buckets, items, why): add(at, q); add(at, why); buckets.forEach { add(at, $0) }; items.forEach { add(at, $0.text) }
+          case let .example(x): add(at, x.text); x.lines.forEach { add(at, $0) }
+          case let .grow(g): add(at, g.text); add(at, g.label); add(at, g.vs?.label)
           }
         }
       }
@@ -155,7 +164,11 @@ public enum PackRules {
       g.insert(u.emoji)
       for l in u.lessons {
         g.insert(l.emoji)
-        for s in l.steps { if case let .say(e, _) = s { g.insert(e) }; if case let .sort(_, _, items, _) = s { items.forEach { g.insert($0.emoji) } } }
+        for s in l.steps {
+          if case let .say(e, _) = s { g.insert(e) }
+          if case let .example(x) = s { g.insert(x.emoji) }
+          if case let .sort(_, _, items, _) = s { items.forEach { g.insert($0.emoji) } }
+        }
       }
     }
     for t in p.glossary.values { g.insert(t.emoji) }
@@ -163,10 +176,17 @@ public enum PackRules {
     return g
   }
 
+  /// The prose a step reads out (worked-example lines are working, not prose, so they count only in `all`).
+  static func prose(_ s: Step) -> String? {
+    switch s { case let .say(_, t): return t; case let .example(x): return x.text; case let .grow(g): return g.text; default: return nil }
+  }
   public static func lessonGrade(_ l: PackLesson) -> (say: Double, all: Double) {
-    let say = l.steps.compactMap { if case let .say(_, t) = $0 { return t } else { return nil } }.joined(separator: " ")
+    let say = l.steps.compactMap(prose).joined(separator: " ")
     let all = l.steps.map { s -> String in
-      switch s { case let .say(_, t): return t; case let .check(c): return "\(c.q) \(c.why)"; case let .sort(q, _, _, why): return "\(q) \(why)" }
+      switch s {
+      case let .say(_, t): return t; case let .check(c): return "\(c.q) \(c.why)"; case let .sort(q, _, _, why): return "\(q) \(why)"
+      case let .example(x): return "\(x.text) \(x.lines.joined(separator: " "))"; case let .grow(g): return g.text
+      }
     }.joined(separator: " ")
     return (say.isEmpty ? 0 : fkGrade(say), fkGrade(all))
   }
@@ -194,6 +214,7 @@ public enum PackRules {
       seenU.insert(u.id)
       if let t = u.track, !trackIds.contains(t) { bad("track", "units.\(u.id)", "unknown track \(t)") }
       if u.lessons.isEmpty { bad("unit.empty", "units.\(u.id)", "unit has no lessons") }
+      if let talk = u.talk, talk.isEmpty || talk.count > 3 || talk.contains(where: { $0.trimmingCharacters(in: .whitespaces).isEmpty || $0.count > Fit.talk }) { bad("talk", "units.\(u.id)", "1–3 dinner-table prompts") }
       for l in u.lessons {
         let at = "lessons.\(l.id)"
         if seenL.contains(l.id) { bad("lesson.dup", at, "duplicate lesson id") }
@@ -201,6 +222,7 @@ public enum PackRules {
         seenL.insert(l.id)
         if let t = l.track, !trackIds.contains(t) { bad("track", at, "unknown track \(t)") }
         for o in l.objectives ?? [] where !objIds.contains(o) { bad("objective.ref", at, "unknown objective \(o)") }
+        if let since = l.since, !has("^\\d+\\.\\d+\\.\\d+$", since, []) { bad("since", at, "since must be a pack version") }
         // Fit: every step shows on one card with no scrolling (iPhone SE at large text).
         if l.title.count > Fit.title { bad("fit", at, "title too long") }
         for (i, s) in l.steps.enumerated() {
@@ -208,12 +230,14 @@ public enum PackRules {
           switch s {
           case let .say(_, t): long = t.count > Fit.say
           case let .check(c): long = c.q.count > Fit.q || c.options.count > 3 || c.options.contains { $0.count > Fit.option } || c.why.count > Fit.why
-          case let .sort(q, _, items, _): long = q.count > Fit.sortQ || items.count > 6 || items.contains { $0.text.count > Fit.option }
+          case let .sort(q, buckets, items, _): long = q.count > Fit.sortQ || items.count > 6 || items.contains { $0.text.count > Fit.option } || buckets.contains { $0.count > Fit.bucket }
+          case let .example(x): long = x.text.count > Fit.say || x.lines.count > 4 || x.lines.contains { $0.count > Fit.option }
+          case let .grow(g): long = g.text.count > Fit.say || g.label.count > Fit.label || (g.vs?.label.count ?? 0) > Fit.label
           }
           if long { bad("fit", "\(at).\(i)", "too long to fit one card") }
         }
         if l.steps.count < 3 || l.steps.count > 7 { bad("lesson.steps", at, "a lesson has 3–7 steps") }
-        if !l.steps.contains(where: { if case .say = $0 { return false }; return true }) { bad("lesson.steps", at, "a lesson needs a check or a sort") }
+        if !l.steps.contains(where: \.isQuiz) { bad("lesson.steps", at, "a lesson needs a check or a sort") }
         for (i, s) in l.steps.enumerated() {
           let sat = "\(at).\(i)"
           switch s {
@@ -225,6 +249,18 @@ public enum PackRules {
           case let .sort(_, buckets, items, _):
             if buckets.count != 2 { bad("sort.buckets", sat, "a sort has 2 buckets") }
             if items.count < 4 || Set(items.map(\.b)).count != 2 || items.contains(where: { $0.b != 0 && $0.b != 1 }) { bad("sort.items", sat, "4+ items across both buckets") }
+          case let .example(x):
+            if words(x.text) > 22 { bad("say.long", sat, "an example's setup is at most 22 words") }
+            if x.lines.count < 2 || x.lines.count > 4 || x.lines.contains(where: { $0.trimmingCharacters(in: .whitespaces).isEmpty }) { bad("example.lines", sat, "a worked example has 2–4 lines") }
+          case let .grow(g):
+            if words(g.text) > 22 { bad("say.long", sat, "a grow card is at most 22 words") }
+            func okRate(_ v: Double?) -> Bool { v.map { $0.isFinite && $0 > 0 && $0 <= GrowBounds.maxRate } ?? false }
+            if !["garden", "price", "owe"].contains(g.show) { bad("grow", sat, "unknown picture") }
+            if g.years < GrowBounds.minYears || g.years > GrowBounds.maxYears { bad("grow", sat, "years out of range") }
+            if !okRate(g.rate) { bad("grow", sat, "rate out of range") }
+            if !(g.start >= 1 && g.start <= GrowBounds.maxStart && g.start.rounded() == g.start) { bad("grow", sat, "start must be a whole number") }
+            if g.label.trimmingCharacters(in: .whitespaces).isEmpty { bad("grow", sat, "a grow step names its row") }
+            if let v = g.vs, !["jar", "simple", "rate"].contains(v.kind) || v.label.trimmingCharacters(in: .whitespaces).isEmpty || (v.kind == "rate" && (!okRate(v.rate) || v.rate == g.rate)) { bad("grow", sat, "bad comparison row") }
           }
         }
         if !l.steps.isEmpty { let g = lessonGrade(l); if g.say > 5 || g.all > 5.5 { bad("readability", at, "reading grade above 5 / 5.5") } }
@@ -248,6 +284,8 @@ public enum PackRules {
       for id in ladder where !allLessons.contains(id) { bad("course", "\(name).ladder", "unknown lesson \(id)") }
     }
     if let g = p.guess { for id in g.ladder where g.tips[id] == nil { bad("course", "guess.tips", "no tip for \(id)") } }
+    for (k, id) in p.guess?.learn ?? [:] where !allLessons.contains(id) { bad("course", "guess.learn.\(k)", "unknown lesson \(id)") }
+    for id in p.piggy?.garden ?? [] where !allLessons.contains(id) { bad("course", "piggy.garden", "unknown lesson \(id)") }
     if let r = p.review, r.perStop < 1 || r.retireAt != r.intervals.count || r.pass <= 0 || r.pass > 1 { bad("course", "review", "review config") }
     for a in p.assessments where !allUnits.contains(a.unit) { bad("assessment", "assessments.\(a.id)", "unknown unit \(a.unit)") }
 
@@ -308,8 +346,8 @@ extension KidsContent {
     LessonPack(format: 1, id: pack?.id ?? "core", title: pack?.title ?? "Moon Club Core", version: pack?.version ?? "1.0.0", kind: "core",
                requires: pack?.requires ?? PackRequires(content: 1, app: nil, core: nil), ages: pack?.ages ?? PackAges(min: 6, max: 11),
                tracks: pack?.tracks ?? [], curators: pack?.curators ?? [], reviewers: pack?.reviewers ?? [], creator: nil, objectives: objectives ?? [],
-               units: units.map { u in PackUnit(id: u.id, title: u.title, emoji: u.emoji, blurb: u.blurb, track: u.track, objectives: nil,
-                                                 lessons: lessons.filter { $0.unit == u.id }.map { PackLesson(id: $0.id, title: $0.title, emoji: $0.emoji, track: $0.track, objectives: $0.objectives, steps: $0.steps) }) },
+               units: units.map { u in PackUnit(id: u.id, title: u.title, emoji: u.emoji, blurb: u.blurb, track: u.track, objectives: nil, talk: u.talk,
+                                                 lessons: lessons.filter { $0.unit == u.id }.map { PackLesson(id: $0.id, title: $0.title, emoji: $0.emoji, track: $0.track, objectives: $0.objectives, since: $0.since, steps: $0.steps) }) },
                glossary: terms, words: words, games: games ?? [], guess: guessCourse, piggy: piggyCourse, review: review, assessments: assessments ?? [],
                regions: regions ?? [], glyphs: glyphs ?? [])
   }
@@ -325,8 +363,8 @@ extension KidsContent {
     guard !ok.isEmpty else { return self }
     var c = self
     func add(_ p: LessonPack) {
-      c.units += p.units.map { Unit(id: $0.id, title: $0.title, emoji: $0.emoji, blurb: $0.blurb, track: $0.track) }
-      c.lessons += p.units.flatMap { u in u.lessons.map { Lesson(id: $0.id, unit: u.id, title: $0.title, emoji: $0.emoji, track: $0.track, objectives: $0.objectives, steps: $0.steps) } }
+      c.units += p.units.map { Unit(id: $0.id, title: $0.title, emoji: $0.emoji, blurb: $0.blurb, track: $0.track, talk: $0.talk) }
+      c.lessons += p.units.flatMap { u in u.lessons.map { Lesson(id: $0.id, unit: u.id, title: $0.title, emoji: $0.emoji, track: $0.track, objectives: $0.objectives, since: $0.since, steps: $0.steps) } }
       for (k, v) in p.glossary { c.terms[k] = v }
       c.words += p.words
       c.regions = (c.regions ?? []) + p.regions

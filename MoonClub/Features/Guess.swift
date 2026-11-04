@@ -141,6 +141,8 @@ struct RevealRow: View {
   @Environment(AppModel.self) private var app
   @State private var move: Double?
   @State private var burst = 0
+  /// "Learn why": the lesson that explains this reveal (e.g. a beat that dropped → expectations).
+  @State private var learning: Lesson?
   var body: some View {
     let co = app.companies[guess.s]
     let e = app.events.first { $0.s == guess.s && $0.d == guess.d }
@@ -158,9 +160,16 @@ struct RevealRow: View {
               if let pr = guess.priceResult { Text("The price went \((move ?? 0) >= 0 ? "up" : "down"): \(pr == .right ? "you were right! +5" : "not this time.")").font(.subheadline) }
               else { Text("We'll know the price part soon.").font(.caption).foregroundStyle(.secondary) }
             }
-            if let course = app.content.guessCourse, let m = move { Text(Coach.reveal(course, eA: e.eA, eE: e.eE, move: m)).font(.subheadline) }
+            if let course = app.content.guessCourse, let m = move {
+              Text(Coach.reveal(course, eA: e.eA, eE: e.eE, move: m)).font(.subheadline)
+              if let id = Coach.learn(course, eA: e.eA, eE: e.eE, move: m), let l = app.content.lessons.first(where: { $0.id == id }) {
+                Button { learning = l } label: { Label("Learn why: \(l.title)", systemImage: "graduationcap.fill").font(.subheadline.weight(.semibold)) }
+                  .buttonStyle(.borderless).tint(Palette.accent)
+              }
+            }
             if result == .wrong { Text(app.content.guessCourse?.reveal.tryAgain ?? "Even grown-up experts guess wrong a lot.").font(.caption).foregroundStyle(.secondary) }
             WhyCard(symbol: guess.s, range: .week, title: "Why did the price move?").padding(.top, 6)
+              .fullScreenCover(item: $learning) { l in NavigationStack { LessonPlayer(lesson: l) } }
           } else {
             switch res {
             case .pending: Text("Waiting for the report card \(e.map { kidWhen($0.d, $0.h, today: app.today) } ?? "").").font(.subheadline).foregroundStyle(.secondary)

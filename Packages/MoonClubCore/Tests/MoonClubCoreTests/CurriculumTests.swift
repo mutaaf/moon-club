@@ -17,7 +17,8 @@ final class CurriculumTests: XCTestCase {
     XCTAssertTrue(meta.reviewers.contains { $0.role == "markets" && $0.signedOff != nil })
     XCTAssertEqual(c.guessCourse?.ladder.first, "report-card")
     XCTAssertEqual(c.piggyCourse?.ladder.first, "piggy-start")
-    XCTAssertEqual(Set(c.lessons.compactMap(\.track)), ["6-8", "9-11"])
+    XCTAssertEqual(Set(c.lessons.compactMap(\.track)), ["6-8", "9-11", "challenge"])
+    XCTAssertEqual(c.optionalTracks, ["challenge"], "Full Moons is the only optional track")
     XCTAssertTrue(PackRules.validate(c.corePack).isEmpty, "\(PackRules.validate(c.corePack))")
   }
   func testValidatorAgreesWithTheWeb() throws {
@@ -106,10 +107,12 @@ final class CurriculumTests: XCTestCase {
     for r in x["reveal"] as! [[String: Any]] {
       let i = r["r"] as! [String: Any]
       XCTAssertEqual(Coach.reveal(g, eA: dbl(i["eA"]), eE: dbl(i["eE"]), move: dbl(i["move"])), r["out"] as! String)
+      XCTAssertEqual(Coach.revealKey(eA: dbl(i["eA"]), eE: dbl(i["eE"]), move: dbl(i["move"])), r["key"] as! String)
+      XCTAssertEqual(Coach.learn(g, eA: dbl(i["eA"]), eE: dbl(i["eE"]), move: dbl(i["move"])), r["learn"] as? String)
     }
     for t in x["piggy"] as! [[String: Any]] {
       let i = t["x"] as! [String: Any], o = t["out"] as! [String: String]
-      let got = Coach.piggyTip(p, .init(holdings: i["holdings"] as! Int, started: i["started"] as! String, today: i["today"] as! String, value: dbl(i["value"])!, start: dbl(i["start"])!, peeks: i["peeks"] as! Int))
+      let got = Coach.piggyTip(p, .init(holdings: i["holdings"] as! Int, started: i["started"] as! String, today: i["today"] as! String, value: dbl(i["value"])!, start: dbl(i["start"])!, peeks: i["peeks"] as! Int, groups: i["groups"] as? Int))
       XCTAssertEqual([got.key, got.text], [o["key"]!, o["text"]!])
     }
   }
@@ -165,6 +168,78 @@ final class CurriculumTests: XCTestCase {
     let m = a.merged(with: b)
     XCTAssertEqual(m.review, ["share#3": "2026-11-03|1", "money#3": "2026-11-02|2"])
     XCTAssertEqual(m, b.merged(with: a))
+  }
+
+  // MARK: 0.15: worked examples, growth pictures, refresh, the challenge track and a growing map
+  func testGrowMatchesTheWeb() throws {
+    for x in v["grow"] as! [[String: Any]] {
+      let kind = Growth.Kind(rawValue: x["kind"] as! String)!
+      XCTAssertEqual(Growth.series(start: dbl(x["start"])!, rate: dbl(x["rate"])!, years: x["years"] as! Int, kind: kind), x["out"] as! [Int], "\(x)")
+    }
+    let steps = v["growSteps"] as! [[String: Any]]
+    XCTAssertGreaterThanOrEqual(steps.count, 5)
+    for x in steps {
+      let at = (x["at"] as! String).split(separator: "#"), rows = x["rows"] as! [String: Any]
+      let l = try XCTUnwrap(c.lessons.first { $0.id == at[0] })
+      guard case let .grow(g) = l.steps[Int(at[1])!] else { return XCTFail("\(at) is not a grow step") }
+      let got = Growth.rows(g)
+      XCTAssertEqual(got.main, rows["main"] as! [Int], "\(at)")
+      XCTAssertEqual(got.vs, rows["vs"] as? [Int], "\(at)")
+    }
+    // The money snowball in numbers: growth on growth beats the same extra each year, and both start equal.
+    XCTAssertEqual(Growth.series(start: 100, rate: 10, years: 2), [100, 110, 121])
+    XCTAssertEqual(Growth.series(start: 100, rate: 10, years: 2, kind: .simple), [100, 110, 120])
+  }
+  func testEveryLessonHasRetrievalAndNewStepsAreRevealedOneTapAtATime() {
+    for l in c.lessons { XCTAssertTrue(l.steps.contains(where: \.isQuiz), "\(l.id) needs a check or a sort") }
+    let examples = c.lessons.flatMap(\.steps).filter { if case .example = $0 { return true }; return false }
+    XCTAssertGreaterThanOrEqual(examples.count, 10)
+    for s in examples { XCTAssertTrue((2...4).contains(s.reveals)) }
+    for u in c.units { XCTAssertFalse(u.talk?.isEmpty ?? true, "\(u.id) has dinner-table talk for grown-ups") }
+  }
+  func testAMissAtAReviewStopBringsTheLessonBackUntilItIsReplayed() {
+    var s = KidsState()
+    s.finishLesson("share", today: "2026-11-01"); s.play("lesson", "share", today: "2026-11-01")
+    XCTAssertTrue(Review.refresh(s, c).isEmpty)
+    s.answer(Review.itemId("share", 3), right: false, today: "2026-11-03", review: true)   // forgot it later
+    XCTAssertEqual(Review.refresh(s, c).map(\.id), ["share"])
+    s.play("lesson", "share", today: "2026-11-04")                                           // replayed: refreshed
+    XCTAssertTrue(Review.refresh(s, c).isEmpty)
+    // Missing most of a lesson the day it was played also asks for a refresh.
+    var t = KidsState()
+    t.finishLesson("share", today: "2026-11-01"); t.play("lesson", "share", today: "2026-11-01")
+    for i in [3, 4] { t.answer(Review.itemId("share", i), right: false, today: "2026-11-01", review: false) }
+    XCTAssertEqual(Review.refresh(t, c).map(\.id), ["share"])
+  }
+  func testChallengeLessonsNeverGateStarsMasteryOrBossQuizzes() throws {
+    let growing = try XCTUnwrap(World.regions(c).flatMap(\.nodes).first { $0.kind == .unit("growing") })
+    var s = KidsState()
+    let challenge = c.lessons.filter { $0.unit == "growing" && c.isOptional($0) }
+    XCTAssertFalse(challenge.isEmpty, "growing has a Full Moons lesson")
+    for l in c.requiredLessons("growing") { s.finishLesson(l.id, today: "2026-11-01") }
+    XCTAssertEqual(World.stars(growing, s, c), 3)
+    XCTAssertEqual(Review.mastery("growing", s, c), .mastered)
+  }
+  func testAUnitThatGrowsKeepsTheStarsAChildAlreadyHad() throws {
+    let report = try XCTUnwrap(World.regions(c).flatMap(\.nodes).first { $0.kind == .unit("report") })
+    XCTAssertTrue(c.lessons.contains { $0.unit == "report" && $0.since != nil }, "report gained lessons in 0.15")
+    var s = KidsState()
+    for l in c.lessons where l.unit == "report" && l.since == nil { s.finishLesson(l.id, today: "2026-10-01") }
+    XCTAssertEqual(World.stars(report, s, c), 3, "new lessons are a bonus, never a lost star")
+  }
+  func testStarredStopsNeverLockAndTheRocketStaysInTheFirstUnconqueredLand() throws {
+    let rs = World.regions(c)
+    var s = KidsState()
+    s.finishLemonade()
+    // An older save: the whole old Lemonade Coast and Saver's Isle done, the new stops not yet.
+    for l in c.lessons where ["money", "companies", "shares", "piggy", "growing", "dividends", "smart"].contains(l.unit) && l.since == nil { s.finishLesson(l.id, today: "2026-10-01") }
+    s.earn("coast-boss", stars: 3); s.earn("isle-boss", stars: 3)
+    let coast = rs[0]
+    let companies = try XCTUnwrap(coast.nodes.first { $0.id == "coast-companies" })
+    let earning = try XCTUnwrap(coast.nodes.firstIndex { $0.id == "coast-earning" })
+    XCTAssertLessThan(earning, coast.nodes.firstIndex(of: companies)!, "the new stops come before Companies")
+    XCTAssertTrue(World.nodeOpen(companies, in: coast, regionOpen: true, s, c), "a stop with stars never locks again")
+    XCTAssertEqual(World.current(rs, s, c).region, 2, "the rocket waits in Candle Canyon, not back on the coast")
   }
 
   // MARK: The map
