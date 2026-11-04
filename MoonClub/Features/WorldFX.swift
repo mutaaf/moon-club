@@ -22,7 +22,7 @@ struct SeaLayer: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
   var body: some View {
     let sun = Float(duo?.sun ?? 1)
-    FXClock(fps: 20, runFor: .seconds(5), wake: scroll.wake) { t, level in
+    FXClock(fps: 20, runFor: .seconds(3), wake: scroll.wake) { t, level in
       TiltReader(enabled: level == .full && !FX.shared.lowPower) { tilt in
         GeometryReader { g in
           Rectangle()

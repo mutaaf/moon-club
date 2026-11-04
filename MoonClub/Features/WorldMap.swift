@@ -136,7 +136,13 @@ struct WorldView: View {
     let z = min(1.7, max(1, zoom * pinch))
     let layout = MapLayout(regions: regions, width: width * z)
     let mysteryID = Mystery.claimed(app.state, today: app.today) ? nil : Mystery.node(app.state, app.content, today: app.today)?.id
-    return ScrollViewReader { proxy in
+    // The sea (Metal) is its own layer behind the scroll view (a sibling, not the scroll view's background),
+    // viewport-sized, moving with the scroll and graded per land; its clock never invalidates the map.
+    return ZStack {
+      SeaLayer(mapHeight: layout.size.height,
+               grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, app.state, app.content) },
+               scroll: mapScroll)
+    ScrollViewReader { proxy in
       ScrollView([.vertical, .horizontal], showsIndicators: false) {
         ZStack(alignment: .topLeading) {
           MapCanvas(layout: layout, regions: regions, state: app.state, content: app.content)
@@ -209,10 +215,6 @@ struct WorldView: View {
       // and keep the top land's banner clear of the header.
       .contentMargins(.bottom, 96, for: .scrollContent)
       .contentMargins(.top, 12, for: .scrollContent)
-      // The sea (Metal): viewport-sized behind the map, moving with the scroll, graded per land.
-      .background(SeaLayer(mapHeight: layout.size.height,
-                           grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, app.state, app.content) },
-                           scroll: mapScroll))
       .modifier(TrackMapScroll(scroll: mapScroll))
       .onChange(of: atlasTarget) { _, id in
         guard let id else { return }
@@ -235,6 +237,7 @@ struct WorldView: View {
         try? await Task.sleep(for: .milliseconds(60))
         proxy.scrollTo(n.id, anchor: UnitPoint(x: 0.5, y: 0.55))
       }
+    }
     }
   }
 

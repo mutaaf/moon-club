@@ -278,20 +278,50 @@ extension View {
 
 extension LunaView {
   /// Below this size Luna is the static vector disc (the shader's detail would be lost anyway).
-  static let shadedFrom: CGFloat = 40
+  /// Debug `-luna flat` keeps every Luna on the vector disc (to measure the shader's cost).
+  static let shadedFrom: CGFloat = {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-luna"), ProcessInfo.processInfo.arguments.contains("flat") { return .infinity }
+    #endif
+    return 40
+  }()
 }
 
-/// Luna's shaded moon (Metal). Reads only the hinge's light angle, so it redraws only while an iPhone Duo's
-/// hinge moves; elsewhere the light is a fixed lamp at the upper left.
+/// Luna's shaded moon (Metal). The `luna` shader runs ONCE per (pixel size, light) into a cached texture
+/// image (`LunaTexture`); every Luna on screen then just draws that image, so a floating, bouncing or
+/// shaking Luna never re-runs the shader (measured: a live shader under the drifting aurora cost ~20 ms a
+/// frame on the SE simulator). Reads only the hinge's light angle, so on iPhone Duo the image is re-shaded
+/// as the hinge moves (2% steps); elsewhere the light is a fixed lamp at the upper left.
 struct LunaSphere: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
+  @Environment(\.displayScale) private var scale
   var body: some View {
-    let light = Float(duo?.lunaLight ?? HingeLight.lunaLight(nil))
+    let light = duo?.lunaLight ?? HingeLight.lunaLight(nil)
     GeometryReader { g in
-      Rectangle()
-        .colorEffect(ShaderLibrary.luna(.float2(g.size), .float(light), .float(0.6)))
+      if let img = LunaTexture.image(side: min(g.size.width, g.size.height), scale: scale, light: light) {
+        Image(uiImage: img).resizable().frame(width: g.size.width, height: g.size.height)
+      }
     }
-    .drawingGroup()   // shade once into a texture; moving Luna then only moves the texture
-    .animation(.interactiveSpring(response: 0.3), value: light)
+  }
+}
+
+/// The cache of shaded Luna images, keyed by pixel size and light angle.
+@MainActor enum LunaTexture {
+  private static var cache: [String: UIImage] = [:]
+  static func image(side: CGFloat, scale: CGFloat, light: Double) -> UIImage? {
+    guard side > 0 else { return nil }
+    let px = Int((side * scale).rounded(.up)), l = Int((light * 50).rounded())
+    let key = "\(px)|\(l)"
+    if let hit = cache[key] { return hit }
+    let s = CGFloat(px) / scale
+    let view = Rectangle().frame(width: s, height: s)
+      .colorEffect(ShaderLibrary.luna(.float2(s, s), .float(Float(l) / 50), .float(0.6)))
+    let r = ImageRenderer(content: view)
+    r.scale = scale
+    r.isOpaque = false
+    guard let img = r.uiImage else { return nil }
+    if cache.count > 64 { cache.removeAll() }
+    cache[key] = img
+    return img
   }
 }
