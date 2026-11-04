@@ -1,0 +1,49 @@
+{
+  "lobby": 1,
+  "slug": "moon-club",
+  "name": "Moon Club",
+  "category": "Money school for kids",
+  "tagline": "Learn the market like a game.",
+  "audience": "kids",
+  "stores": ["appstore", "web"],
+  "ipad": true,
+  "ios": { "bundleId": "com.mutaafaziz.moonclub", "ascAppId": "6829860949" },
+  "icon": "MoonClub/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+  "brand": {
+    "mode": "dark",
+    "bg": "#0F0E22",
+    "bg2": "#2A2260",
+    "ink": "#FFF6D6",
+    "muted": "#CFC9F0",
+    "accent": "#FFC75A",
+    "accent2": "#FF7F92",
+    "highlight": "rgba(255,127,146,.55)",
+    "glow": ["#6A55FF", "#FF7F92", "#FFC75A", "#3BA3FF"],
+    "shadow": "#6A55FF",
+    "display": { "family": "Fredoka", "weights": [700] },
+    "displayWeight": 700,
+    "tracking": "-.02em",
+    "lineHeight": 0.98,
+    "body": { "family": "Nunito", "weights": [700, 900] },
+    "mono": { "family": "Nunito", "weights": [900] },
+    "texture": "stars",
+    "ribbon": true
+  },
+  "raw": { "iphone": "store/lobby/raw/iphone", "ipad": "store/lobby/raw/ipad", "duo": "store/lobby/raw/duo" },
+  "capture": {
+    "command": "make store-shots && rsync -a build/store-shots/iphone-69/ store/lobby/raw/iphone/ && rsync -a build/store-shots/ipad-13/ store/lobby/raw/ipad/",
+    "notes": "scripts/store-shots.sh drives the Store 69 / Store iPad 13 / Store Duo simulators. Raw files keep the NN-name.png names that shots[].raw refers to."
+  },
+  "shots": [
+    { "id": "world", "raw": "01-world", "layout": "cover", "title": "Conquer the *market map*.", "sub": "Win lands by reading candles, trends and patterns. A boss guards every flag.", "badge": "Zero real money" },
+    { "id": "candles", "raw": "03-candles", "layout": "spotlight", "focus": [0.5, 0.5, 0.5], "kicker": "Chart games", "title": "Build a candle with _your thumbs_.", "sub": "Drag start, high, low and end. Suddenly charts make sense.", "badge": "Hands on" },
+    { "id": "boss", "raw": "02-boss", "layout": "tilt", "kicker": "Boss battles", "title": "Beat the *Captain's Quiz*.", "sub": "Five questions, three hearts, one flag to plant.", "badge": "Combo!" },
+    { "id": "piggy", "raw": "07-piggy", "layout": "bleed", "kicker": "Pretend Piggy Bank", "title": "Grow a pile of *pretend coins*.", "sub": "Follow real companies, learn why they move. Practice only, nothing real at stake." },
+    { "id": "story", "raw": "04-story", "layout": "hero", "kicker": "Every day", "title": "Today's *Market Story*.", "sub": "Three tiny missions a day, written for kids.", "badge": "Daily missions" },
+    { "id": "luna", "raw": "06-luna", "raw2": "04-story", "layout": "duo", "kicker": "Ask Luna", "title": "Why do prices *go up*?", "sub": "Luna answers money questions in kid-sized words." },
+    { "id": "shop", "raw": "05-shop", "layout": "tilt", "kicker": "Moon Shop", "title": "Learn. Earn. *Launch rockets.*", "sub": "Lessons earn Moon points, points unlock rockets. All just for fun." },
+    { "id": "badges", "raw": "08-badges", "layout": "hero", "kicker": "Badges", "title": "Collect them _all_.", "sub": "Candle Reader, Trend Tracker, Boss Slayer, and more to chase.", "badge": "Bronze to gold" }
+  ],
+  "feature": { "title": "Learn the market *like a game*.", "sub": "Candles, trends and boss quizzes for curious kids." },
+  "avoid": ["Disney", "Roblox", "Hershey", "Robinhood"]
+}
