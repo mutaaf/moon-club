@@ -22,7 +22,7 @@ struct SeaLayer: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
   var body: some View {
     let sun = Float(duo?.sun ?? 1)
-    FXClock(fps: 30, runFor: .seconds(10), wake: scroll.wake) { t, level in
+    FXClock(fps: 20, runFor: .seconds(5), wake: scroll.wake) { t, level in
       TiltReader(enabled: level == .full && !FX.shared.lowPower) { tilt in
         GeometryReader { g in
           Rectangle()
@@ -68,7 +68,9 @@ struct FogFX: View {
           fog(t: Float(ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3_600)), dissolve: Float(d), part: part, seed: seed)
         }
       } else {
-        FXClock(fps: 30, runFor: .seconds(10), wake: wake) { t, _ in fog(t: t, dissolve: 0, part: part, seed: seed) }
+        // Resting fog is a still frame (it lives inside the scrolling map: an animated layer there made the
+        // whole map's display list update every frame). It moves when it parts (hinge) or burns away.
+        fog(t: seed * 7, dissolve: 0, part: part, seed: seed)
         Label("Locked", systemImage: "lock.fill").font(.caption.weight(.bold)).foregroundStyle(Palette.ink2)
           .padding(.horizontal, 10).padding(.vertical, 5).background(.white, in: Capsule())
       }

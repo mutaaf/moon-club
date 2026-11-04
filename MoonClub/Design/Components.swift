@@ -44,7 +44,8 @@ struct LunaView: View {
     .accessibilityHidden(true)
     .task {
       guard !reduceMotion else { return }
-      if wave, !bob { withAnimation(.easeInOut(duration: 2.6).repeatForever()) { bob = true } }
+      // A few gentle floats, then rest (0.14: with the shaded moon, an endless float re-rendered her every frame).
+      if wave, !bob { withAnimation(.easeInOut(duration: 2.6).repeatCount(5)) { bob = true } }
       guard mood != .sleepy else { return }
       while !Task.isCancelled {
         try? await Task.sleep(for: .seconds(Double.random(in: 3...6)))
@@ -290,6 +291,7 @@ struct LunaSphere: View {
       Rectangle()
         .colorEffect(ShaderLibrary.luna(.float2(g.size), .float(light), .float(0.6)))
     }
+    .drawingGroup()   // shade once into a texture; moving Luna then only moves the texture
     .animation(.interactiveSpring(response: 0.3), value: light)
   }
 }
