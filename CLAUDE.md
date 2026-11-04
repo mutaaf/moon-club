@@ -167,3 +167,25 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
 - **Simulator:** `xcrun simctl openurl <sim> moonclub://…` raises a system "Open in “Moon Club”?" alert that `simctl` can't tap, and it lingers over later screenshots until the simulator reboots. Use https universal links instead: `xcrun simctl openurl <sim> https://mutaafaziz.com/metaphases/kids/garden` opens the app directly. That works once Apple's CDN (`app-site-association.cdn-apple.com/a/v1/mutaafaziz.com`) has the AASA, which took under an hour on 2026-11-04. Before that, it opens Safari.
 - Debug: `-demo -grownups -scrollShare` shows the Share section; `-demo -link <url>` follows a link 1 s after launch (gate included); `-demo -grownups -link moonclub://pack/<id>` shows a settings link's offer without the gate (DEBUG only).
 - **Grown-up picks** (affiliate slot) ship EMPTY: MoonClubCore `Partners.list`, drawn only by `PartnerPicks` in GrownUps.swift (`check-rules.sh` rule 7). Filling it is the owner's call (money); see LINKS.md.
+## Money School (0.15): the deeper curriculum
+- **Scope.** Core 3.0.0 has 93 lessons in 20 units (it was 54 in 13). The gap analysis against Jump$tart grade 4, CEE and CFPB is in `docs/CURRICULUM.md`. Edit lessons in metaphases `packs/core/pack.json` only, then `scripts/sync-content.sh <metaphases worktree>`.
+- **Two new step types.** Both are ported in `Content.swift` `Step`, `PackRules`, and `StepContent` in `School.swift`.
+  - `example` (`ExampleView`): a worked example whose lines are revealed one per tap. Hidden lines keep their height, so CardFitTests measures the full card.
+  - `grow` (`GrowView`): a year-per-tap growth chart. Its numbers come from MoonClubCore `Growth.series/rows`, pinned to the web's `growSeries` by the `grow`/`growSteps` vectors.
+  - The LessonPlayer's primary button reads "Show step n of N" / "Grow a year (n of N)" until the step is fully revealed (`Step.reveals`, `reveals[step]`). Tapping the chart grows too.
+  - A lesson still needs a `check` or `sort` (`Step.isQuiz`).
+- **The optional track.** Tracks with `optional: true` (the Full Moons `challenge` track) are listed in `KidsContent.optionalTracks`. Their lessons never count toward unit stars (`World.stars`) or mastery (`requiredLessons`), and join a boss quiz only once played (`WorldBosses`).
+- **Never take away stars.**
+  - Lessons with `since` (added to a unit later) are a bonus: a unit scores 3 stars from its original lessons too.
+  - `nodeOpen` keeps any stop with stars open.
+  - `World.current` prefers the first open land that isn't conquered, so new stops in an old land don't pull the rocket back.
+  - Never insert a new *region* before existing ones: it would lock every later land for existing kids. Add stops to existing lands instead.
+- **Luna's refresh.** `Review.refresh` brings back a finished lesson whose question was missed after its last play (at a Review stop), or most of which was missed on the day it was played. It reads `played` lesson entries, which a replay updates. `RefreshCard` shows it at the top of School; the grown-up report shows it too.
+- **Learn links.**
+  - `GuessCourse.learn` (reveal key → lesson) drives "Learn why" on the Guess reveal (`Coach.revealKey/learn`).
+  - `WhyCause.learn` drives "Learn it" on every Why clue.
+  - The Garden side has `CourseCard(kind: .garden)` (`piggy.garden`).
+  - The Piggy tip `oneGroup` gets the group count from `Coach.groups` (Why's sectors).
+- **Grown-ups.** `Unit.talk` is the dinner table talk, shown in `LearningReport` as a disclosure per unit.
+- Debug: `-lesson <id> -step <n> -reveal <k>` opens a lesson step with k example lines shown / years grown; `-tab school -library` opens Moon School; `-demo -grownups -scrollPacks -talkOpen` shows every unit's dinner table talk (screenshots).
+- **Art.** New emoji for 0.15 are in the "0.15 curriculum" block of `Art.map`. **A duplicate key in that dictionary literal crashes at launch** (🍫 was already there), so search before adding.

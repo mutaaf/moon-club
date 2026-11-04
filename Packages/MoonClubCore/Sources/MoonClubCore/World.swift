@@ -164,10 +164,15 @@ public enum World {
     let stored = min(3, s.stars?[n.id] ?? 0)
     switch n.kind {
     case let .unit(u):
-      let ls = c.lessons.filter { $0.unit == u }
-      let done = ls.filter { s.lessons.contains($0.id) }.count
-      guard !ls.isEmpty, done > 0 else { return stored }
-      return max(stored, done == ls.count ? 3 : done * 2 >= ls.count ? 2 : 1)
+      // Optional (challenge) lessons never count. Lessons added to a unit later (`since`) are a bonus: a child
+      // who finished the unit as it was keeps their stars when it grows.
+      let ls = c.requiredLessons(u)
+      func score(_ ls: [Lesson]) -> Int {
+        let done = ls.filter { s.lessons.contains($0.id) }.count
+        guard !ls.isEmpty, done > 0 else { return 0 }
+        return done == ls.count ? 3 : done * 2 >= ls.count ? 2 : 1
+      }
+      return max(stored, score(ls), score(ls.filter { $0.since == nil }))
     case let .lesson(l): return max(stored, s.lessons.contains(l) ? 3 : 0)
     case let .quest(q):
       let done = q == "lemonade" ? s.questDone : s.chapters(c).contains(q)
@@ -196,13 +201,19 @@ public enum World {
   public static func nodeOpen(_ n: WorldNode, in r: Region, regionOpen: Bool, _ s: KidsState, _ c: KidsContent) -> Bool {
     guard regionOpen, let i = r.nodes.firstIndex(of: n) else { return false }
     if n.isOptional { return true }
+    // A stop you already have stars on never locks again (new stops can appear before it when the map grows).
+    if stars(n, s, c) > 0 { return true }
     if n.isBoss { return r.nodes.dropLast().filter { !$0.isOptional }.allSatisfy { stars($0, s, c) > 0 } }
     guard let prev = r.nodes[..<i].last(where: { !$0.isOptional }) else { return true }
     return stars(prev, s, c) > 0
   }
 
-  /// Where Luna's rocket waits: the first open node without a star (or the last boss once all is conquered).
+  /// Where Luna's rocket waits: the first open node without a star in the first land not yet conquered (new
+  /// stops in a conquered land don't pull the rocket back); then any open node without a star; then the last boss.
   public static func current(_ rs: [Region], _ s: KidsState, _ c: KidsContent) -> (region: Int, node: Int) {
+    for (ri, r) in rs.enumerated() where regionOpen(ri, rs, s, c) && !conquered(r, s, c) {
+      for (ni, n) in r.nodes.enumerated() where !n.isOptional && nodeOpen(n, in: r, regionOpen: true, s, c) && stars(n, s, c) == 0 { return (ri, ni) }
+    }
     for (ri, r) in rs.enumerated() where regionOpen(ri, rs, s, c) {
       for (ni, n) in r.nodes.enumerated() where !n.isOptional && nodeOpen(n, in: r, regionOpen: true, s, c) && stars(n, s, c) == 0 { return (ri, ni) }
     }

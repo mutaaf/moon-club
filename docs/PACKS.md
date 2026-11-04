@@ -28,7 +28,8 @@ Moon Club's curriculum is made of **lesson packs**. A pack can add to the built-
   "kind": "extend",                     // core | extend | replace
   "requires": { "content": 1, "app": "0.12.0", "core": "2.0.0" },  // required content version (+ app / core it was made for)
   "ages": { "min": 6, "max": 11 },
-  "tracks": [{ "id": "6-8", "title": "Little Moons (ages 6–8)", "blurb": "…" }],
+  "tracks": [{ "id": "6-8", "title": "Little Moons (ages 6–8)", "blurb": "…" },
+             { "id": "challenge", "title": "Full Moons (challenge)", "blurb": "…", "optional": true }],  // optional: never gates stars, mastery or boss quizzes
   "curators":  [{ "name": "…", "role": "author|creator" }],
   "reviewers": [{ "name": "Ms. Rivera", "role": "teacher", "signedOff": "2026-11-03" },
                 { "name": "Dr. Okafor", "role": "markets", "signedOff": "2026-11-03" },
@@ -36,15 +37,20 @@ Moon Club's curriculum is made of **lesson packs**. A pack can add to the built-
   "creator": { "name": "Coach Nova", "fictional": true, "bio": "…", "voice": "…" },   // null for Core
   "objectives": [{ "id": "nova.cost", "text": "Work out profit per item…", "standards": ["CEE Econ 14: Entrepreneurship"] }],
   "units": [{ "id": "nova-lab", "title": "…", "emoji": "🚀", "blurb": "…", "track": "6-8", "objectives": ["…"],
+              "talk": ["…"],                 // 1–3 "dinner table talk" prompts for the grown-up corner (≤ 160 chars)
               "lessons": [{ "id": "nova-cost", "title": "…", "emoji": "🧾", "track": "6-8", "objectives": ["nova.cost"],
+                            "since": "1.1.0",    // optional: the pack version that added it ("New" tag; a bonus for map stars)
                             "steps": [ { "t": "say", "emoji": "🚀", "text": "…" },
+                                       { "t": "example", "emoji": "🧾", "text": "…setup…", "lines": ["$2 + $3 = $5", "…"] },   // worked example, 2–4 lines revealed one per tap
+                                       { "t": "grow", "show": "garden|price|owe", "text": "…", "start": 100, "rate": 10, "years": 5, "label": "…",
+                                         "vs": { "kind": "jar|simple|rate", "rate": 5, "label": "…" } },   // year-by-year growth, one tap per year
                                        { "t": "check", "q": "…", "options": ["right", "wrong", "wrong"], "answer": 0, "why": "…" },
                                        { "t": "sort", "q": "…", "buckets": ["A", "B"], "items": [{ "emoji": "✨", "text": "…", "b": 0 }], "why": "…" } ] }] }],
   "glossary": { "cost": { "word": "Cost", "emoji": "🧾", "means": "…", "example": "…" } },   // tap-a-word cards
   "words": [],                          // word of the day
   "games": [{ "id": "buildCandle", "unit": "candles", "rounds": 5 }],   // chart games used (ids are fixed in the app)
-  "guess": { "unit": "report", "ladder": ["…"], "tips": { "<lesson>": "…" }, "reveal": { "beatUp": "…", "beatDown": "…", "missDown": "…", "missUp": "…", "unknown": "…", "inLine": "…", "tryAgain": "…" } },  // Core
-  "piggy": { "unit": "piggy", "ladder": ["…"], "peekLimit": 3, "tips": { "oneBasket": "…", "fewBaskets": "{n} …", "manyBaskets": "…", "newBank": "…", "longTime": "{days} …", "bigDrop": "{pct} …", "bigRise": "…", "peekMany": "{n} …" } },  // Core
+  "guess": { "unit": "report", "ladder": ["…"], "tips": { "<lesson>": "…" }, "reveal": { "beatUp": "…", "beatDown": "…", "missDown": "…", "missUp": "…", "unknown": "…", "inLine": "…", "tryAgain": "…" }, "learn": { "beatDown": "expectations", "…": "<lesson>" } },  // Core; learn = the lesson each reveal links to
+  "piggy": { "unit": "piggy", "ladder": ["…"], "garden": ["…"], "peekLimit": 3, "tips": { "oneBasket": "…", "fewBaskets": "{n} …", "manyBaskets": "…", "newBank": "…", "longTime": "{days} …", "bigDrop": "{pct} …", "bigRise": "…", "peekMany": "{n} …", "oneGroup": "{n} …" } },  // Core; garden = the Moon Garden's ladder; oneGroup = every company in one group
   "review": { "intervals": [0, 1, 3, 7], "retireAt": 4, "perStop": 5, "pass": 0.8 },   // Core: spaced review
   "assessments": [{ "id": "nova-lab-check", "unit": "nova-lab", "title": "…", "pass": 0.8 }],  // mastery check per unit
   "regions": [{ "id": "nova-cove", "name": "Comet Cove", "blurb": "…", "art": "🚀", "hue": "teal",
@@ -81,8 +87,10 @@ A region must end with a boss.
 | `format` `id` `version` `kind` `requires` `ages` | Manifest sanity. `requires.content` must be ≤ what this build understands. |
 | `unit.dup` `lesson.dup` `collide` `node.dup` | Ids are unique. Extend packs don't shadow Core. |
 | `lesson.steps` `check.answer` `check.options` `sort.buckets` `sort.items` `say.long` | 3–7 steps with at least one check or sort; answers in range; 2–3 options; 4+ sort items in both buckets; say cards ≤ 22 words. |
-| `fit` | Every step fits one card on iPhone SE: title ≤ 40, say ≤ 110, question ≤ 90, option ≤ 42, why ≤ 100 characters. |
-| `readability` | Flesch–Kincaid ≤ 5 for each lesson's say cards, ≤ 5.5 with its questions; each glossary card ≤ 5. |
+| `fit` | Every step fits one card on iPhone SE: title ≤ 40, say ≤ 110, question ≤ 90, option ≤ 42, why ≤ 100, sort bucket ≤ 14 characters; an example's lines ≤ 42 each (2–4 lines); a grow step's labels ≤ 20. |
+| `example.lines` `grow` | A worked example has 2–4 non-empty lines. A grow step draws garden, price or owe; covers 2–10 years; has a rate above 0 and at most 30 (%/year); starts at a whole number 1–100,000; names its row. A comparison row is a jar, simple growth or a *different* rate, with a label. Numbers come from `growSeries` (TS) / `Growth.series` (Swift), pinned by the `grow` vectors. |
+| `talk` `since` | 1–3 dinner-table prompts per unit, each ≤ 160 characters (still checked for links and advice). `since` is a pack version. |
+| `readability` | Flesch–Kincaid ≤ 5 for each lesson's prose (say cards, example setups, grow text), ≤ 5.5 with its questions and lines of working; each glossary card ≤ 5. |
 | `glyphs` | Every emoji drawn is declared. The app test checks each one has designed art. |
 | `link` | No URLs, domains, @handles or #hashtags anywhere, not even in a wrong answer. |
 | `banned` | No advice or promotion: "buy now", "you should buy", "guaranteed", "to the moon", "subscribe", "follow me", "promo code", "sponsored", "my channel", "merch", and the rest of the list. These are allowed only inside "double quotes" (a hype example being taught) or as a wrong answer. |

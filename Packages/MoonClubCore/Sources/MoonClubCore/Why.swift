@@ -22,7 +22,8 @@ public struct WhyInput: Codable, Hashable, Sendable {
   }
 }
 
-public struct WhyCause: Codable, Hashable, Sendable, Identifiable { public let id: String; public let title: String; public let line: String; public let weight: Double }
+/// `learn`: the Moon School lesson that teaches this clue (shown as "Learn it" when the lesson exists).
+public struct WhyCause: Codable, Hashable, Sendable, Identifiable { public let id: String; public let title: String; public let line: String; public let weight: Double; public var learn: String? = nil }
 public struct WhyResult: Codable, Hashable, Sendable {
   public let dir: String; public let headline: String; public let size: String; public let sizeLine: String; public let causes: [WhyCause]; public let honest: String
 }
@@ -44,6 +45,8 @@ public enum Why {
   static let defaultNormal: [WhyRange: Double] = [.day: 1.5, .week: 3.5]
   static let minClue: [WhyRange: Double] = [.day: 0.4, .week: 0.8]
   public static let honest = "These are clues from the numbers, not the whole story. Nobody knows for sure what comes next."
+  /// Each clue → the Core lesson that teaches it (the web's WHY_LEARN; "report" depends on the result).
+  public static let learn: [String: String] = ["report": "after", "market": "why-market", "company": "prices", "sector": "why-group", "dividend": "div-day", "wiggle": "why-wiggle", "unknown": "why-unsure"]
   static let order = ["report", "market", "company", "sector", "dividend", "wiggle", "unknown"]
 
   public enum Result: String, Sendable { case beat, inline, miss }
@@ -66,7 +69,7 @@ public enum Why {
 
   public static func explain(_ x: WhyInput, today: String? = nil) -> WhyResult {
     let w = when(x.range, asOf: x.asOf, today: today)
-    let unknown = WhyCause(id: "unknown", title: "We're not sure", line: "Sometimes prices move for reasons we can't see yet.", weight: 0.5)
+    let unknown = WhyCause(id: "unknown", title: "We're not sure", line: "Sometimes prices move for reasons we can't see yet.", weight: 0.5, learn: learn["unknown"])
     guard let m = x.move else {
       return WhyResult(dir: "none", headline: "We don't have \(x.nick)'s price yet.", size: "unknown", sizeLine: "", causes: [unknown], honest: honest)
     }
@@ -95,20 +98,22 @@ public enum Why {
       else if res == .beat { line = "It beat what grown-ups guessed, but people may have hoped for even more." }
       else if dir == "down" { line = "It missed what grown-ups guessed, and people may have been let down." }
       else { line = "It missed what grown-ups guessed, but people may have feared even worse." }
-      causes.append(WhyCause(id: "report", title: "Report card day", line: line, weight: size == "big" || size == "huge" ? 0.9 : 0.6))
+      // The lesson for this kind of report day: a surprise the price "disagreed" with is about expectations.
+      let lesson = res == nil ? "report-card" : dir == "flat" ? "after" : res == .inline ? "guidance" : (res == .beat) == (dir == "up") ? "after" : "expectations"
+      causes.append(WhyCause(id: "report", title: "Report card day", line: line, weight: size == "big" || size == "huge" ? 0.9 : 0.6, learn: lesson))
     }
     if sameWay(x.market), let mk = x.market {
       let share = abs(mk) / am
       causes.append(WhyCause(id: "market", title: "The whole market moved",
         line: share < 0.5 ? "The whole market went \(dir) a little \(w) too, but not nearly this much." : "The whole market went \(dir) \(w) too. On days like that, most companies move the same way.",
-        weight: r2(0.3 + 0.6 * min(1, share))))
+        weight: r2(0.3 + 0.6 * min(1, share)), learn: learn["market"]))
     } else if otherWay(x.market) {
-      causes.append(WhyCause(id: "company", title: "Not the whole market", line: "The whole market went \(opp) \(w). So this move was probably about \(x.nick) itself.", weight: 0.5))
+      causes.append(WhyCause(id: "company", title: "Not the whole market", line: "The whole market went \(opp) \(w). So this move was probably about \(x.nick) itself.", weight: 0.5, learn: learn["company"]))
     }
     if let sec = x.sector, sameWay(sec.move), let sm = sec.move {
       let excess = abs(sm) - (sameWay(x.market) ? abs(x.market ?? 0) : 0)
       if excess >= 0.3 {
-        causes.append(WhyCause(id: "sector", title: "Its group moved together", line: "Its group went \(dir) \(w) too. That group is \(sec.name).", weight: r2(0.25 + 0.6 * min(1, excess / am))))
+        causes.append(WhyCause(id: "sector", title: "Its group moved together", line: "Its group went \(dir) \(w) too. That group is \(sec.name).", weight: r2(0.25 + 0.6 * min(1, excess / am)), learn: learn["sector"]))
       }
     }
     if let d = x.dividend, dir == "down" {
@@ -116,10 +121,10 @@ public enum Why {
       let day = x.range == .day ? w : "in the past week"
       causes.append(WhyCause(id: "dividend", title: "Dividend cut-off day",
         line: "Its dividend cut-off day was \(day). The price often drops by about the payout\(d.pct.map { ", here about \(fixed1($0))% of the price" } ?? "").",
-        weight: r2(0.3 + 0.6 * share)))
+        weight: r2(0.3 + 0.6 * share), learn: learn["dividend"]))
     }
     if (size == "tiny" || size == "normal") && !causes.contains(where: { $0.id == "report" }) {
-      causes.append(WhyCause(id: "wiggle", title: "A normal wiggle", line: "Prices move a little every day, even with no news.", weight: size == "tiny" ? 0.8 : 0.5))
+      causes.append(WhyCause(id: "wiggle", title: "A normal wiggle", line: "Prices move a little every day, even with no news.", weight: size == "tiny" ? 0.8 : 0.5, learn: learn["wiggle"]))
     }
     let best = causes.map(\.weight).max() ?? 0
     if causes.isEmpty || ((size == "big" || size == "huge") && best < 0.6) { causes.append(unknown) }

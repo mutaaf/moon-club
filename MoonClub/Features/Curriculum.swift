@@ -69,6 +69,8 @@ struct WhyCard: View {
   @State private var picked: WhyRange?
   @State private var input: WhyInput?
   @State private var failed = false
+  /// "Learn it": the Moon School lesson that teaches a clue, played in place.
+  @State private var learning: Lesson?
 
   var body: some View {
     let r = picked ?? range
@@ -92,13 +94,18 @@ struct WhyCard: View {
             VStack(alignment: .leading, spacing: 2) {
               Text(i == 0 && c.id != "unknown" ? "Biggest clue: \(c.title)" : c.title).font(.subheadline.weight(.bold))
               Text(c.line).font(.callout).fixedSize(horizontal: false, vertical: true)
+              if let id = c.learn, let l = app.content.lessons.first(where: { $0.id == id }) {
+                Button { learning = l } label: { Label("Learn it: \(l.title)", systemImage: "graduationcap.fill").font(.footnote.weight(.semibold)) }
+                  .buttonStyle(.borderless).tint(Palette.accent).padding(.top, 2)
+                  .accessibilityLabel("Learn this clue: \(l.title)")
+              }
             }
             Spacer(minLength: 0)
           }
           .padding(12)
           .background(i == 0 ? Palette.moon.opacity(0.55) : Color.clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
           .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-          .accessibilityElement(children: .combine)
+          .accessibilityElement(children: .contain)
         }
         Text(why.honest).font(.caption).foregroundStyle(.secondary)
         HStack { ReadAloud(source: .appCopy(([why.headline] + why.causes.map { "\($0.title). \($0.line)" } + [why.honest]).joined(separator: " "))); Spacer() }
@@ -108,6 +115,7 @@ struct WhyCard: View {
         RoundedRectangle(cornerRadius: 16).fill(.thinMaterial).frame(height: 120).overlay(ProgressView())
       }
     }
+    .fullScreenCover(item: $learning) { l in NavigationStack { LessonPlayer(lesson: l) } }
     .task(id: "\(symbol)|\(r.rawValue)") {
       failed = false
       do { input = try await app.market.why(symbol, range: r); failed = input == nil } catch { input = nil; failed = true }
@@ -119,19 +127,19 @@ struct WhyCard: View {
 // MARK: Courses: the next lesson on the Guess / Piggy ladder, played in place
 
 struct CourseCard: View {
-  enum Kind { case guess, piggy }
+  enum Kind { case guess, piggy, garden }
   let kind: Kind
   @Environment(AppModel.self) private var app
   @State private var lesson: Lesson?
 
   var body: some View {
-    let ladder = kind == .guess ? app.content.guessCourse?.ladder ?? [] : app.content.piggyCourse?.ladder ?? []
+    let ladder = kind == .guess ? app.content.guessCourse?.ladder ?? [] : kind == .garden ? app.content.piggyCourse?.garden ?? [] : app.content.piggyCourse?.ladder ?? []
     if let next = Coach.next(ladder, done: app.state.lessons), let l = app.content.lessons.first(where: { $0.id == next.id }) {
       Button { lesson = l } label: {
         HStack(spacing: 14) {
           Glyph(l.emoji, size: 50)
           VStack(alignment: .leading, spacing: 3) {
-            Text("\(kind == .guess ? "GUESS SCHOOL" : "PIGGY SCHOOL") · STEP \(next.index + 1) OF \(next.of)").font(.kEyebrow).foregroundStyle(Palette.accent)
+            Text("\(kind == .guess ? "GUESS SCHOOL" : kind == .garden ? "GARDEN SCHOOL" : "PIGGY SCHOOL") · STEP \(next.index + 1) OF \(next.of)").font(.kEyebrow).foregroundStyle(Palette.accent)
             Text(l.title).font(.kTitle).foregroundStyle(Palette.ink)
             if kind == .guess, let tip = app.content.guessCourse?.tips[l.id] { Text(tip).font(.callout).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true) }
           }
@@ -157,7 +165,7 @@ struct PiggyCoachTip: View {
   @Environment(AppModel.self) private var app
   var body: some View {
     if let course = app.content.piggyCourse {
-      let tip = Coach.piggyTip(course, .init(holdings: piggy.holdings.count, started: piggy.started, today: app.today, value: value ?? app.content.startCoins, start: app.content.startCoins, peeks: peeks))
+      let tip = Coach.piggyTip(course, .init(holdings: piggy.holdings.count, started: piggy.started, today: app.today, value: value ?? app.content.startCoins, start: app.content.startCoins, peeks: peeks, groups: Coach.groups(piggy.holdings.map(\.s))))
       Text(tip.text).font(.callout).fixedSize(horizontal: false, vertical: true)
     } else {
       Text(basketTip(piggy.holdings.count)).font(.callout)
@@ -193,13 +201,21 @@ struct PackSettings: View {
 }
 
 /// Mastery per unit, worked out on this device from finished lessons and review answers. Nothing is sent.
+/// Each unit opens to its "dinner table talk" prompts for the grown-up.
 struct LearningReport: View {
   @Environment(AppModel.self) private var app
+  #if DEBUG
+  /// Debug `-talkOpen`: every unit's dinner table talk starts open (screenshots).
+  @State private var open = ProcessInfo.processInfo.arguments.contains("-talkOpen")
+  #else
+  @State private var open = false
+  #endif
+  @State private var opened: Set<String> = []
   var body: some View {
     let tracks = app.baseContent.pack?.tracks ?? []
     ForEach(app.content.units) { u in
       let m = Review.mastery(u.id, app.state, app.content)
-      HStack {
+      let row = HStack {
         Glyph(u.emoji, size: 30)
         VStack(alignment: .leading, spacing: 1) {
           Text(u.title).font(.subheadline.weight(.semibold))
@@ -210,9 +226,58 @@ struct LearningReport: View {
           .padding(.horizontal, 8).padding(.vertical, 3)
           .background(m == .mastered ? Palette.mint : m == .practicing ? Palette.moon : m == .learning ? Palette.sky : Palette.line.opacity(0.4), in: Capsule())
       }
-      .accessibilityElement(children: .combine)
+      if let talk = u.talk, !talk.isEmpty {
+        DisclosureGroup(isExpanded: Binding(get: { open || opened.contains(u.id) }, set: { v in if v { opened.insert(u.id) } else { opened.remove(u.id); open = false } })) {
+          VStack(alignment: .leading, spacing: 6) {
+            Text("Dinner table talk").font(.caption.weight(.bold)).foregroundStyle(Palette.accent)
+            ForEach(talk, id: \.self) { t in Text("“\(t)”").font(.callout).fixedSize(horizontal: false, vertical: true) }
+          }
+          .padding(.vertical, 4)
+        } label: { row.accessibilityElement(children: .combine) }
+      } else {
+        row.accessibilityElement(children: .combine)
+      }
     }
     let due = Review.due(app.state, app.content, today: app.today, limit: 99).count
     Text(due == 0 ? "No questions waiting at a Review stop." : "\(due) question\(due == 1 ? "" : "s") waiting at a Review stop on the map.").font(.caption).foregroundStyle(.secondary)
+    let again = Review.refresh(app.state, app.content)
+    if !again.isEmpty {
+      Text("Worth a replay: \(ListFormatter.localizedString(byJoining: again.map(\.title))). Questions from these came back wrong at a Review stop, so Luna suggests them in Moon School.").font(.caption).foregroundStyle(.secondary)
+    }
+  }
+}
+
+/// "Luna's refresh": lessons whose questions were forgotten later come back as a whole lesson to replay
+/// (Review.refresh). Played in place; replaying clears it.
+struct RefreshCard: View {
+  @Environment(AppModel.self) private var app
+  @State private var lesson: Lesson?
+  var body: some View {
+    let again = Review.refresh(app.state, app.content)
+    if let first = again.first {
+      VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 10) {
+          Image(systemName: "arrow.triangle.2.circlepath").font(.headline.weight(.bold)).foregroundStyle(Palette.accent)
+          Text("LUNA'S REFRESH").font(.kEyebrow).foregroundStyle(Palette.accent)
+        }
+        Text("Some questions slipped away. That's normal! A quick replay helps them stick.").font(.callout).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
+        ForEach(again) { l in
+          Button { lesson = l } label: {
+            HStack(spacing: 12) {
+              Glyph(l.emoji, size: 40)
+              Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink)
+              Spacer(minLength: 0)
+              Image(systemName: "play.circle.fill").font(.title2).foregroundStyle(Palette.accent)
+            }
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Replay \(l.title)")
+        }
+      }
+      .padding(16)
+      .moonGlass(radius: 22, weight: .thin)
+      .fullScreenCover(item: $lesson) { l in NavigationStack { LessonPlayer(lesson: l) } }
+      .id(first.id)
+    }
   }
 }

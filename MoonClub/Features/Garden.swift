@@ -67,6 +67,8 @@ struct MoonGarden: View {
         TipCard(symbol: "basket.fill", hue: .orange, title: "One basket?", text: nudge)
       }
       TipCard(symbol: "moon.zzz.fill", hue: .sky, title: "Check less often", text: Garden.wisdom(today: app.today))
+      // Garden School: growth on growth, baskets, fees and the Rule of 72, next lesson first.
+      CourseCard(kind: .garden)
       if !book.harvests.isEmpty { HarvestHistory(lines: Array(book.harvests.suffix(3).reversed())) }
     }
     .sheet(isPresented: $planting) { PlantSheet().presentationDetents([.large]).presentationCornerRadius(32) }

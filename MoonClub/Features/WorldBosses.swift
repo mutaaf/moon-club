@@ -179,7 +179,9 @@ struct ReviewBoss: View {
   let onFinish: (Int) -> Void
   @Environment(AppModel.self) private var app
   var body: some View {
-    let checks = Self.pick(World.lessons(of: region, app.content), seed: region.id.count)
+    // Challenge (optional-track) lessons join the quiz only once the child has played them.
+    let ls = World.lessons(of: region, app.content).filter { !app.content.isOptional($0) || app.state.lessons.contains($0.id) }
+    let checks = Self.pick(ls, seed: region.id.count)
     GameShell(node: node, rounds: checks.count, intro: "Five quick questions from this land. Win them to plant your flag!",
               boss: BossInfo(name: node.title, art: node.art), timed: false, arena: true, onFinish: onFinish) { i, answer, answered in
       ReviewRound(check: checks[i], seed: i, answer: answer, answered: answered)
