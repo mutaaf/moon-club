@@ -27,16 +27,31 @@ struct SeaLayer: View {
     FXClock(fps: 20, runFor: .seconds(3), wake: scroll.wake, waitForWake: true) { t, level in
       TiltReader(enabled: level == .full && !FX.shared.lowPower) { tilt in
         GeometryReader { g in
+          if SeaLayer.flat { Color(hex: 0x6FB7E8) } else {
           Rectangle()
             .colorEffect(ShaderLibrary.sea(.float2(g.size), .float(t), .float2(scroll.offset), .float(Float(mapHeight)),
                                            .float(sun), .float2(CGFloat(tilt.x), CGFloat(tilt.y)), .floatArray(grade)))
+          }
         }
       }
     }
+    // Rasterize the sea into one texture: when stops pulse or flags wave above it, the compositor reuses the
+    // texture instead of re-running a full-screen shader every frame (iPad World's first seconds: 33 → ? ms).
+    .drawingGroup()
     .animation(.easeInOut(duration: 0.4), value: sun)
     .ignoresSafeArea()
     .accessibilityHidden(true)
   }
+
+  /// Debug `-sea flat`: the pre-0.14 solid sea (to measure the shader's cost).
+  static let flat: Bool = {
+    #if DEBUG
+    let a = ProcessInfo.processInfo.arguments
+    return a.firstIndex(of: "-sea").map { $0 + 1 < a.count && a[$0 + 1] == "flat" } ?? false
+    #else
+    return false
+    #endif
+  }()
 
   /// The grading array for these lands: each land's color near it, slate for lands still locked.
   static func grade(_ regions: [Region], layout: MapLayout, open: (Int) -> Bool) -> [Float] {
@@ -70,9 +85,14 @@ struct FogFX: View {
           fog(t: Float(ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3_600)), dissolve: Float(d), part: part, seed: seed)
         }
       } else {
-        // Resting fog is a still frame (it lives inside the scrolling map: an animated layer there made the
-        // whole map's display list update every frame). It moves when it parts (hinge) or burns away.
-        fog(t: seed * 7, dissolve: 0, part: part, seed: seed)
+        // Resting fog is a still image: the shader runs once per (size, land, hinge part) at half resolution
+        // (fog is soft anyway) and is cached (`FogTexture`). A live fog shader inside the scrolling map re-ran on
+        // every frame anything above it animated (iPad World 16.7 → 34 ms). It moves only when it burns away.
+        GeometryReader { g in
+          if let img = FogTexture.image(size: g.size, seed: seed, part: part) {
+            Image(uiImage: img).resizable().frame(width: g.size.width, height: g.size.height)
+          }
+        }
         Label("Locked", systemImage: "lock.fill").font(.caption.weight(.bold)).foregroundStyle(Palette.ink2)
           .padding(.horizontal, 10).padding(.vertical, 5).background(.white, in: Capsule())
       }
@@ -214,5 +234,24 @@ struct AtlasPage: View {
     forward = next > page
     withAnimation(Motion.safe(Motion.page, rm)) { page = next }
     if duo?.hasHinge == true { app.mutate { $0.useDuo(.atlas) } }
+  }
+}
+
+/// Cached still fog images (half resolution), keyed by size, land and hinge part.
+@MainActor enum FogTexture {
+  private static var cache: [String: UIImage] = [:]
+  static func image(size: CGSize, seed: Float, part: Float) -> UIImage? {
+    guard size.width > 1, size.height > 1 else { return nil }
+    let key = "\(Int(size.width))x\(Int(size.height))|\(seed)|\(Int(part * 50))"
+    if let hit = cache[key] { return hit }
+    let view = Rectangle().frame(width: size.width, height: size.height)
+      .colorEffect(ShaderLibrary.fog(.float2(size), .float(seed * 7), .float(0), .float(part), .float(seed)))
+    let r = ImageRenderer(content: view)
+    r.scale = 1
+    r.isOpaque = false
+    guard let img = r.uiImage else { return nil }
+    if cache.count > 24 { cache.removeAll() }
+    cache[key] = img
+    return img
   }
 }

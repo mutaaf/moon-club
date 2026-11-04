@@ -136,13 +136,7 @@ struct WorldView: View {
     let z = min(1.7, max(1, zoom * pinch))
     let layout = MapLayout(regions: regions, width: width * z)
     let mysteryID = Mystery.claimed(app.state, today: app.today) ? nil : Mystery.node(app.state, app.content, today: app.today)?.id
-    // The sea (Metal) is its own layer behind the scroll view (a sibling, not the scroll view's background),
-    // viewport-sized, moving with the scroll and graded per land; its clock never invalidates the map.
-    return ZStack {
-      SeaLayer(mapHeight: layout.size.height,
-               grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, app.state, app.content) },
-               scroll: mapScroll)
-    ScrollViewReader { proxy in
+    return ScrollViewReader { proxy in
       ScrollView([.vertical, .horizontal], showsIndicators: false) {
         ZStack(alignment: .topLeading) {
           MapCanvas(layout: layout, regions: regions, state: app.state, content: app.content)
@@ -165,7 +159,7 @@ struct WorldView: View {
             }
           }
           .allowsHitTesting(false)
-          TrailComet(flight: comet)
+          if comet != nil { TrailComet(flight: comet) }   // only exists while the rocket flies (a full-map layer otherwise)
           // Parallax: the high clouds drift with the scroll and, very gently, with the device tilt.
           TiltLayer(depth: 14) {
             Clouds(size: layout.size)
@@ -215,6 +209,12 @@ struct WorldView: View {
       // and keep the top land's banner clear of the header.
       .contentMargins(.bottom, 96, for: .scrollContent)
       .contentMargins(.top, 12, for: .scrollContent)
+      // The sea (Metal): viewport-sized behind the map, moving with the scroll, graded per land. It starts
+      // still and moves only while the kid scrolls (FXClock waitForWake), so it never animates under the glass
+      // on its own.
+      .background(SeaLayer(mapHeight: layout.size.height,
+                           grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, app.state, app.content) },
+                           scroll: mapScroll))
       .modifier(TrackMapScroll(scroll: mapScroll))
       .onChange(of: atlasTarget) { _, id in
         guard let id else { return }
@@ -237,7 +237,6 @@ struct WorldView: View {
         try? await Task.sleep(for: .milliseconds(60))
         proxy.scrollTo(n.id, anchor: UnitPoint(x: 0.5, y: 0.55))
       }
-    }
     }
   }
 
@@ -398,7 +397,9 @@ struct MapCanvas: View, Equatable {
         var shadow = g; shadow.translateBy(x: 0, y: 10)
         shadow.fill(shore, with: .color(Color(hex: 0x1D3E8A).opacity(0.28)))
         // Surf: a soft white ring where the water meets the sand.
-        g.drawLayer { l in l.addFilter(.blur(radius: 6)); l.stroke(layout.island(ri, inset: -6), with: .color(.white.opacity(0.55)), lineWidth: 10) }
+        // (Stacked translucent strokes, not a blur filter: a blur over the whole map canvas cost ~15 ms a frame
+        // on the iPad simulator whenever anything above the map animated.)
+        for (w, a) in [(18.0, 0.12), (11.0, 0.18), (5.0, 0.3)] { g.stroke(layout.island(ri, inset: -6), with: .color(.white.opacity(a)), lineWidth: w) }
         g.fill(shore, with: .color(Color(hex: 0xF6E7BF)))                    // sand
         let land = layout.island(ri, inset: 14)
         let tone = open ? hue.light : Color(hex: 0xB9C2D6)
@@ -411,13 +412,10 @@ struct MapCanvas: View, Equatable {
       let trail = Color(hex: Shop.equipped(.trail, state)?.color ?? 0xD99A1E)
       let pts = regions.enumerated().flatMap { ri, r in r.nodes.indices.map { (layout.node(ri, $0, count: r.nodes.count), World.stars(r.nodes[$0], state, content) > 0) } }
       // The walked trail glows (one blurred layer under the line).
-      g.drawLayer { l in
-        l.addFilter(.blur(radius: 7))
-        for i in 1..<max(pts.count, 1) where pts[i].1 && pts[i - 1].1 {
-          var p = Path(); p.move(to: pts[i - 1].0)
-          p.addQuadCurve(to: pts[i].0, control: CGPoint(x: (pts[i - 1].0.x + pts[i].0.x) / 2 + (pts[i].0.y - pts[i - 1].0.y) * 0.18, y: (pts[i - 1].0.y + pts[i].0.y) / 2))
-          l.stroke(p, with: .color(trail.opacity(0.75)), style: .init(lineWidth: 16, lineCap: .round))
-        }
+      for i in 1..<max(pts.count, 1) where pts[i].1 && pts[i - 1].1 {
+        var p = Path(); p.move(to: pts[i - 1].0)
+        p.addQuadCurve(to: pts[i].0, control: CGPoint(x: (pts[i - 1].0.x + pts[i].0.x) / 2 + (pts[i].0.y - pts[i - 1].0.y) * 0.18, y: (pts[i - 1].0.y + pts[i].0.y) / 2))
+        for (w, a) in [(22.0, 0.12), (14.0, 0.2)] { g.stroke(p, with: .color(trail.opacity(a)), style: .init(lineWidth: w, lineCap: .round)) }
       }
       for i in 1..<max(pts.count, 1) {
         let (a, _) = pts[i - 1], (b, done) = pts[i]

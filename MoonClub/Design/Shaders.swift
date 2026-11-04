@@ -271,7 +271,7 @@ struct TiltLayer<Content: View>: View {
   @ViewBuilder var content: Content
   @Environment(\.accessibilityReduceMotion) private var rm
   var body: some View {
-    TiltReader(enabled: !rm && !FX.shared.lowPower) { t in
+    TiltReader(enabled: FX.shared.allowsBursts(reduceMotion: rm)) { t in
       content.offset(x: CGFloat(t.x) * depth, y: CGFloat(t.y) * depth)
         .animation(.interactiveSpring(response: 0.4), value: t)
     }
