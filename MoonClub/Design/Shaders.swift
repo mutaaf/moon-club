@@ -289,11 +289,17 @@ enum ShaderWarmup {
       let start = CFAbsoluteTimeGetCurrent()
       ParticleRenderer.prepareShared()
       if #available(iOS 18.0, *) {
-        let color = ["aurora", "sea", "fog", "luna", "shimmer", "foldSeam"]
-        let layer = ["bloom", "timeWarp"]
-        for n in color { try? await Shader(function: ShaderFunction(library: .default, name: n), arguments: []).compile(as: .colorEffect) }
-        for n in layer { try? await Shader(function: ShaderFunction(library: .default, name: n), arguments: []).compile(as: .layerEffect) }
-        try? await Shader(function: ShaderFunction(library: .default, name: "shockwave"), arguments: []).compile(as: .distortionEffect)
+        // Compile each shader with its real argument list (a zero-argument compile doesn't match the
+        // function's signature and left layer/distortion effects drawing SwiftUI's "broken shader" placeholder).
+        let z = Shader.Argument.float(0), z2 = Shader.Argument.float2(1, 1), c = Shader.Argument.color(.white)
+        let lib = ShaderLibrary.default
+        let colors: [Shader] = [
+          lib.aurora(z2, z, c, c, c, c, z), lib.sea(z2, z, z2, z, z, z2, .floatArray([0, 0, 0, 0])),
+          lib.fog(z2, z, z, z, z), lib.luna(z2, z, z), lib.shimmer(z2, z, z2, z), lib.foldSeam(z2, z),
+        ]
+        for sh in colors { try? await sh.compile(as: .colorEffect) }
+        for sh in [lib.bloom(z, z), lib.timeWarp(z2, z, z)] { try? await sh.compile(as: .layerEffect) }
+        try? await lib.shockwave(z2, z, z2).compile(as: .distortionEffect)
       }
       #if DEBUG
       print(String(format: "FX warm-up %.0f ms (off the main thread)", (CFAbsoluteTimeGetCurrent() - start) * 1000)); fflush(stdout)

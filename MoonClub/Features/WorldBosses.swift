@@ -81,11 +81,10 @@ struct TimeMachineBoss: View {
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
-    .background(BossBackdrop())
+    .background(BossBackdrop(shock: burst))
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
     .environment(\.chartBloom, run.right)
-    .shockwave(trigger: burst)
     #if DEBUG
     // Recordings: `-warp` makes a pretend call after 2 s, so the time-travel effect plays without taps.
     .task { if ProcessInfo.processInfo.arguments.contains("-warp") { try? await Task.sleep(for: .seconds(2)); phase = .call; call = .up; travel() } }

@@ -725,6 +725,10 @@ extension View {
 
 /// The dark, dramatic stage for boss fights: midnight with slow embers. Static under Reduce Motion.
 struct BossBackdrop: View {
+  /// Ticks when the boss is beaten: the backdrop ripples with a Metal shockwave and a light ring rolls out.
+  /// (The distortion wraps only this Canvas: wrapping the whole stage put shader layers such as the aurora
+  /// and Liquid Glass inside a distortion layer, which drew SwiftUI's broken-shader placeholder.)
+  var shock = 0
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.scenePhase) private var phase
   @State private var visible = false
@@ -745,6 +749,7 @@ struct BossBackdrop: View {
         }
       }
     }
+    .shockwave(trigger: shock)
     .ignoresSafeArea()
     .accessibilityHidden(true)
     .onAppear { visible = true }

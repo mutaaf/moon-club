@@ -81,11 +81,11 @@ struct GameShell<Round: View>: View {
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
-    .background { if dark { BossBackdrop() } else { AuroraField(surface: .school) } }
+    // A boss beaten: the stage behind ripples with a Metal shockwave (BossBackdrop(shock:)).
+    .background { if dark { BossBackdrop(shock: burst) } else { AuroraField(surface: .school) } }
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
     .environment(\.chartBloom, run.right)
-    .shockwave(trigger: boss != nil ? burst : 0)   // a boss beaten: the whole stage ripples (Metal)
     .glassStage()
     .playChrome()
     .sensoryFeedback(trigger: result) { _, n in n.map { $0.right ? .success : .error } }
