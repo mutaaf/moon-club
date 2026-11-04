@@ -84,6 +84,8 @@ struct GameShell<Round: View>: View {
     .background { if dark { BossBackdrop() } else { AuroraField(surface: .school) } }
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
+    .environment(\.chartBloom, run.right)
+    .shockwave(trigger: boss != nil ? burst : 0)   // a boss beaten: the whole stage ripples (Metal)
     .glassStage()
     .playChrome()
     .sensoryFeedback(trigger: result) { _, n in n.map { $0.right ? .success : .error } }
@@ -163,10 +165,12 @@ struct StarRow: View {
 struct ChartCard<C: View>: View {
   var caption: String? = nil
   @ViewBuilder var content: C
+  /// Right answers so far on this play screen: the candles bloom (Metal) each time it goes up (0.14).
+  @Environment(\.chartBloom) private var bloom
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       if let caption { Text(caption).font(.kEyebrow).tracking(1.2).foregroundStyle(Palette.accent).textCase(.uppercase) }
-      content.frame(maxWidth: .infinity, maxHeight: .infinity)
+      content.frame(maxWidth: .infinity, maxHeight: .infinity).candleBloom(trigger: bloom)
     }
     .padding(16)
     .moonGlass(radius: 28)
@@ -712,3 +716,6 @@ struct SmoothRound: View {
     }
   }
 }
+
+private struct ChartBloomKey: EnvironmentKey { static let defaultValue = 0 }
+extension EnvironmentValues { var chartBloom: Int { get { self[ChartBloomKey.self] } set { self[ChartBloomKey.self] = newValue } } }

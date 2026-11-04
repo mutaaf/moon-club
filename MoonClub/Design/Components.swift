@@ -1,9 +1,15 @@
 import SwiftUI
 import MoonClubCore
 
-/// Luna, the club's moon, drawn in vector (crisp at any size) with five moods. She blinks now and then and
-/// floats gently; both stop under Reduce Motion. The float is a render-server repeat (no per-frame work).
-struct Luna: View {
+/// Luna, the club's moon, with five moods. She blinks now and then and floats gently; both stop under
+/// Reduce Motion. The float is a render-server repeat (no per-frame work).
+///
+/// 0.14: this is the one `LunaView`, used everywhere (`Luna` is the same type). From 40 pt up her moon is a
+/// Metal-shaded sphere (`luna` in Shaders.metal: normal-mapped craters, rim light, a soft halo) whose light
+/// follows the hinge on iPhone Duo; below 40 pt it's the cheap static vector disc. The face stays vector,
+/// so blinking and expressions are crisp at every size. The shader has no clock: it draws once per change.
+typealias Luna = LunaView
+struct LunaView: View {
   enum Mood { case idle, happy, thinking, cheering, sleepy, oops }
   var size: CGFloat = 56
   var wave = false
@@ -18,10 +24,13 @@ struct Luna: View {
     let _ = Perf.body("Luna")
     let s = size / 64
     ZStack {
-      Circle().fill(RadialGradient(colors: [Color(hex: 0xFFF8DA), Palette.moon, Palette.moonShade.opacity(0.9)], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2 * s, endRadius: 40 * s))
-      // craters: two soft dimples give her a real moon surface
-      Circle().fill(Palette.moonShade.opacity(0.5)).frame(width: 9 * s, height: 9 * s).offset(x: 15 * s, y: -17 * s)
-      Circle().fill(Palette.moonShade.opacity(0.4)).frame(width: 6 * s, height: 6 * s).offset(x: -18 * s, y: 16 * s)
+      if size >= LunaView.shadedFrom { LunaSphere() }
+      else {
+        Circle().fill(RadialGradient(colors: [Color(hex: 0xFFF8DA), Palette.moon, Palette.moonShade.opacity(0.9)], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2 * s, endRadius: 40 * s))
+        // craters: two soft dimples give her a real moon surface
+        Circle().fill(Palette.moonShade.opacity(0.5)).frame(width: 9 * s, height: 9 * s).offset(x: 15 * s, y: -17 * s)
+        Circle().fill(Palette.moonShade.opacity(0.4)).frame(width: 6 * s, height: 6 * s).offset(x: -18 * s, y: 16 * s)
+      }
       eyes.offset(y: -3 * s)
       mouth
       HStack(spacing: 21 * s) { Circle().fill(Palette.blush.opacity(mood == .sleepy ? 0.35 : 0.6)).frame(width: 7 * s); Circle().fill(Palette.blush.opacity(mood == .sleepy ? 0.35 : 0.6)).frame(width: 7 * s) }.offset(y: 5 * s)
@@ -263,4 +272,24 @@ func coins(_ v: Double) -> String { "$" + Int(v.rounded()).formatted(.number) }
 extension View {
   /// Reading width: comfortable on iPad, full on iPhone.
   func readable(_ max: CGFloat = 640) -> some View { frame(maxWidth: max).frame(maxWidth: .infinity) }
+}
+
+
+extension LunaView {
+  /// Below this size Luna is the static vector disc (the shader's detail would be lost anyway).
+  static let shadedFrom: CGFloat = 40
+}
+
+/// Luna's shaded moon (Metal). Reads only the hinge's light angle, so it redraws only while an iPhone Duo's
+/// hinge moves; elsewhere the light is a fixed lamp at the upper left.
+struct LunaSphere: View {
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  var body: some View {
+    let light = Float(duo?.lunaLight ?? HingeLight.lunaLight(nil))
+    GeometryReader { g in
+      Rectangle()
+        .colorEffect(ShaderLibrary.luna(.float2(g.size), .float(light), .float(0.6)))
+    }
+    .animation(.interactiveSpring(response: 0.3), value: light)
+  }
 }

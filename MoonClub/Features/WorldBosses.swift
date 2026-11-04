@@ -23,6 +23,8 @@ struct TimeMachineBoss: View {
   @State private var results = false
   /// iPhone Duo tabletop mode is on (counts toward the Tabletop Trader trophy when the boss is done).
   @State private var tabletop = false
+  /// The trip forward in time (Metal chromatic sweep + film grain on the chart).
+  @State private var warpStart: Date?
 
   private let past = 40, future = 12
 
@@ -58,6 +60,7 @@ struct TimeMachineBoss: View {
                     cut: past - 1,
                     domain: domain(all))
       }
+      .timeWarp(start: warpStart, duration: Double(future) * 0.14 + 0.35)
       } bottom: {
       Group {
         switch phase {
@@ -81,6 +84,12 @@ struct TimeMachineBoss: View {
     .background(BossBackdrop())
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))
+    .environment(\.chartBloom, run.right)
+    .shockwave(trigger: burst)
+    #if DEBUG
+    // Recordings: `-warp` makes a pretend call after 2 s, so the time-travel effect plays without taps.
+    .task { if ProcessInfo.processInfo.arguments.contains("-warp") { try? await Task.sleep(for: .seconds(2)); phase = .call; call = .up; travel() } }
+    #endif
     .glassStage()
     .playChrome()
   }
@@ -128,12 +137,14 @@ struct TimeMachineBoss: View {
 
   private func travel() {
     withAnimation(Motion.safe(Motion.card, rm)) { phase = .reveal }
+    warpStart = Date()
     Task {
       for k in 1...future {
         try? await Task.sleep(for: .milliseconds(rm ? 0 : 140))
         withAnimation(Motion.safe(.easeOut(duration: 0.14), rm)) { shown = k }
       }
       withAnimation(Motion.safe(Motion.card, rm)) { phase = .done; run.bossHP = 0 }
+      warpStart = nil
       onFinish(1 + right)
       if tabletop { app.mutate { $0.useDuo(.tabletop) } }
       burst += 1

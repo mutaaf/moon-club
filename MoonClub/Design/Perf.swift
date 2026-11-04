@@ -11,6 +11,11 @@ import QuartzCore
 @MainActor enum Perf {
   #if DEBUG
   static let on = ProcessInfo.processInfo.arguments.contains("-bench")
+  /// `-bench screen`: measure the screen the other launch args opened instead of running the tab script.
+  static let screen: Bool = {
+    let a = ProcessInfo.processInfo.arguments
+    return a.firstIndex(of: "-bench").map { $0 + 1 < a.count && a[$0 + 1] == "screen" } ?? false
+  }()
   private(set) static var counts: [String: Int] = [:]
   #endif
   @discardableResult static func body(_ name: String) -> Int {

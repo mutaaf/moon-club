@@ -1,4 +1,5 @@
 import SwiftUI
+import QuartzCore
 import MoonClubCore
 
 // iPhone Duo, the SwiftUI side. One `onHingeChange` per scene feeds a tiny @Observable model; every
@@ -18,6 +19,17 @@ final class DuoModel {
   /// Ticks once each time the phone closes / opens flat — triggers for haptics and "tuck Luna in".
   private(set) var closedTick = 0
   private(set) var flatTick = 0
+  /// 0.14 hinge light (MoonClubCore `HingeLight`), rounded so shaders redraw only on visible changes.
+  private(set) var sun = 1.0
+  private(set) var lunaLight = HingeLight.lunaLight(nil)
+  private(set) var seam = 0.0
+  private(set) var fogPart = 0.0
+  /// Stood up like a tent, steady for a moment (emulated: the SDK has no posture API).
+  private(set) var isTent = false
+  /// Ticks on each quick fold flick (turns the World atlas page).
+  private(set) var flickTick = 0
+  @ObservationIgnored private var tentTracker = Stance.Tracker()
+  @ObservationIgnored private var flick = PageFlick()
   /// Debug-only pose pinned by a launch argument (`-pose book|tabletop|flat|closed`, `-hinge 110`).
   let pinned: Pose?
 
@@ -30,6 +42,7 @@ final class DuoModel {
     case .closed?: apply(.init(.closed, degrees: 0))
     case .flat?: apply(.init(.fullyOpen, degrees: 180))
     case .book?, .tabletop?: apply(.init(.partiallyOpen, degrees: deg ?? 110))
+    case .tent?: apply(.init(.partiallyOpen, degrees: deg ?? 75)); isTent = true
     default: break
     }
     #else
@@ -38,6 +51,8 @@ final class DuoModel {
   }
 
   var pose: Pose { pinned ?? Pose.of(reading, fold: nil) }
+  /// The pose including the emulated tent.
+  var stance: Pose { isTent ? .tent : pose }
   var isPartiallyOpen: Bool { reading?.status == .partiallyOpen }
 
   /// Called from the hinge handler: cheap value math only, assigns only what changed.
@@ -57,6 +72,29 @@ final class DuoModel {
     if ill != illumination { illumination = ill }
     let ph = HingeMoon.phase(new); if ph != phase { phase = ph }
     let l = (PiggyLid.open(new) * 50).rounded() / 50; if l != lid { lid = l }
+    let q = { (v: Double) in (v * 50).rounded() / 50 }
+    let su = q(HingeLight.sun(new)); if su != sun { sun = su }
+    let ll = q(HingeLight.lunaLight(new)); if ll != lunaLight { lunaLight = ll }
+    let se = q(HingeLight.seam(new)); if se != seam { seam = se }
+    let fp = q(HingeLight.fogPart(new)); if fp != fogPart { fogPart = fp }
+    guard pinned == nil else { return }
+    let now = CACurrentMediaTime()
+    let tent = tentTracker.feed(new, at: now); if tent != isTent { isTent = tent }
+    if tentTracker.since != nil, !tent {
+      Task { @MainActor [weak self] in try? await Task.sleep(for: .seconds(Stance.settle + 0.05)); self?.tickTent() }
+    }
+    if flick.feed(new, at: now) { flickTick &+= 1 }
+  }
+
+  #if DEBUG
+  /// Debug recordings only: plays a hinge reading even when a pose is pinned (the simulator can't fold).
+  func debugSet(_ r: HingeReading) { apply(r) }
+  #endif
+
+  /// Re-checks the tent clock (the hinge may sit still once it's in the window, so no new reading arrives).
+  func tickTent() {
+    guard pinned == nil else { return }
+    let tent = tentTracker.feed(reading, at: CACurrentMediaTime()); if tent != isTent { isTent = tent }
   }
 }
 
@@ -121,7 +159,7 @@ private struct FoldProbe: ViewModifier {
       return r.frame
     }
     #if DEBUG
-    if let p = duo?.pinned, [.book, .flat].contains(p), proxy.size.width >= 560 {
+    if let p = duo?.pinned, [.book, .flat, .tent].contains(p), proxy.size.width >= 560 {
       return CGRect(x: proxy.size.width / 2 - 20, y: 0, width: 40, height: proxy.size.height)
     }
     #endif

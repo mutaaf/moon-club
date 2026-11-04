@@ -217,6 +217,14 @@ public enum DuoUse: String, CaseIterable, Sendable {
   case hinge
   /// A Game Night played on the two halves.
   case night
+  /// A puppet show given in tent mode (0.14).
+  case puppet
+  /// A Market Race finished on the flat phone (0.14).
+  case race
+  /// An atlas page turned in book mode, by swipe or fold flick (0.14).
+  case atlas
+  /// A Moon Garden planting saved by folding the phone shut (0.14).
+  case fold
 }
 
 extension KidsState {

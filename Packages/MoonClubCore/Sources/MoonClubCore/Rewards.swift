@@ -203,13 +203,16 @@ public enum Shop {
 
       // iPhone Duo only: earned with the Storybook Reader trophy; hidden on devices without a hinge.
       ShopItem(id: "frame.fold", slot: .frame, name: "Storybook frame", price: 150, symbol: "book.pages.fill", hue: "ink", color: 0x2346D8, trophy: "duo-book"),
+      // iPhone Duo only (0.14): a rocket for racing and a hat for Luna's puppet shows.
+      r(Skins.duo[0], 250, trophy: "duo-race"),
+      ShopItem(id: "hat.twin", slot: .hat, name: "Twin moon halo", price: 200, symbol: "moon.stars.fill", hue: "grape", color: 0x5B4BD8, trophy: "duo-puppet"),
 
       ShopItem(id: "freeze", slot: .freeze, name: "Streak saver", price: 60, symbol: "snowflake", hue: "sky", color: 0x3F82EE),
     ]
   }()
 
   /// iPhone Duo-only items (they need a Duo trophy).
-  public static let duoOnly: Set<String> = ["frame.fold"]
+  public static let duoOnly: Set<String> = ["frame.fold", "rocket.twin", "hat.twin"]
   /// The shelf for this device: Duo-only items hide without a hinge, unless already owned or earned on a Duo.
   public static func visible(hinge: Bool, _ s: KidsState) -> [ShopItem] {
     all.filter { !duoOnly.contains($0.id) || hinge || s.playedOnDuo || (s.owned ?? []).contains($0.id) }
@@ -268,7 +271,7 @@ public enum Shop {
   }
   public static func rocket(_ s: KidsState) -> RocketSkin {
     let id = equipped(.rocket, s)?.id.replacingOccurrences(of: "rocket.", with: "")
-    return Skins.all.first { $0.id == id } ?? Skins.all[0]
+    return Skins.every.first { $0.id == id } ?? Skins.all[0]
   }
 
   /// Streak savers bought and not yet used.
@@ -342,6 +345,10 @@ public enum Trophies {
     Trophy(id: "duo-book", name: "Storybook Reader", category: .duo, symbol: "book.pages.fill", hue: "ink", unit: "lessons read as a book", hint: "Open your iPhone Duo like a book and finish a lesson."),
     Trophy(id: "duo-tabletop", name: "Tabletop Trader", category: .duo, symbol: "laptopcomputer", hue: "teal", unit: "tabletop plays", hint: "Set your iPhone Duo down like a laptop and fight a Chart Time Machine boss."),
     Trophy(id: "duo-hinge", name: "Hinge Hero", category: .duo, symbol: "rectangle.portrait.on.rectangle.portrait.angled.fill", hue: "grape", unit: "hinge moves", hint: "Build a candle with the hinge, or open wide to launch."),
+    Trophy(id: "duo-puppet", name: "Puppet Master", category: .duo, symbol: "theatermasks.fill", hue: "berry", unit: "puppet shows", hint: "Stand your iPhone Duo up like a tent and give a puppet show."),
+    Trophy(id: "duo-race", name: "Market Racer", category: .duo, symbol: "flag.checkered", hue: "orange", unit: "races finished", hint: "Lay your iPhone Duo flat and play a Market Race."),
+    Trophy(id: "duo-atlas", name: "Atlas Explorer", category: .duo, symbol: "map.fill", hue: "sky", unit: "atlas pages turned", hint: "Open the World like a book and turn a page."),
+    Trophy(id: "duo-fold", name: "Fold Saver", category: .duo, symbol: "leaf.fill", hue: "mint", unit: "plantings saved with a fold", hint: "Close your iPhone Duo to plant in the Moon Garden."),
   ]
 
   /// Duo-only trophies hide on devices without a hinge, unless the kid already earned one on a Duo.
@@ -391,6 +398,10 @@ public enum Trophies {
       case "duo-book": count = s.duoCount(.book); goals = [1, 5, 15]
       case "duo-tabletop": count = s.duoCount(.tabletop) + s.duoCount(.night); goals = [1, 5, 15]
       case "duo-hinge": count = s.duoCount(.hinge); goals = [1, 5, 15]
+      case "duo-puppet": count = s.duoCount(.puppet); goals = [1, 5, 15]
+      case "duo-race": count = s.duoCount(.race); goals = [1, 5, 15]
+      case "duo-atlas": count = s.duoCount(.atlas); goals = [3, 15, 40]
+      case "duo-fold": count = s.duoCount(.fold); goals = [1, 5, 15]
       default: count = 0; goals = [1, 2, 3]
       }
       return TrophyProgress(trophy: t, count: count, goals: goals)

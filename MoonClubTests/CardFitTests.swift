@@ -154,6 +154,26 @@ final class CardFitTests: XCTestCase {
     XCTAssertTrue(misfits.isEmpty, "Garden screens that would need scrolling or clip:\n" + misfits.joined(separator: "\n"))
   }
 
+  /// iPhone Duo screens (0.14) fit without scrolling: the atlas page at one inner-display page (~314 pt), Luna's
+  /// pocket on the outer display, and the puppet show stacked on an iPhone SE (no fold: stage over controls).
+  func testDuoScreensFitWithoutScrolling() throws {
+    let c = try content(), app = model(c)
+    let regions = World.regions(c)
+    var misfits: [String] = []
+    func measure(_ name: String, _ v: some View, width: CGFloat, room: CGFloat) {
+      let host = UIHostingController(rootView: v.environment(app).environment(\.dynamicTypeSize, .large))
+      let h = host.sizeThatFits(in: CGSize(width: width, height: 1)).height
+      if h > room { misfits.append("\(name): \(Int(h)) > \(Int(room))") }
+    }
+    for i in regions.indices {
+      measure("atlas \(regions[i].id)", AtlasPage(regions: regions, page: .constant(i), current: (0, 0), play: { _ in }), width: 314, room: 951 - 60)
+    }
+    measure("pocket (Duo outer)", LunaPocket {}, width: 384, room: 840 - 60)
+    measure("pocket (SE)", LunaPocket {}, width: 375, room: 667 - 20)
+    measure("puppet show (SE)", PuppetShow(), width: 375, room: 667 - 20)
+    XCTAssertTrue(misfits.isEmpty, "Duo screens that would need scrolling:\n" + misfits.joined(separator: "\n"))
+  }
+
   /// iPad, Split View and Stage Manager widths: the wide-window layouts never draw wider than the window
   /// (the old Story carousel ran off the right edge; the World header truncated in a narrow map column).
   func testIPadLayoutsStayInsideTheirWindow() throws {

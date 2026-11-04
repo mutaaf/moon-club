@@ -35,6 +35,7 @@ struct WhatsNewModal: View {
   var onDone: () -> Void
   @State private var page = 0
   @State private var burst = 0
+  @State private var tour = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   @Environment(DuoModel.self) private var duo: DuoModel?
@@ -82,13 +83,18 @@ struct WhatsNewModal: View {
     .sensoryFeedback(.success, trigger: burst)
     .sensoryFeedback(.selection, trigger: page)
     .onAppear { burst += 1 }
+    .sheet(isPresented: $tour) { DuoCoach { tour = false }.presentationDetents([.large]) }
   }
 
   /// One news card: the release note's SF Symbol drawn in Moon Club's tile style (same art as the map and
   /// widgets), springing in when its page arrives. Fixed height, no scrolling: notes are linted to ≤ 90 chars.
   private func card(_ item: ReleaseNews.Item, hue: Hue, index: Int) -> some View {
     VStack(spacing: 18) {
-      if Self.isDuo(item) { DuoCallout(text: "Just for your iPhone Duo") }
+      if Self.isDuo(item) {
+        // iPhone Duo: the tour of every pose, drawn and animated (0.14).
+        Button { tour = true } label: { DuoCallout(text: "Take the iPhone Duo tour", symbol: "play.circle.fill") }
+          .buttonStyle(PressStyle())
+      }
       Glyph(symbol: item.symbol, hue: hue, size: 92)
         .scaleEffect(page == index || reduceMotion ? 1 : 0.82)
         .animation(Motion.safe(Motion.celebrate, reduceMotion), value: page)

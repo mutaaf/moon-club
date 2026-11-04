@@ -9,6 +9,8 @@ struct StoryView: View {
   @State var fold = FoldInfo()
   /// Each page's own height: the pager is as tall as the card on screen (never the tallest card).
   @State var heights: [Int: CGFloat] = [:]
+  @State var puppet = false
+  @Environment(DuoModel.self) var duo: DuoModel?
 
   enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), why(String), word, quiz, next }
 
@@ -32,6 +34,13 @@ struct StoryView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Hero(eyebrow: Day.en("EEEE, MMMM d", app.today), title: "Today's", accent: "Market Story")
+        if duo?.hasHinge == true {
+          // iPhone Duo: stand it up like a tent and Luna puts on a puppet show of this story (0.14).
+          Button { puppet = true } label: {
+            DuoCallout(text: duo?.isTent == true ? "Tent mode! Start the puppet show" : "Stand me up like a tent for a puppet show", symbol: "theatermasks.fill")
+          }
+          .buttonStyle(PressStyle())
+        }
         TodaysMissions()
         StartHere()
         if app.loadingMarket && app.events.isEmpty && app.mood == nil {
@@ -56,6 +65,8 @@ struct StoryView: View {
       .readable(fold.fold == nil && fold.width >= 600 ? 1040 : 640)
     }
     .background(AuroraField(surface: .story))
+    .fullScreenCover(isPresented: $puppet) { PuppetShow() }
+    .onChange(of: duo?.isTent ?? false, initial: true) { _, tent in if tent, !puppet { puppet = true } }
     .refreshable { await app.loadMarket() }
     .onDisappear { if cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
     #if DEBUG

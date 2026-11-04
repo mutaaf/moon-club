@@ -36,26 +36,32 @@ extension DuoModel {
 
 // MARK: - First-open iPhone Duo coach
 
-/// "Fold me like a book!" — shown once, the first time a hinge is seen. Three poses, each with what it
-/// does in Moon Club. Every page is drawn (no screenshots), and it can be skipped at any time.
+/// The iPhone Duo tour (0.14): shown once, the first time a hinge is seen, and again from What's New. Every
+/// pose, each with what it does in Moon Club, as an animated phone drawn in-app (no screenshots or stock
+/// art). It can be skipped at any time.
 struct DuoCoach: View {
   let done: () -> Void
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var page = 0
-  private struct Pose { let title: String; let body: String; let angle: Double; let tabletop: Bool }
-  private let poses = [
-    Pose(title: "Fold me like a book!", body: "Open me halfway, like a book. Lessons become a storybook with two pages.", angle: 110, tabletop: false),
-    Pose(title: "Set me down like a laptop", body: "Tabletop mode: the chart sits on top, and the bottom is your game pad.", angle: 100, tabletop: true),
-    Pose(title: "Open me wide to launch!", body: "Chests and new moons open when you open me all the way. Whoosh!", angle: 180, tabletop: false),
+  enum Art { case closed, book, tent, tabletop, flat, hinge }
+  struct Pose { let title: String; let body: String; let art: Art }
+  static let poses = [
+    Pose(title: "Close me: Luna's pocket", body: "Luna naps on the little screen. Pick me up to see your missions and your garden.", art: .closed),
+    Pose(title: "Fold me like a book!", body: "Lessons become a storybook. The World becomes an atlas. Flick the fold to turn the page.", art: .book),
+    Pose(title: "Stand me up like a tent", body: "Luna puts on a puppet show of today's story for your family.", art: .tent),
+    Pose(title: "Set me down like a laptop", body: "Tabletop mode: the chart sits on top, and the bottom is your game pad.", art: .tabletop),
+    Pose(title: "Lay me flat for a race!", body: "Market Race: one half each, and the track runs along the fold. Open me wide to launch chests too!", art: .flat),
+    Pose(title: "Open me slowly", body: "Watch the sun rise over Market World and the fog part. Close me to plant in the Moon Garden.", art: .hinge),
   ]
+  private var poses: [Pose] { Self.poses }
   var body: some View {
     VStack(spacing: 18) {
       HStack { Spacer(); Button("Skip") { done() }.font(.kHeadline).foregroundStyle(Palette.ink2) }
-      DuoCallout(text: "Three ways to play")
+      DuoCallout(text: "\(poses.count) ways to play")
       TabView(selection: $page) {
         ForEach(poses.indices, id: \.self) { i in
           VStack(spacing: 18) {
-            FoldArt(angle: poses[i].angle, tabletop: poses[i].tabletop).frame(height: 130)
+            PoseArt(art: poses[i].art).frame(height: 140)
             Text(poses[i].title).font(.kTitle).multilineTextAlignment(.center).minimumScaleFactor(0.8)
             Text(poses[i].body).font(.kRead).multilineTextAlignment(.center).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
           }
@@ -101,6 +107,40 @@ struct FoldArt: View {
     .frame(maxWidth: .infinity)
     .accessibilityHidden(true)
     .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { t = 1 } }
+  }
+}
+
+/// The drawn phone for each tour page.
+struct PoseArt: View {
+  let art: DuoCoach.Art
+  @Environment(\.accessibilityReduceMotion) private var rm
+  @State private var on = false
+  var body: some View {
+    Group {
+      switch art {
+      case .closed:
+        // One small closed phone with Luna asleep on the outer screen; it bobs as if picked up.
+        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.midnight)
+          .frame(width: 86, height: 132)
+          .overlay(RoundedRectangle(cornerRadius: 11).fill(Color(hex: 0x231B52)).padding(6)
+            .overlay(Luna(size: 44, mood: on ? .happy : .sleepy)))
+          .offset(y: on && !rm ? -8 : 0)
+          .rotationEffect(.degrees(on && !rm ? -6 : 0))
+      case .book: FoldArt(angle: 110)
+      case .tent: FoldArt(angle: 70).overlay(alignment: .bottom) { Capsule().fill(Palette.ink2.opacity(0.3)).frame(width: 150, height: 4) }
+      case .tabletop: FoldArt(angle: 100, tabletop: true)
+      case .flat: FoldArt(angle: 180)
+      case .hinge:
+        ZStack {
+          FoldArt(angle: 40)
+          Image(systemName: "sun.max.fill").font(.system(size: 34, weight: .bold)).foregroundStyle(Hue.lemon.color)
+            .offset(x: 0, y: on && !rm ? -70 : -20).opacity(on || rm ? 1 : 0.4)
+        }
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .accessibilityHidden(true)
+    .task { guard !rm else { return }; withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { on = true } }
   }
 }
 

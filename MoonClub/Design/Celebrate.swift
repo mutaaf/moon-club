@@ -9,8 +9,8 @@ import MoonClubCore
 //             Luna flips, a success haptic.
 //  • large  — a boss beaten, a land won, a rank-up, a chest, a streak milestone: fireworks, two confetti
 //             cannons, a camera shake, a rising chime. On an open iPhone Duo the fireworks cross the fold.
-// Everything is Canvas + TimelineView (one draw call per frame, no views per particle), capped particle
-// counts, paused when idle. Reduce Motion swaps particles for a calm glow + the haptic.
+// 0.14: the bursts are instanced Metal particles (Particles.swift: one draw call, positions computed on the
+// GPU, hidden + paused when idle); the Canvas drawing below stays as the fallback and for the small Sparkle. Reduce Motion swaps particles for a calm glow + the haptic.
 
 // MARK: - Global party (large/medium moments from anywhere)
 
@@ -104,12 +104,24 @@ struct Celebrate: View {
   @State private var seed: UInt64 = 1
 
   private var duration: Double { tier == .large ? 2.8 : tier == .medium ? 1.9 : 0.8 }
+  /// GPU particles when Metal is available (debug `-particles canvas` compares the old Canvas path).
+  static let gpu: Bool = {
+    #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("canvas") && ProcessInfo.processInfo.arguments.contains("-particles") { return false }
+    #endif
+    return ParticleRenderer.shared != nil
+  }()
 
   var body: some View {
+    let calm = reduceMotion || !FX.shared.allowsBursts(reduceMotion: reduceMotion)   // Low Power / hot: glow only
     ZStack {
-      if reduceMotion { EdgeGlow(trigger: trigger, strength: tier == .small ? 0 : 1) }
+      if calm { EdgeGlow(trigger: trigger, strength: tier == .small ? 0 : 1) }
       else {
         if tier >= .medium { EdgeGlow(trigger: trigger, strength: tier == .large ? 1 : 0.7) }
+        if Self.gpu {
+          // 0.14: instanced Metal particles (Design/Particles.swift); idle = hidden + paused.
+          GPUParticles(trigger: trigger, tier: tier, crossFold: crossFold, duration: duration + 0.6)
+        } else {
         TimelineView(.animation(paused: start == nil)) { ctx in
           Canvas { g, size in
             guard let start else { return }
@@ -127,12 +139,13 @@ struct Celebrate: View {
             }
           }
         }
+        }
       }
     }
     .allowsHitTesting(false)
     .accessibilityHidden(true)
     .onChange(of: trigger) { _, _ in
-      guard !reduceMotion else { return }
+      guard !reduceMotion, !Self.gpu else { return }
       seed = UInt64(trigger &* 2654435761) | 1
       start = Date()
       let d = duration

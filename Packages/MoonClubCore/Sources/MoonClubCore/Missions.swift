@@ -86,8 +86,15 @@ public enum Skins {
     RocketSkin(id: "ocean", name: "Deep Sea", body: 0xDFE8FF, fin: 0x2346D8, flame: 0x3DB97F),
     RocketSkin(id: "night", name: "Night Owl", body: 0x2F2C63, fin: 0xF2BE2E, flame: 0xFF9FB0),
   ]
+  /// iPhone Duo only (0.14): earned through Duo play, never by chests. Kept out of `all` on purpose:
+  /// `Shop.legacy` grants a prefix of `all` for old chests, and a Duo rocket must never arrive that way.
+  public static let duo: [RocketSkin] = [
+    RocketSkin(id: "twin", name: "Twin Moon", body: 0xE6ECFF, fin: 0x5B4BD8, flame: 0x46C8E8),
+  ]
+  /// Every rocket there is (the hangar's shelf).
+  public static var every: [RocketSkin] { all + duo }
   /// Rockets the kid owns: the classic one, any bought in the Moon Shop, and those chests unlocked before it.
-  public static func unlocked(_ s: KidsState) -> [RocketSkin] { let o = Shop.owned(s); return all.filter { o.contains("rocket.\($0.id)") } }
+  public static func unlocked(_ s: KidsState) -> [RocketSkin] { let o = Shop.owned(s); return every.filter { o.contains("rocket.\($0.id)") } }
   /// The next rocket not owned yet, if any.
   public static func next(_ s: KidsState) -> RocketSkin? { let have = Set(unlocked(s).map(\.id)); return all.first { !have.contains($0.id) } }
   /// The rocket the kid flies (the Moon Shop's equipped rocket).

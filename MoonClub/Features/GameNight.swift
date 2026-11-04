@@ -14,14 +14,24 @@ struct GameNightView: View {
   @State private var players = [0, 1]
   @State private var burst = 0
   @State private var onTV = false
+  /// Game Night 2.0 (0.14): report cards, or the Market Race board game on a flat phone.
+  enum Mode: String, CaseIterable { case reports, race }
+  @State private var mode: Mode = ProcessInfo.processInfo.arguments.contains("-race") ? .race : .reports
+  @State private var race: MarketRace?
 
   var body: some View {
     NavigationStack {
       VStack(spacing: 0) {
         if duo?.hasHinge == true { DuoCallout(text: "Game Night: one half each").padding(.top, 6) }
+        Picker("Game", selection: $mode) {
+          Text("Report cards").tag(Mode.reports)
+          Text("Market Race").tag(Mode.race)
+        }
+        .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 6)
         if let hint { Text(hint).font(.footnote.weight(.semibold)).foregroundStyle(Palette.ink2).padding(.top, 6).transition(.opacity) }
         Group {
-          if let game, !game.isOver { board(game) }
+          if mode == .race { MarketRaceView(race: $race, players: players) }
+          else if let game, !game.isOver { board(game) }
           else if let game, !game.rounds.isEmpty { finale(game) }
           else { empty }
         }
@@ -40,12 +50,18 @@ struct GameNightView: View {
     .onAppear(perform: setup)
     .onChange(of: app.events) { _, _ in if game?.rounds.isEmpty ?? true { game = nil; setup() } }   // data arrived
     .task { if app.events.isEmpty { await app.loadMarket() } }
-    .modifier(GameNightOnTV(game: game, players: players, app: app, onTV: $onTV))
+    .modifier(OnTV(available: $onTV) {
+      Group {
+        if mode == .race { RaceTVBoard(race: race, players: players) } else { TVBoard(game: game, players: players) }
+      }
+      .environment(app)
+    })
   }
 
   /// One line that says what this pose is good for.
   private var hint: String? {
-    if onTV { return "📺 The scoreboard is on the TV too!" }
+    if onTV { return mode == .race ? "The race is on the TV too!" : "📺 The scoreboard is on the TV too!" }
+    if mode == .race { return duo?.hasHinge == true ? "Lay me flat between you. The track is on the fold!" : "Lay the phone flat between you. One half each!" }
     switch duo?.pose {
     case .closed?: return "Tip: open the phone like a book — one half each!"
     case .tabletop?: return "Tabletop mode: one half each!"
@@ -203,25 +219,8 @@ struct FaceToFace: ViewModifier {
 }
 
 /// 📺 Game Night on the big screen: when a TV or display is connected (AirPlay or cable), the system may
-/// show this scoreboard there. Non-interactive by design — the players keep their own halves of the
-/// phone, the whole family watches the TV. The system decides when it's available.
-struct GameNightOnTV: ViewModifier {
-  let game: GameNight?
-  let players: [Int]
-  let app: AppModel
-  @Binding var onTV: Bool
-  func body(content: Content) -> some View {
-    if #available(iOS 27.0, *) {
-      content.sceneAccessory {
-        ExternalNonInteractiveAccessory { TVBoard(game: game, players: players).environment(app) }
-          .onAvailabilityChange { onTV = $0 }
-      }
-    } else {
-      content
-    }
-  }
-}
-
+/// show this scoreboard there (`OnTV`, DuoStage.swift). Non-interactive by design — the players keep their
+/// own halves of the phone, the whole family watches the TV.
 struct TVBoard: View {
   let game: GameNight?
   let players: [Int]

@@ -29,6 +29,9 @@ public enum Pose: String, Equatable, Sendable {
   case tabletop
   /// Fully open and flat.
   case flat
+  /// Stood up like a tent (0.14). The SDK has no posture API: `Pose.of` never returns this; it comes from
+  /// `Stance` (a steady, narrow, half-open angle) or the debug pin `-pose tent`.
+  case tent
 
   /// `fold` is the active division region's frame (if any). A fold taller than it is wide splits the
   /// display left | right (book); a wider one splits it top / bottom (tabletop).
@@ -51,6 +54,7 @@ public enum Pose: String, Equatable, Sendable {
     case .book: "Book"
     case .tabletop: "Tabletop"
     case .flat: "Wide open"
+    case .tent: "Tent"
     }
   }
 }

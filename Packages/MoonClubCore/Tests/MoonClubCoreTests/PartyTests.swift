@@ -118,7 +118,7 @@ final class PartyTests: XCTestCase {
   func testDuoTrophiesAndShopItemOnlyShowWithAHinge() {
     var s = KidsState()
     XCTAssertFalse(Trophies.visible(hinge: false, s).contains { $0.category == .duo })
-    XCTAssertEqual(Trophies.visible(hinge: true, s).filter { $0.category == .duo }.count, 3)
+    XCTAssertEqual(Trophies.visible(hinge: true, s).filter { $0.category == .duo }.count, 7, "three from 0.12, four from 0.14")
     XCTAssertEqual(Trophies.points(s, content), 0)
     XCTAssertTrue(Shop.visible(hinge: false, s).allSatisfy { $0.id != "frame.fold" })
     XCTAssertTrue(Shop.visible(hinge: true, s).contains { $0.id == "frame.fold" })
