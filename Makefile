@@ -38,10 +38,12 @@ icon:
 # App Store (docs/APPSTORE.md). `make appstore` prepares the draft version: idempotent, nothing goes public.
 store-shots: build
 	scripts/store-shots.sh
+# Lobby (~/Desktop/projects/lobby) turns the raw captures into designed store frames + app previews
+# (scripts/lobby-shots.sh); without Lobby on this Mac the raw captures are uploaded as before.
 appstore: store-shots
 	node scripts/asc.mjs store-meta
 	node scripts/asc.mjs store-rating
-	node scripts/asc.mjs store-shots
+	scripts/lobby-shots.sh
 	node scripts/asc.mjs store-check
 # An App Store binary (STORE_BUILD: no own-key AI/voice; build number <timestamp>.1), uploaded via TestFlight.
 appstore-build:
