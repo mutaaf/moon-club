@@ -258,7 +258,11 @@ struct HarvestHistory: View {
 /// Pick a company, slide how many points, confirm. Fits iPhone SE without scrolling.
 struct PlantSheet: View {
   @Environment(AppModel.self) private var app
+  @Environment(DuoModel.self) private var duo: DuoModel?
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.accessibilityReduceMotion) private var rm
+  /// iPhone Duo "fold to save": the pot's lid follows the hinge; closing the phone plants (0.14).
+  @State private var folded = false
   @State private var pick: String?
   @State private var amount: Double = 10
   @State private var asking = false
@@ -307,6 +311,13 @@ struct PlantSheet: View {
       }
       .padding(14).moonGlass(radius: 20, weight: .thin)
       Text("Half your points (or what a grown-up picked) is today's limit, so your shop points stay safe.").font(.caption).foregroundStyle(Palette.ink2)
+      if duo?.hasHinge == true, pick != nil, room >= Garden.minPlant {
+        HStack(spacing: 12) {
+          SeedPot(lid: folded ? 1 : (rm ? 0 : FoldSave.lid(duo?.reading)), planted: folded).frame(width: 64, height: 64)
+          DuoCallout(text: folded ? "Planted! Lid closed." : "Or close me to plant!", symbol: "rectangle.portrait.on.rectangle.portrait.angled.fill")
+        }
+        .transition(.opacity)
+      }
       Spacer(minLength: 0)
       Button(pick.map { "Plant \(Int(amount)) points in \(app.company($0).nick)?" } ?? "Pick a company first") { asking = true }
         .buttonStyle(PrimaryButtonStyle(tint: Hue.mint.color.blend(with: .black, by: 0.25)))
@@ -326,6 +337,51 @@ struct PlantSheet: View {
       Text("They can grow or shrink. You can harvest them back any time.")
     }
     .sensoryFeedback(.success, trigger: burst)
+    // Fold to save: closing an iPhone Duo with a planting ready confirms it (MoonClubCore `FoldSave`).
+    .onChange(of: duo?.reading) { old, new in
+      guard !folded, let pick, FoldSave.commits(from: old, to: new, ready: room >= Garden.minPlant) else { return }
+      guard app.plant(pick, points: min(Int(amount), app.gardenAllowance)) else { return }
+      withAnimation(Motion.safe(Motion.celebrate, rm)) { folded = true }
+      burst += 1
+      app.mutate { $0.useDuo(.fold) }
+      Task { try? await Task.sleep(for: .milliseconds(1400)); dismiss() }
+    }
+    .task {
+      #if DEBUG
+      // Recording: `-pose book -plant -foldsave` closes the hinge slowly after 2 s.
+      if ProcessInfo.processInfo.arguments.contains("-foldsave") {
+        if pick == nil { pick = app.gardenCompanies.first?.s }
+        try? await Task.sleep(for: .seconds(2))
+        for d in stride(from: 110.0, through: 4, by: -6) { duo?.debugSet(.init(.partiallyOpen, degrees: d)); try? await Task.sleep(for: .milliseconds(70)) }
+        duo?.debugSet(.init(.closed, degrees: 0))
+      }
+      #endif
+    }
+  }
+}
+
+/// A little seed pot whose lid swings shut with the hinge; `planted` seals it with a sprout inside.
+struct SeedPot: View {
+  var lid: Double
+  var planted = false
+  var body: some View {
+    GeometryReader { g in
+      let w = g.size.width, h = g.size.height
+      ZStack(alignment: .bottom) {
+        Glyph(symbol: "leaf.fill", hue: .mint, size: w * 0.42, style: .plain)
+          .offset(y: -h * 0.42).opacity(planted ? 1 : 0.35)
+        UnevenRoundedRectangle(bottomLeadingRadius: w * 0.16, bottomTrailingRadius: w * 0.16)
+          .fill(LinearGradient(colors: [Hue.orange.light, Hue.orange.color], startPoint: .top, endPoint: .bottom))
+          .frame(width: w * 0.74, height: h * 0.48)
+        Capsule().fill(Hue.mint.color.blend(with: .black, by: 0.15))
+          .frame(width: w * 0.86, height: h * 0.12)
+          .rotationEffect(.degrees(-100 * (1 - lid)), anchor: .leading)
+          .offset(y: -h * 0.46)
+      }
+      .frame(width: w, height: h)
+    }
+    .animation(.interactiveSpring(response: 0.25), value: lid)
+    .accessibilityHidden(true)
   }
 }
 
@@ -365,6 +421,16 @@ struct PlotSheet: View {
             }
             .onAppear { amount = Double(value) }
           }
+        }
+        // A whole year of candles (250+), one Canvas drawn once: scrolling is pure compositing at 120 Hz.
+        if let series = app.candles[symbol], series.candles.count > 20 {
+          VStack(alignment: .leading, spacing: 8) {
+            Eyebrow(text: "A year of \(co.nick)")
+            CandleStrip(candles: series.candles).frame(height: 150)
+            Text("Swipe back in time. Hollow candles went up, filled ones went down.").font(.caption).foregroundStyle(Palette.ink2)
+          }
+          .padding(16)
+          .moonGlass(radius: 24, weight: .thin)
         }
         Card { WhyCard(symbol: symbol, title: "Why did \(co.nick) move?") }
       }

@@ -111,6 +111,39 @@ struct CandleChart: View {
   }
 }
 
+/// A long, swipeable chart (a year of daily candles, 250+): one Canvas as wide as the whole history, drawn
+/// once and rasterized (`drawingGroup`, Metal), inside a horizontal scroll that opens on the latest day.
+/// Scrolling never redraws a candle, so it stays at the display's full rate (120 Hz on ProMotion).
+struct CandleStrip: View {
+  let candles: [Candle]
+  var step: CGFloat = 9
+  var body: some View {
+    let lo = candles.map(\.l).min() ?? 0, hi = candles.map(\.h).max() ?? 1
+    ScrollView(.horizontal, showsIndicators: false) {
+      Canvas { g, size in
+        let pad = max((hi - lo) * 0.06, 0.01)
+        func y(_ p: Double) -> CGFloat { size.height - 16 - CGFloat((p - lo + pad) / (hi - lo + 2 * pad)) * (size.height - 24) }
+        var month = ""
+        for (i, c) in candles.enumerated() {
+          let x = step * (CGFloat(i) + 0.5)
+          let m = String(c.d.prefix(7))
+          if m != month {
+            month = m
+            g.stroke(Path { $0.move(to: .init(x: x - step / 2, y: 0)); $0.addLine(to: .init(x: x - step / 2, y: size.height - 14)) }, with: .color(Palette.line.opacity(0.6)), style: .init(lineWidth: 0.5, dash: [2, 3]))
+            g.draw(g.resolve(Text(Day.en("MMM", c.d)).font(.system(size: 9, weight: .semibold)).foregroundColor(Palette.ink2)), at: CGPoint(x: x + 2, y: size.height - 6), anchor: .leading)
+          }
+          CandleInk.draw(g, x: x, high: y(c.h), low: y(c.l), top: y(c.bodyTop), bottom: y(c.bodyBottom), width: step * 0.62, up: c.up)
+        }
+      }
+      .frame(width: step * CGFloat(candles.count))
+      .drawingGroup()
+    }
+    .defaultScrollAnchor(.trailing)
+    .accessibilityElement()
+    .accessibilityLabel("A year of daily candles, \(candles.count) days. Swipe to go back in time.")
+  }
+}
+
 /// One big candle with labels, used by "Read the day" and "Build the candle".
 struct BigCandle: View {
   var o: Double, h: Double, l: Double, c: Double

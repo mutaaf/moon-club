@@ -29,6 +29,8 @@ struct RootView: View {
   @State private var ceremony: Int?
   @State private var duoCoach = false
   @State private var sleepy = false
+  /// iPhone Duo closed outside of play: Luna's pocket on the outer display (0.14).
+  @State private var pocket = ProcessInfo.processInfo.arguments.contains("-pocket")
   @State private var bedtime = BedtimeClock.shared
   /// iPad sidebar: shown or hidden (debug `-sidebar hidden` for screenshots).
   @State private var columns: NavigationSplitViewVisibility = {
@@ -48,6 +50,10 @@ struct RootView: View {
     // The App colors pick repaints everything that reads Palette.accent (sheets above keep their state).
     .id(app.themeHex)
     .modifier(PartyShake())
+    .overlay { FoldSeam() }
+    .overlay { if pocket { LunaPocket { withAnimation(Motion.fade) { pocket = false } }.transition(.opacity) } }
+    .onChange(of: duo.closedTick) { _, _ in if !PlayActivity.shared.playing, quest == nil { withAnimation(Motion.fade) { pocket = true } } }
+    .onChange(of: duo.reading?.status) { _, s in if s != nil, s != .closed, duo.pinned == nil { withAnimation(Motion.fade) { pocket = false } } }        // iPhone Duo: the crease's soft shadow follows the hinge (0.14)
     .overlay { PartyOverlay() }
     .overlay(alignment: .bottom) { BadgeToast() }
     // iPhone Duo: "Fold me like a book!" once, the first time this device reports a hinge.
@@ -125,6 +131,18 @@ struct RootView: View {
     #if DEBUG
     guard Perf.on else { return }
     let mon = FrameMonitor()
+    // `-bench screen`: measure whatever screen the other launch args opened (`-play`, `-locker`, `-party`,
+    // `-gamenight`…): 4 s to settle, then two windows — the first 3 s (effects running) and 3 s settled.
+    if Perf.screen {
+      try? await Task.sleep(for: .seconds(4))
+      Perf.reset(); mon.start(); try? await Task.sleep(for: .seconds(3)); mon.stop()
+      print(Perf.report("screen") + " " + mon.summary); fflush(stdout)
+      try? await Task.sleep(for: .seconds(4))
+      Perf.reset(); mon.start(); try? await Task.sleep(for: .seconds(3)); mon.stop()
+      print(Perf.report("screenSettled") + " " + mon.summary); fflush(stdout)
+      print("BENCH done"); fflush(stdout)
+      return
+    }
     try? await Task.sleep(for: .seconds(4))
     func phase(_ name: String, _ work: () async -> Void) async {
       Perf.reset(); mon.start()

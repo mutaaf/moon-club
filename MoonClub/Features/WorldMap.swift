@@ -26,6 +26,14 @@ struct WorldView: View {
   @State private var rocketAt: CGPoint?
   @State private var rocketKey = ""
   @State private var rocketTilt: Double = 0
+  /// 0.14 Metal layer: the sea reads the scroll; fog burns away on lands that just opened; a comet lights
+  /// the trail behind the rocket; book mode turns the World into an atlas.
+  @State private var mapScroll = MapScroll()
+  @State private var burning: [String: Date] = [:]
+  @State private var comet: TrailComet.Flight?
+  @State private var atlasPage = 0
+  @State private var atlasTarget: String?
+  @Environment(DuoModel.self) private var duo: DuoModel?
 
   var body: some View {
     let _ = Perf.body("WorldView")
@@ -34,8 +42,15 @@ struct WorldView: View {
     let currentNode = regions.isEmpty ? nil : regions[cur.region].nodes[cur.node]
     GeometryReader { geo in
       let side = WorldView.panelSplit(size: geo.size, fold: fold)
+      // iPhone Duo opened like a book (a vertical fold): the atlas spread. Story page left, island right.
+      let atlas = side != nil && (fold.fold.map { $0.height >= $0.width } ?? false)
       Group {
-        if let side {
+        if let side, atlas {
+          PageSplit(split: side, fill: true) {
+            AtlasPage(regions: regions, page: $atlasPage, current: cur, play: play)
+            map(regions, current: cur, width: side.trail)
+          }
+        } else if let side {
           PageSplit(split: side, fill: true) {
             map(regions, current: cur, width: side.lead)
             NodePanel(node: selected ?? currentNode, regions: regions, play: play)
@@ -46,7 +61,7 @@ struct WorldView: View {
         }
       }
       .foldProbe($fold)
-      .sheet(item: Binding(get: { side == nil ? selected : nil }, set: { selected = $0 })) { n in
+      .sheet(item: Binding(get: { side == nil || atlas ? selected : nil }, set: { selected = $0 })) { n in
         NodePanel(node: n, regions: regions, play: { selected = nil; play($0) })
           .padding(.top, 8)
           .presentationDetents([.height(360)])
@@ -58,6 +73,7 @@ struct WorldView: View {
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .onAppear {
       conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
+      atlasPage = cur.region
       if let id = app.pendingLesson { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } }
       let a = ProcessInfo.processInfo.arguments
       if let i = a.firstIndex(of: "-lesson"), i + 1 < a.count, lesson == nil { lesson = app.content.lessons.first { $0.id == a[i + 1] } }
@@ -79,6 +95,13 @@ struct WorldView: View {
       conquered = Set(now)
       if !fresh.isEmpty { burst += 1; PartyCenter.shared.fire(.landWon, title: "Land won!") }
     }
+    // A land that just opened: its fog burns away (shader dissolve) instead of simply vanishing.
+    .onChange(of: regions.indices.filter { World.regionOpen($0, regions, app.state, app.content) }.map { regions[$0].id }) { old, now in
+      guard !rm else { return }
+      for id in Set(now).subtracting(old) { burning[id] = Date() }
+      Task { try? await Task.sleep(for: .seconds(FogFX.burn + 0.2)); burning = [:] }
+    }
+    .onChange(of: atlasPage) { _, p in if let r = regions[safe: p] { atlasTarget = "banner-\(r.id)" } }
     .overlay(Celebrate(trigger: burst))
     .sensoryFeedback(.success, trigger: burst)
   }
@@ -127,22 +150,28 @@ struct WorldView: View {
                   .opacity(open ? 0.6 : 0.25)
                   .place(layout.decor(ri, angle: d.angle, radius: d.radius))
               }
-              if !open {
-                Fog(region: r).frame(width: layout.islandSize(ri).width * 1.1, height: layout.islandSize(ri).height * 1.08)
+              if !open || burning[r.id] != nil {
+                FogFX(region: r, burnStart: open ? burning[r.id] : nil, wake: mapScroll.wake)
+                  .frame(width: layout.islandSize(ri).width * 1.15, height: layout.islandSize(ri).height * 1.1)
                   .place(layout.center(ri))
-                  .transition(.opacity.combined(with: .scale(scale: 1.15)))
+                  .transition(.opacity)
               }
             }
           }
           .allowsHitTesting(false)
-          Clouds(size: layout.size)
-            .allowsHitTesting(false)
-            .visualEffect { c, g in c.offset(y: -g.frame(in: .scrollView).minY * 0.25) }
+          if comet != nil { TrailComet(flight: comet) }   // only exists while the rocket flies (a full-map layer otherwise)
+          // Parallax: the high clouds drift with the scroll and, very gently, with the device tilt.
+          TiltLayer(depth: 14) {
+            Clouds(size: layout.size)
+              .visualEffect { c, g in c.offset(y: -g.frame(in: .scrollView).minY * 0.25) }
+          }
+          .allowsHitTesting(false)
           MapPlacement {
             ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
               let open = World.regionOpen(ri, regions, app.state, app.content)
               RegionBanner(region: r, open: open, conquered: World.conquered(r, app.state, app.content))
                 .equatable()
+                .id("banner-\(r.id)")
                 .place(layout.banner(ri))
               if open {
                 ForEach(Array(r.nodes.enumerated()), id: \.element.id) { ni, n in
@@ -180,7 +209,17 @@ struct WorldView: View {
       // and keep the top land's banner clear of the header.
       .contentMargins(.bottom, 96, for: .scrollContent)
       .contentMargins(.top, 12, for: .scrollContent)
-      .background(Color(hex: 0x6FB7E8))
+      // The sea (Metal): viewport-sized behind the map, moving with the scroll, graded per land. It starts
+      // still and moves only while the kid scrolls (FXClock waitForWake), so it never animates under the glass
+      // on its own.
+      .background(SeaLayer(mapHeight: layout.size.height,
+                           grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, app.state, app.content) },
+                           scroll: mapScroll))
+      .modifier(TrackMapScroll(scroll: mapScroll))
+      .onChange(of: atlasTarget) { _, id in
+        guard let id else { return }
+        withAnimation(Motion.safe(Motion.page, rm)) { proxy.scrollTo(id, anchor: UnitPoint(x: 0.5, y: 0.8)) }
+      }
       .simultaneousGesture(MagnifyGesture().updating($pinch) { v, s, _ in s = v.magnification }.onEnded { v in zoom = min(1.7, max(1, zoom * v.magnification)) })
       .safeAreaInset(edge: .top) { WorldHeader(regions: regions) }
       .onChange(of: burst) { _, _ in
@@ -208,6 +247,9 @@ struct WorldView: View {
   private func fly(from a: CGPoint, to b: CGPoint, key: String) {
     guard key != rocketKey, !rm else { rocketAt = b; rocketKey = key; return }
     rocketKey = key
+    // The trail lights up behind her as she goes (in the kid's Moon Shop trail color).
+    comet = TrailComet.Flight(a: a, b: b, start: Date(), color: Color(hex: Shop.equipped(.trail, app.state)?.color ?? 0xD99A1E))
+    Task { try? await Task.sleep(for: .seconds(TrailComet.duration + 0.1)); comet = nil }
     let mid = CGPoint(x: (a.x + b.x) / 2 + (b.y - a.y) * 0.18, y: (a.y + b.y) / 2 - 40)
     let tilt = max(-35, min(35, Double(b.x - a.x) / 4))
     withAnimation(.easeIn(duration: 0.45)) { rocketAt = mid; rocketTilt = tilt } completion: {
@@ -345,16 +387,7 @@ struct MapCanvas: View, Equatable {
   var body: some View {
     let _ = Perf.body("MapCanvas")
     Canvas { g, size in
-      // Sea: deep at the top (the far lands), bright near the coast, with soft wave lines.
-      g.fill(Path(CGRect(origin: .zero, size: size)), with: .linearGradient(Gradient(colors: [Color(hex: 0x3A5BC7), Color(hex: 0x4E9FDB), Color(hex: 0x86D3E8)]), startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-      for row in stride(from: 40.0, to: Double(size.height), by: 46) {
-        var w = Path()
-        for x in stride(from: 0.0, through: Double(size.width), by: 12) {
-          let y = row + sin(x / 26 + row) * 3
-          x == 0 ? w.move(to: CGPoint(x: x, y: y)) : w.addLine(to: CGPoint(x: x, y: y))
-        }
-        g.stroke(w, with: .color(.white.opacity(0.12)), lineWidth: 1.2)
-      }
+      // The sea is the Metal `SeaLayer` behind this canvas (0.14); here: islands and the trail only.
       // Islands
       for (ri, r) in regions.enumerated() {
         let open = World.regionOpen(ri, regions, state, content)
@@ -363,6 +396,10 @@ struct MapCanvas: View, Equatable {
         let shore = layout.island(ri)
         var shadow = g; shadow.translateBy(x: 0, y: 10)
         shadow.fill(shore, with: .color(Color(hex: 0x1D3E8A).opacity(0.28)))
+        // Surf: a soft white ring where the water meets the sand.
+        // (Stacked translucent strokes, not a blur filter: a blur over the whole map canvas cost ~15 ms a frame
+        // on the iPad simulator whenever anything above the map animated.)
+        for (w, a) in [(18.0, 0.12), (11.0, 0.18), (5.0, 0.3)] { g.stroke(layout.island(ri, inset: -6), with: .color(.white.opacity(a)), lineWidth: w) }
         g.fill(shore, with: .color(Color(hex: 0xF6E7BF)))                    // sand
         let land = layout.island(ri, inset: 14)
         let tone = open ? hue.light : Color(hex: 0xB9C2D6)
@@ -374,6 +411,12 @@ struct MapCanvas: View, Equatable {
       // The trail: dashed where you haven't been, solid where you have (in the kid's Moon Shop trail color).
       let trail = Color(hex: Shop.equipped(.trail, state)?.color ?? 0xD99A1E)
       let pts = regions.enumerated().flatMap { ri, r in r.nodes.indices.map { (layout.node(ri, $0, count: r.nodes.count), World.stars(r.nodes[$0], state, content) > 0) } }
+      // The walked trail glows (one blurred layer under the line).
+      for i in 1..<max(pts.count, 1) where pts[i].1 && pts[i - 1].1 {
+        var p = Path(); p.move(to: pts[i - 1].0)
+        p.addQuadCurve(to: pts[i].0, control: CGPoint(x: (pts[i - 1].0.x + pts[i].0.x) / 2 + (pts[i].0.y - pts[i - 1].0.y) * 0.18, y: (pts[i - 1].0.y + pts[i].0.y) / 2))
+        for (w, a) in [(22.0, 0.12), (14.0, 0.2)] { g.stroke(p, with: .color(trail.opacity(a)), style: .init(lineWidth: w, lineCap: .round)) }
+      }
       for i in 1..<max(pts.count, 1) {
         let (a, _) = pts[i - 1], (b, done) = pts[i]
         var p = Path(); p.move(to: a)
@@ -563,7 +606,7 @@ struct Hangar: View {
           .buttonStyle(PressStyle()).accessibilityLabel("Close")
       }
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
-        ForEach(Skins.all) { s in
+        ForEach(Skins.every.filter { !Skins.duo.contains($0) || have.contains($0.id) }) { s in
           let unlocked = have.contains(s.id)
           Button { if unlocked { app.mutate { $0.equip("rocket.\(s.id)", nowMillis: Int(Date().timeIntervalSince1970 * 1000)) } } else { dismiss(); openLocker(.shop) } } label: {
             VStack(spacing: 6) {
@@ -584,22 +627,6 @@ struct Hangar: View {
       Spacer(minLength: 0)
     }
     .padding(20)
-  }
-}
-
-/// Fog over a land you haven't reached: soft, layered clouds.
-struct Fog: View {
-  let region: Region
-  var body: some View {
-    ZStack {
-      Ellipse().fill(.white.opacity(0.78)).blur(radius: 26)
-      ForEach(0..<6, id: \.self) { i in
-        Image(systemName: "cloud.fill").font(.system(size: 64 + CGFloat(i % 3) * 18)).foregroundStyle(.white.opacity(0.92))
-          .offset(x: CGFloat([-90, 70, -30, 100, -110, 20][i]), y: CGFloat([-80, -40, 10, 60, 70, 110][i]))
-      }
-      Label("Locked", systemImage: "lock.fill").font(.caption.weight(.bold)).foregroundStyle(Palette.ink2).padding(.horizontal, 10).padding(.vertical, 5).background(.white, in: Capsule())
-    }
-    .accessibilityHidden(true)
   }
 }
 
@@ -772,4 +799,17 @@ struct NodePlayer: View {
 extension String {
   /// Stable across launches (Swift's hashValue is seeded per process).
   var hashValueStable: Int { unicodeScalars.reduce(5381) { ($0 &* 33) &+ Int($1.value) } }
+}
+
+/// Feeds the map's scroll offset to the sea (iOS 18+; on iOS 17 the sea stays put, like deep water) and
+/// wakes the water's animation whenever the kid starts scrolling.
+private struct TrackMapScroll: ViewModifier {
+  let scroll: MapScroll
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *) {
+      content
+        .onScrollGeometryChange(for: CGPoint.self) { CGPoint(x: $0.contentOffset.x + $0.contentInsets.leading, y: $0.contentOffset.y + $0.contentInsets.top) } action: { _, new in scroll.offset = new }
+        .onScrollPhaseChange { old, new in if new.isScrolling && !old.isScrolling { scroll.wake &+= 1 } }
+    } else { content }
+  }
 }

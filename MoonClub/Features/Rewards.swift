@@ -252,6 +252,7 @@ struct TrophyCell: View {
           Circle().strokeBorder(Tier.color(p.tier), style: .init(lineWidth: p.tier == 0 ? 2 : 4, dash: p.tier == 0 ? [4, 4] : []))
           Glyph(symbol: p.trophy.symbol, hue: p.tier == 0 ? .slate : Hue.named(p.trophy.hue), size: 44, style: .plain)
             .opacity(p.tier == 0 ? 0.35 : 1)
+            .shimmer(p.tier == 3, holo: true)          // gold badges shine (Metal) and tilt like a hologram
           if p.tier > 0 {
             HStack(spacing: 1) { ForEach(0..<p.tier, id: \.self) { _ in Image(systemName: "star.fill").font(.system(size: 8, weight: .black)) } }
               .foregroundStyle(.white).padding(.horizontal, 5).padding(.vertical, 2).background(Tier.color(p.tier), in: Capsule())
@@ -419,6 +420,7 @@ struct ShopCell: View {
         ZStack {
           RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(hex: item.color).opacity(0.14))
           art.opacity(locked ? 0.35 : 1)
+            .shimmer(!locked && (item.price >= 300 || Shop.duoOnly.contains(item.id)), holo: Shop.duoOnly.contains(item.id))
           if locked { Image(systemName: "lock.fill").font(.caption.weight(.bold)).foregroundStyle(Palette.ink2).offset(x: 26, y: -24) }
         }
         .frame(height: 64)
@@ -436,7 +438,7 @@ struct ShopCell: View {
   private var locked: Bool { if case .locked = state { return true }; return false }
   @ViewBuilder private var art: some View {
     switch item.slot {
-    case .rocket: RocketMark(skin: Skins.all.first { "rocket.\($0.id)" == item.id } ?? Skins.all[0], size: 48)
+    case .rocket: RocketMark(skin: Skins.every.first { "rocket.\($0.id)" == item.id } ?? Skins.all[0], size: 48)
     case .hat: ZStack { Luna(size: 40, dressed: false); LunaHat(item: item, size: 40) }.offset(y: 6)
     case .frame: ZStack { Luna(size: 34, dressed: false); LunaFrame(item: item, size: 34) }
     case .trail: Capsule().fill(Color(hex: item.color)).frame(width: 52, height: 8).rotationEffect(.degrees(-20))
