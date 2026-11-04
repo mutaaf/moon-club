@@ -55,6 +55,8 @@ struct FXClock<Content: View>: View {
   var fps: Double? = nil
   var runFor: Duration? = .seconds(8)
   var wake: Int = 0
+  /// Start on a still frame and move only after the first `wake` (e.g. the sea moves once you scroll).
+  var waitForWake = false
   @ViewBuilder var content: (Float, FXLevel) -> Content
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.scenePhase) private var phase
@@ -70,6 +72,7 @@ struct FXClock<Content: View>: View {
       content(t, level)
     }
     .task(id: "\(visible)|\(phase == .active)|\(wake)") {
+      if waitForWake && wake == 0 { resting = true; return }
       resting = false
       guard let runFor, visible, phase == .active else { return }
       try? await Task.sleep(for: runFor)

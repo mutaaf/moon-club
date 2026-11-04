@@ -14,6 +14,8 @@ import MoonClubCore
 
 /// The sea: viewport-sized, behind the scrolling map, so the shader only ever shades what's on screen.
 /// The scroll offset keeps the water moving with the islands; the hinge's sun lights it on iPhone Duo.
+/// The waves and caustics move while the kid scrolls (and 3 s after), then rest: a moving sea under the
+/// tab bar's Liquid Glass made the World's first seconds 3x slower on the SE simulator.
 struct SeaLayer: View {
   let mapHeight: CGFloat
   /// [centerY, r, g, b] per land, in map coordinates (region color grading).
@@ -22,7 +24,7 @@ struct SeaLayer: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
   var body: some View {
     let sun = Float(duo?.sun ?? 1)
-    FXClock(fps: 20, runFor: .seconds(3), wake: scroll.wake) { t, level in
+    FXClock(fps: 20, runFor: .seconds(3), wake: scroll.wake, waitForWake: true) { t, level in
       TiltReader(enabled: level == .full && !FX.shared.lowPower) { tilt in
         GeometryReader { g in
           Rectangle()
