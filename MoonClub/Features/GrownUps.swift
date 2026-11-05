@@ -122,7 +122,7 @@ struct GrownUpsView: View {
             Text("Every pack is checked by a teacher and a markets expert, and follows the same rules: pretend money, no links, no ads, no advice. Guest hosts are always shown as guests, and never ask kids to follow or buy anything.")
           }
         } header: { Text("Lesson packs") } footer: { Text("Every pack is checked by a teacher and a markets expert.") }
-        Section { BrainPicker().id("brain") } header: { Text("Luna's brain") } footer: {
+        Section { BrainPicker().listRowInsets(EdgeInsets()).listRowBackground(Color.clear).id("brain") } header: { Text("Luna's brain") } footer: {
           Text("Same kid-safe rules for every brain. Every answer is checked on this device first.")
         }
         if Distribution.allowsOwnKeys {
