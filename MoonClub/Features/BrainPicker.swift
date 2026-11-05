@@ -113,8 +113,10 @@ struct BrainPicker: View {
   private var nowPill: some View {
     HStack(spacing: 8) {
       Image(systemName: active.symbol).foregroundStyle(Palette.accent)
-      Text("Right now: **\(active.badge)**").foregroundStyle(Palette.ink).accessibilityIdentifier("brain-active")
-      if s.choice == .byok && active != .byok { Text("· finish the steps below to switch").foregroundStyle(Palette.ink2) }
+      // One Text so the hint wraps as a sentence instead of a squeezed second column.
+      (Text("Right now: **\(active.badge)**").foregroundColor(Palette.ink)
+        + Text(s.choice == .byok && active != .byok ? " · finish the steps below to switch" : "").foregroundColor(Palette.ink2))
+        .accessibilityIdentifier("brain-active")
     }
     .font(.footnote)
     .fixedSize(horizontal: false, vertical: true)
@@ -172,6 +174,7 @@ struct BrainPicker: View {
       step(3, "Say it's OK")
       Toggle(isOn: Binding(get: { s.consented }, set: { s.consentFor = $0 ? s.provider : nil })) {
         Text("I understand my child's questions will be sent to **\(s.provider.label)** using my key, and \(s.provider.label)'s own privacy terms apply.").font(.callout)
+          .fixedSize(horizontal: false, vertical: true) // consent must never truncate
       }
       .accessibilityIdentifier("byok-consent")
       if savedKey != nil {
