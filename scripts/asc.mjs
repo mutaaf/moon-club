@@ -337,7 +337,7 @@ MADE FOR FAMILIES
 - Works on iPhone and iPad
 
 Moon Club teaches how markets work. It is for learning and fun, not investment advice.`,
-  supportUrl: "https://mutaafaziz.com/metaphases/kids/app",
+  supportUrl: "https://mutaafaziz.com/metaphases/kids/support",
   marketingUrl: "https://mutaafaziz.com/metaphases/kids",
   privacyPolicyUrl: "https://mutaafaziz.com/metaphases/kids/privacy",
   copyright: `${new Date().getUTCFullYear()} Mutaaf Aziz`,
