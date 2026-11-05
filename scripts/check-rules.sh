@@ -52,7 +52,8 @@ grep -rnE 'pushType: *\.token|pushTokenUpdates' MoonClub MoonClubWidgets Shared 
 for f in MoonClub/Features/BrainPicker.swift MoonClub/Features/GrownUps.swift MoonClub/Live/Brains.swift MoonClub/Live/LiveServices.swift; do
   grep -q 'Distribution.allowsOwnKeys' "$f" || { echo "✗ $f: own-key features must be gated on Distribution.allowsOwnKeys (App Store builds)"; fail=1; }
 done
-grep -q 'option(.byok' MoonClub/Features/BrainPicker.swift && ! grep -B1 'option(.byok' MoonClub/Features/BrainPicker.swift | grep -q 'Distribution.allowsOwnKeys' && { echo "✗ the BYOK option in BrainPicker must sit inside 'if Distribution.allowsOwnKeys'"; fail=1; } || true
+grep -qE '(option|tile)\(\.byok' MoonClub/Features/BrainPicker.swift || { echo "✗ BrainPicker: can't find the BYOK tile (update check-rules rule 6)"; fail=1; }
+grep -qE '(option|tile)\(\.byok' MoonClub/Features/BrainPicker.swift && ! grep -B1 -E '(option|tile)\(\.byok' MoonClub/Features/BrainPicker.swift | grep -q 'Distribution.allowsOwnKeys' && { echo "✗ the BYOK option in BrainPicker must sit inside 'if Distribution.allowsOwnKeys'"; fail=1; } || true
 # 7
 pp=$(grep -rnE 'Partners\.(list|shown)|PartnerPicks\(' MoonClub MoonClubWidgets Shared --include=*.swift | grep -v '^MoonClub/Features/GrownUps.swift' || true)
 [ -z "$pp" ] || { echo "✗ partner (affiliate) links outside the grown-up corner:"; echo "$pp"; fail=1; }
