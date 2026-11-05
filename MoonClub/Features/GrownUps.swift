@@ -37,6 +37,9 @@ struct ParentGate: View {
   }
 }
 
+/// The grown-up corner. It leads with bright "at a glance" tiles (our promises, then how to play), and keeps the
+/// long words in accordions, closed by default. Settings stay native list rows with one-line footers; each
+/// section's longer explanation sits in a "How it works" row that opens in place.
 struct GrownUpsView: View {
   /// A settings link that brought the grown-up here (after the gate): a Family League code or a lesson pack.
   var link: DeepLink? = nil
@@ -50,65 +53,108 @@ struct GrownUpsView: View {
         Section {
           HStack(spacing: 14) { Luna(size: 54); VStack(alignment: .leading) { Text("Moon Club").font(.kTitle); Text("Metaphases Kids · prototype").font(.caption).foregroundStyle(.secondary) } }
         }
-        WhatsNewSection()
-        Section("What kids learn") {
-          bullet("What a company, a share and a profit are, in plain words.")
-          bullet("How prices move when more people want to buy or sell.")
-          bullet("What an earnings “report card” is, and what beat and miss mean, with companies they know.")
-          bullet("Saving vs investing, dividends, and why spreading money out is safer.")
-          bullet("Patience, and the difference between hype and facts.")
-          bullet("Why prices move: report cards, the whole market, groups of companies, or a normal wiggle. And that \"we're not sure\" is an honest answer.")
-          bullet("Earning, saving goals, smart spending, giving, borrowing and interest, prices over time, insurance and spotting scams, mapped to the Jump$tart national standards.")
-          bullet("Worked examples (“Let's work it out”) and growth pictures that grow one year per tap: savings, rising prices and money owed.")
-          bullet("Three tracks: Little Moons (6–8), Big Moons (9–11) and Full Moons, an optional challenge with percents and fees. Missed questions come back at Review stops, and a lesson that slipped away comes back as Luna's refresh.")
-        }
-        Section { LearningReport().id("packs") } header: { Text("What your child is learning") } footer: {
-          Text("Worked out on this device from finished lessons and Review stop answers. Nothing is sent anywhere. Open a unit for its dinner table talk: a few questions to ask at home.")
-        }
-        Section { PackSettings() } header: { Text("Lesson packs") } footer: {
-          Text("Every pack is checked by a teacher and a markets expert, and follows the same rules: pretend money, no links, no ads, no advice. Guest hosts are always shown as guests, and never ask kids to follow or buy anything.")
-        }
-        Section("Our promises") {
-          bullet("**Pretend money only.** Nothing can be bought, sold or paid for. No broker, no buy button.")
-          bullet("**No data collected.** No accounts, no sign-up, no analytics, no ads. Progress lives only on this device.")
-          bullet("**Read-only market data** (prices, report dates, market mood) comes from mutaafaziz.com/metaphases. Nothing about your child is sent.")
-          if Distribution.allowsOwnKeys {
-            bullet("**Luna** thinks on this device with Apple Intelligence when it's available, or uses our free kid-safe model. Only if you add your own key and say OK are questions sent to that company. Same rules everywhere: simple words, money topics only, never advice, never asks for personal details. Stay nearby — she can make mistakes.")
-          } else {
-            bullet("**Luna** thinks on this device with Apple Intelligence when it's available, or uses our free kid-safe model, which keeps nothing and never sees a name or account. Questions never go to any other company. Same rules everywhere: simple words, money topics only, never advice, never asks for personal details. Stay nearby — she can make mistakes.")
+        Section {
+          TileGrid {
+            GlanceTile(symbol: "banknote.fill", hue: .mint, title: "Pretend money only", detail: "Nothing to buy, sell or pay for.", glow: [.teal, .lemon], seed: 1)
+            GlanceTile(symbol: "lock.shield.fill", hue: .sky, title: "Nothing leaves this device", detail: "No accounts, no ads, no tracking.", glow: [.grape, .mint], seed: 2)
+            GlanceTile(symbol: "moon.stars.fill", hue: .grape, title: "Luna plays it safe", detail: "Simple words, money topics, every answer checked.", glow: [.berry, .sky], seed: 3)
+            GlanceTile(symbol: "hand.raised.fill", hue: .coral, title: "Never advice", detail: "Learning and play only.", glow: [.orange, .lemon], seed: 4)
           }
-          bullet("Nothing here is investment advice.")
+          .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+          .accessibilityElement(children: .contain).accessibilityLabel("Our promises")
+        } header: { Text("At a glance") }
+        Section {
+          TileGrid {
+            GlanceTile(symbol: "book.pages.fill", hue: .lemon, title: "Story", detail: "Help Luna with today's mission.", glow: [.orange, .berry], seed: 5)
+            GlanceTile(symbol: "map.fill", hue: .teal, title: "World", detail: "Play lessons and games on the map.", glow: [.sky, .mint], seed: 6)
+            GlanceTile(symbol: "target", hue: .orange, title: "Guess", detail: "Will a company beat or miss?", glow: [.lemon, .coral], seed: 7)
+            GlanceTile(symbol: "custom.piggy", hue: .berry, title: "Piggy Bank", detail: "Pretend coins and a Moon Garden.", glow: [.lemon, .mint], seed: 8)
+            GlanceTile(symbol: "bubble.left.fill", hue: .grape, title: "Ask Luna", detail: "Ask her a money question.", glow: [.sky, .berry], seed: 9)
+            GlanceTile(symbol: "heart.fill", hue: .coral, title: "No pressure", detail: "Hearts cost nothing. Just try again!", glow: [.berry, .gold], seed: 10)
+          }
+          .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+          .accessibilityElement(children: .contain).accessibilityLabel("How to play")
+          .id("play")
+        } header: { Text("How to play") }
+        Section {
+          TileGrid(minimum: 300) {
+            Accordion(symbol: "graduationcap.fill", hue: .sky, title: "What kids learn", summary: "Companies, prices, saving, earning and more") {
+              Point("What a company, a share and a profit are.", hue: .sky)
+              Point("Why prices move: more buyers or sellers, report cards, the whole market, or a normal wiggle. \"We're not sure\" is an honest answer.", hue: .sky)
+              Point("Earnings report cards: what beat and miss mean, with companies they know.", hue: .sky)
+              Point("Saving vs investing, dividends, and why spreading out is safer.", hue: .sky)
+              Point("Patience, and hype vs facts.", hue: .sky)
+              Point("Earning, saving goals, smart spending, giving, borrowing and interest, prices over time, insurance and spotting scams (Jump$tart national standards).", hue: .sky)
+              Point("Worked examples (“Let's work it out”) and growth pictures that grow one year per tap.", hue: .sky)
+              Point("Three tracks: Little Moons (6–8), Big Moons (9–11) and Full Moons, an optional challenge with percents and fees.", hue: .sky)
+              Point("Missed questions come back at Review stops; a lesson that slipped away comes back as Luna's refresh.", hue: .sky)
+            }
+            Accordion(symbol: "checkmark.shield.fill", hue: .mint, title: "Our promises, in full", summary: "Money, data, Luna and advice") {
+              Point("**Pretend money only.** Nothing can be bought, sold or paid for. No broker, no buy button.", hue: .mint)
+              Point("**No data collected.** No accounts, no sign-up, no analytics, no ads. Progress lives only on this device.", hue: .mint)
+              Point("**Read-only market data** (prices, report dates, market mood) comes from mutaafaziz.com/metaphases. Nothing about your child is sent.", hue: .mint)
+              if Distribution.allowsOwnKeys {
+                Point("**Luna** thinks on this device with Apple Intelligence when available, or uses our free kid-safe model. Only if you add your own key and say OK are questions sent to that company.", hue: .mint)
+              } else {
+                Point("**Luna** thinks on this device with Apple Intelligence when available, or uses our free kid-safe model, which keeps nothing and never sees a name or account. Questions never go to any other company.", hue: .mint)
+              }
+              Point("Same rules for every brain: simple words, money topics only, never advice, never asks for personal details. Stay nearby: she can make mistakes.", hue: .mint)
+              Point("Nothing here is investment advice.", hue: .mint)
+            }
+            Accordion(symbol: "bubble.left.and.bubble.right.fill", hue: .orange, title: "Talk at home", summary: "Questions to ask at dinner") {
+              Point("“Which companies do we buy things from every week?”", hue: .orange)
+              Point("“If you had $10, would you save it or invest it? Why?”", hue: .orange)
+              Point("“Why do you think the price went down even though they beat?”", hue: .orange)
+              Point("“How could we check if a video about a stock is true?”", hue: .orange)
+              Point("Every unit has more under “What your child is learning” below.", hue: .orange)
+            }
+          }
+          .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+          .id("learn")
+        } header: { Text("Learn more") }
+        WhatsNewSection()
+        Section { UnitsReport().id("packs") } header: { Text("What your child is learning") } footer: {
+          Text("Worked out on this device. Nothing is sent. Open a unit for its dinner table talk.")
         }
+        Section {
+          PackSettings()
+          About {
+            Text("Every pack is checked by a teacher and a markets expert, and follows the same rules: pretend money, no links, no ads, no advice. Guest hosts are always shown as guests, and never ask kids to follow or buy anything.")
+          }
+        } header: { Text("Lesson packs") } footer: { Text("Every pack is checked by a teacher and a markets expert.") }
         Section { BrainPicker().id("brain") } header: { Text("Luna's brain") } footer: {
-          Text("Every brain gets the same kid-safe rules, and every answer is checked on this device before your child sees it.")
+          Text("Same kid-safe rules for every brain. Every answer is checked on this device first.")
         }
         if Distribution.allowsOwnKeys {
           Section { VoiceSettingsView() } header: { Text("Luna's voice") } footer: {
             Text("Your key stays in this device's Keychain and is sent only to make the voice. Only app text and Luna's answers are spoken — never what your child types.")
           }
         }
-        Section { GardenLimitSetting() } header: { Text("Moon Garden") } footer: {
-          Text("Kids can plant Moon points (earned in the app, never money) in companies they know and harvest them back any time. This caps how much of their points they can plant each day, so their Moon Shop points stay safe. Prices update once a day. No real money, no real trades.")
-        }
-        Section { PlaySettings() } header: { Text("Games") } footer: {
-          Text("Relaxed play hides the speed ring, so there's no clock at all. Hearts never cost anything: out of hearts just means \"try again\". Sounds follow the ring/silent switch. After about 20 minutes, between games, Luna gets sleepy and offers a goodnight; \"one more game\" is always fine. Moon Club is also made for iPhone Duo: lessons become storybooks, bosses play in tabletop mode, and the hinge is a game control.")
-        }
+        Section {
+          GardenLimitSetting()
+          About {
+            Text("Kids plant Moon points (earned in the app, never money) in companies they know and harvest them back any time. This limit caps how much of their points they can plant each day, so their Moon Shop points stay safe. Prices update once a day. No real money, no real trades.")
+          }
+        } header: { Text("Moon Garden") } footer: { Text("A daily cap on planting. Points only, never money.") }
+        Section {
+          PlaySettings()
+          About {
+            Point("**Relaxed play** hides the speed ring, so there's no clock at all.", hue: .teal)
+            Point("**Hearts never cost anything.** Out of hearts just means \"try again\".", hue: .coral)
+            Point("**Sounds** follow the ring/silent switch.", hue: .sky)
+            Point("**Goodnight:** after about 20 minutes, between games, Luna gets sleepy and offers a goodnight. \"One more game\" is always fine.", hue: .grape)
+            Point("**iPhone Duo:** lessons become storybooks, bosses play in tabletop mode, and the hinge is a game control.", hue: .lemon)
+          }
+        } header: { Text("Games") } footer: { Text("Relaxed play: no clock at all.") }
         Section { LeagueSettings() } header: { Text("Family league") } footer: {
           Text("Each player picks an emoji instead of a name. A code holds only the company, the date and the guess. Codes work with the website too.")
         }
         SyncSections()
         Section { ShareLinks().id("share") } header: { Text("Share") } footer: {
-          Text("Links open the same place in Moon Club, or the same page on the website if the app isn't installed. A link names a lesson, never your child.")
+          Text("Opens Moon Club, or the website if it isn't installed. A link names a lesson, never your child.")
         }
         if !Partners.shown.isEmpty {
           Section { PartnerPicks() } header: { Text("Grown-up picks") } footer: { Text(Partners.disclosure) }
-        }
-        Section("Conversation starters") {
-          bullet("“Which companies do we buy things from every week?”")
-          bullet("“If you had $10, would you save it or invest it? Why?”")
-          bullet("“Why do you think the price went down even though they beat?”")
-          bullet("“How could we check if a video about a stock is true?”")
-          bullet("Every unit has more in “What your child is learning” above.")
         }
         Section("More") {
           Link(destination: URL(string: "https://mutaafaziz.com/metaphases/kids")!) { Label("Metaphases Kids on the web", systemImage: "safari") }
@@ -121,6 +167,8 @@ struct GrownUpsView: View {
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPacks") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("packs", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollSync") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("sync", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollShare") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("share", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPlay") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("play", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollLearn") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("learn", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
       #endif
       }
@@ -128,7 +176,52 @@ struct GrownUpsView: View {
       .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
     }
   }
-  func bullet(_ s: LocalizedStringKey) -> some View { Text(s).font(.callout) }
+}
+
+/// A "How it works" row inside a settings section: the section's longer explanation, closed by default.
+struct About<Content: View>: View {
+  var title = "How it works"
+  @ViewBuilder var content: Content
+  @State private var open = Accordion<EmptyView>.startOpen
+  var body: some View {
+    DisclosureGroup(isExpanded: $open) {
+      VStack(alignment: .leading, spacing: 8) { content }.font(.callout).padding(.vertical, 4)
+    } label: {
+      Label(title, systemImage: "info.circle").font(.subheadline.weight(.semibold))
+    }
+  }
+}
+
+/// "What your child is learning": one summary row (how many units at each stage) that opens to every unit.
+struct UnitsReport: View {
+  @Environment(AppModel.self) private var app
+  @State private var open: Bool = {
+    #if DEBUG
+    let a = ProcessInfo.processInfo.arguments
+    return a.contains("-talkOpen") || a.contains("-scrollPacks") || a.contains("-expand")
+    #else
+    return false
+    #endif
+  }()
+  var body: some View {
+    let ms = app.content.units.map { Review.mastery($0.id, app.state, app.content) }
+    let parts = Mastery.allCases.reversed().compactMap { m -> String? in
+      let n = ms.filter { $0 == m }.count
+      return n == 0 ? nil : "\(n) \(m.label.lowercased())"
+    }
+    DisclosureGroup(isExpanded: $open) {
+      LearningReport()
+    } label: {
+      HStack(spacing: 12) {
+        Glyph(symbol: "chart.bar.fill", hue: .sky, size: 34)
+        VStack(alignment: .leading, spacing: 2) {
+          Text("\(ms.count) units").font(.kHeadline)
+          Text(parts.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+        }
+      }
+      .accessibilityElement(children: .combine)
+    }
+  }
 }
 
 struct PlaySettings: View {

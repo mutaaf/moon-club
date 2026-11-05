@@ -189,3 +189,8 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
 - **Grown-ups.** `Unit.talk` is the dinner table talk, shown in `LearningReport` as a disclosure per unit.
 - Debug: `-lesson <id> -step <n> -reveal <k>` opens a lesson step with k example lines shown / years grown; `-tab school -library` opens Moon School; `-demo -grownups -scrollPacks -talkOpen` shows every unit's dinner table talk (screenshots).
 - **Art.** New emoji for 0.15 are in the "0.15 curriculum" block of `Art.map`. **A duplicate key in that dictionary literal crashes at launch** (🍫 was already there), so search before adding.
+
+## Reading screens: bright tiles + accordions
+- The grown-up corner (`GrownUps.swift`) leads with "At a glance" and "How to play" `GlanceTile`s, then "Learn more" `Accordion`s (closed by default). Settings sections keep one-line footers; longer explanations go in an `About` ("How it works") row. Components live in `Design/Highlights.swift`: `AuroraSwatch` (one still frame of the `aurora` shader, so a grid costs nothing per frame), `GlanceTile`, `TileGrid` (adaptive: 1 column on iPhone, 2–3 on wide windows), `Accordion`, `Point`.
+- Lead with 3–6 bright tiles (symbol + one bold line); never a wall of bullets. Keep every fact reachable in an accordion.
+- Debug: `-demo -grownups -expand` opens every accordion; `-scrollPlay` / `-scrollLearn` scroll to How to play / Learn more.
