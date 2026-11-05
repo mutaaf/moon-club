@@ -303,13 +303,13 @@ async function call(method, path, body) { console.log(JSON.stringify(await api(m
 // Everything below only edits the draft App Store version (reversible, nothing public) except `submit`,
 // which sends the version to App Review and needs `--yes`.
 
-/** The listing. Kid-safe, fun but clear, never financial advice. Limits: name/subtitle 30, promo 170, keywords 100. */
+/** The listing. Never says the app is for kids (Guideline 2.3.8: that needs the Kids category, see docs/APPSTORE.md). Kid-safe, fun but clear, never financial advice. Limits: name/subtitle 30, promo 170, keywords 100. */
 export const STORE = {
   name: "Moon Club",
-  subtitle: "Money games for curious kids",
+  subtitle: "Learn the market by playing",
   promotionalText: "New: the Moon Shop! Earn Moon points in chart games, quizzes and lessons, then dress up Luna and your rocket. Pretend money only, always.",
-  keywords: "kids,money,saving,piggy bank,learn,charts,candles,quiz,math,allowance,budget,moon,education,games",
-  description: `Learn how money and markets work by playing, with Luna the moon as your guide. Made for kids about 8 to 12 and the grown-ups who learn with them.
+  keywords: "money,stocks,beginner,saving,piggy bank,learn,charts,candles,quiz,math,budget,moon,education,games",
+  description: `Learn how money and markets work by playing, with Luna the moon as your guide. Made for curious beginners of any age.
 
 EXPLORE MARKET WORLD
 Sail from Lemonade Coast to Report Card Castle. Every stop is a quick lesson, a chart game or a boss quiz. Build a candle, spot a trend, find the floor, and race the Chart Time Machine through real price history.
@@ -329,10 +329,10 @@ Curious what a dividend is? Ask Luna. She uses simple words, sticks to money top
 THE MOON LOCKER
 Earn Moon points by playing, collect badges, climb from New Moon to Supermoon, and spend points in the Moon Shop on hats, rocket skins and trails for Luna.
 
-MADE FOR FAMILIES
+SIMPLE AND SAFE
 - No ads, no accounts, no in-app purchases, no tracking
-- Settings and links sit behind a grown-up gate
-- Optional sync across your family's devices through your own iCloud
+- Settings and links sit behind a math gate
+- Optional sync across your devices through your own iCloud
 - Widgets and Live Activities for streaks and missions
 - Works on iPhone and iPad
 
@@ -346,7 +346,7 @@ Moon Club teaches how markets work. It is for learning and fun, not investment a
   secondarySubcategories: ["GAMES_FAMILY", "GAMES_TRIVIA"], // Apple has no Games › Educational subcategory (GET /v1/appCategories/GAMES/subcategories)
   // Market prices and company names come from public market data (via mutaafaziz.com/metaphases).
   contentRights: "USES_THIRD_PARTY_CONTENT",
-  reviewNotes: `Moon Club teaches kids (about 8 to 12) how money and markets work. No sign-in, no accounts, no ads, no analytics, no in-app purchases. Everything works offline; when online it refreshes read-only market prices from our own server (mutaafaziz.com).
+  reviewNotes: `Moon Club teaches beginners of any age how money and markets work, as a game. It is a general-audience education app (not submitted to the Kids category). No sign-in, no accounts, no ads, no analytics, no in-app purchases. Everything works offline; when online it refreshes read-only market prices from our own server (mutaafaziz.com).
 
 GROWN-UP GATE: "For grown-ups" (the lock button at the top right, or in the More/sidebar menu) asks a multiplication question before showing settings. The only links out of the app are inside that gated area.
 
@@ -354,7 +354,7 @@ PRETEND MONEY: the Piggy Bank follows real prices with pretend dollars. Moon poi
 
 ICLOUD SYNC: optional and off by default. A grown-up turns it on behind the gate; progress then syncs through the family's own iCloud key-value storage. We never receive it.
 
-ASK LUNA (AI helper): on devices with Apple Intelligence, answers are generated on the device with Apple's Foundation Models framework and nothing leaves the device. Otherwise the question (max 200 characters, no name, account or device identifier) goes to our own free kid-safe model on mutaafaziz.com, which answers in real time and does not store it. Every answer uses the same kid-safe instructions plus an on-device check; Luna only discusses money topics, never gives advice and asks kids not to type personal details. This App Store build contains no third-party AI provider, API key or voice service.
+ASK LUNA (AI helper): on devices with Apple Intelligence, answers are generated on the device with Apple's Foundation Models framework and nothing leaves the device. Otherwise the question (max 200 characters, no name, account or device identifier) goes to our own free family-safe model on mutaafaziz.com, which answers in real time and does not store it. Every answer uses the same family-safe instructions plus an on-device check; Luna only discusses money topics, never gives advice and asks players not to type personal details. This App Store build contains no third-party AI provider, API key or voice service.
 
 To try everything quickly: World tab (map) > tap a glowing stop; Story tab > today's missions; Ask Luna tab > tap a suggested question.`,
 };
