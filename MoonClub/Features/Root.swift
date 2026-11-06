@@ -26,6 +26,7 @@ enum Tab: String, CaseIterable, Identifiable {
 struct RootView: View {
   @Environment(AppModel.self) private var app
   @Environment(\.horizontalSizeClass) private var hSize
+  @Environment(\.colorScheme) private var scheme
   @State private var duo = DuoModel()
   @State private var tab: Tab = {
     let a = ProcessInfo.processInfo.arguments
@@ -231,11 +232,25 @@ struct RootView: View {
     Task { try? await Task.sleep(for: .milliseconds(700)); if !PlayActivity.shared.playing, app.pendingRank == r { ceremony = r } }
   }
 
+  /// The tab holding the Story's Start here step, when it isn't Story (it gets a small glowing dot).
+  private var dotTab: Tab? {
+    NextUp.dotTab(NextUp.step(app.today, app.state, app.content)).flatMap { Tab(rawValue: $0.rawValue) }
+  }
+
   private var tabs: some View {
-    TabView(selection: $tab) {
+    let dot = dotTab
+    return TabView(selection: $tab) {
       ForEach(Tab.allCases) { t in
         NavigationStack { screen(t).toolbar { topBar } }
-          .tabItem { Label(t.title, systemImage: t.icon) }
+          .tabItem {
+            // The tab holding the Start here step gets a small glowing dot drawn into its icon (TabIcon).
+            if dot == t, tab != t {
+              Label { Text(t.title) } icon: { Image(uiImage: TabIcon.dotted(t.icon, dark: scheme == .dark)) }
+                .accessibilityHint("Your next step is here")
+            } else {
+              Label(t.title, systemImage: t.icon)
+            }
+          }
           .tag(t)
       }
     }
@@ -245,7 +260,18 @@ struct RootView: View {
     NavigationSplitView(columnVisibility: $columns) {
       List(selection: Binding(get: { tab }, set: { if let v = $0 { tab = v } })) {
         Section { LevelRow().listRowBackground(Color.clear) }
-        Section("Club") { ForEach(Tab.allCases) { t in Label(t.title, systemImage: t.icon).tag(t).font(.kHeadline).padding(.vertical, 6) } }
+        Section("Club") {
+          let dot = dotTab
+          ForEach(Tab.allCases) { t in
+            HStack {
+              Label(t.title, systemImage: t.icon)
+              if dot == t, tab != t { Spacer(minLength: 4); GlowDot() }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(dot == t && tab != t ? "Your next step is here" : "")
+            .tag(t).font(.kHeadline).padding(.vertical, 6)
+          }
+        }
         Section("Quests") {
           ForEach(app.content.questChapters?.CHAPTERS ?? [], id: \.id) { ch in
             Button { quest = ch.id } label: { Label { Text(ch.title) } icon: { Glyph(ch.emoji, size: 24) } }

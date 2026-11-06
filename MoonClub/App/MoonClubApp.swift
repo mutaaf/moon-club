@@ -48,6 +48,10 @@ struct MoonClubApp: App {
         var seeded = args.contains("-fresh") ? KidsState() : Demo.seeded(today: clock.today())
         // Screenshots: -world mid|all seeds Market World progress (mid = three lands won; all = everything).
         if let i = args.firstIndex(of: "-world"), i + 1 < args.count { seeded = Demo.world(seeded, content: content, lands: args[i + 1] == "all" ? 99 : 3) }
+        // Screenshots: -missions n finishes the first n of today's missions (4 = all three + the chest opened).
+        if let i = args.firstIndex(of: "-missions"), i + 1 < args.count, let n = Int(args[i + 1]) {
+          seeded = Demo.missions(seeded, content: content, today: clock.today(), count: n)
+        }
         // Screenshots: -garden seeds a Moon Garden (plantings, a harvest).
         if args.contains("-garden") { seeded = Demo.garden(seeded, content: content, today: clock.today()) }
         // Screenshots never carry a stale badge toast: demo badges start seen (-toast keeps them fresh to film the toast).

@@ -209,3 +209,10 @@ gh pr merge --auto --squash --delete-branch
 ```
 
 It lands by itself once CI is green. If `git push` says a required status check is expected, this is why. If CI is red, fix the code. Never remove the protection to get something through.
+
+## Story: one thing to tap
+- **One primary action on Story.** Kids opening the app must know the ONE thing to tap within 2 seconds. The `StartHereHero` (`Features/StartHere.swift`) is the only primary-colored, glowing, pulsing element on the Story tab. Never add a second accent-filled button, play button or bright aurora field above "Today's story". New Story content goes inside "Today's story" (closed by default) or into the small `MissionStrip`.
+- The step comes from MoonClubCore `NextUp.step` (pure, `NextUpTests`). The order is: a half-done quest chapter ("Keep going"), then the first unfinished daily mission (a lesson in a started unit says "Keep going"), then a ready chest ("Open"), then where the rocket waits on the map (`World.current`), then something fun (Guess or Piggy). Label = verb + thing + minutes. `NextUp.greeting` is Luna's one line. `NextUp.isNew` ignores the "visit" play that `checkIn` logs on every open.
+- The tab holding the step, when it isn't Story, gets a small glowing dot (`TabIcon.dotted`, drawn into the tab icon). On iPad it's `GlowDot` in the sidebar row. Don't use `.badge("")`: on iOS 26 it's a big red dot, and `UITabBarItem.appearance().badgeColor` is ignored. A `UIImageAsset` image also lost its scale in the tab bar (drawn 3× too big), so the icon is one explicit-scale image per color scheme.
+- Wide windows put the hero on the left, with Then + Today's story on the right. Phones stack them, with the hero above the fold up to AX sizes (`dynamicTypeSize(...accessibility2)`).
+- Debug: `-missions n` finishes the first n of today's missions (4 = the chest opened too); `-more` opens Today's story.

@@ -6,137 +6,139 @@ struct OpenTab { let open: (Tab) -> Void; func callAsFunction(_ t: Tab) { open(t
 private struct OpenTabKey: EnvironmentKey { static let defaultValue = OpenTab { _ in } }
 extension EnvironmentValues { var openTab: OpenTab { get { self[OpenTabKey.self] } set { self[OpenTabKey.self] = newValue } } }
 
-/// Today's 3 missions: one lesson, one chart game, one guess. Each has a ring that fills when it's done;
-/// all three open the day's chest, which unlocks the next rocket skin (cosmetic only, never bought).
-/// The missions come from MoonClubCore `Missions.today` (pure: same day + state → same missions).
-struct TodaysMissions: View {
+/// Today's 3 missions, small: the Story's Start here button plays the next one, so this strip only shows
+/// what comes after it ("Then"), progress dots and the chest as a ring that fills 1/3 → 3/3. Every chip
+/// still plays its mission. The missions come from MoonClubCore `Missions.today` (pure).
+struct MissionStrip: View {
+  /// The step on the Start here button (that mission isn't repeated here).
+  let hero: NextStep
+  let go: (NextTarget) -> Void
   @Environment(AppModel.self) private var app
-  @Environment(\.openTab) private var openTab
   @Environment(\.openLocker) private var openLocker
   @Environment(\.accessibilityReduceMotion) private var rm
-  @State private var lesson: Lesson?
-  @State private var node: WorldNode?
-  @State private var opened = 0
-  @State private var reward: RocketSkin?
   @Environment(DuoModel.self) private var duo: DuoModel?
   @State private var lastHinge: HingeReading?
 
   var body: some View {
-    let _ = Perf.body("TodaysMissions")
+    let _ = Perf.body("MissionStrip")
     let ms = Missions.today(app.today, app.state, app.content)
     let done = ms.filter(\.done).count
-    let ready = Missions.chestReady(app.today, app.state, app.content)
-    let wasOpened = Missions.chestOpened(app.today, app.state)
-    VStack(alignment: .leading, spacing: 12) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 2) {
-          Eyebrow(text: "Today's missions")
-          Text(done == ms.count ? "All done. Nice!" : "\(done) of \(ms.count) done").font(.kTitle)
+    let rest = ms.filter { !(hero.reason == .mission && $0.target.nextTarget == hero.target) }
+    let streak = Streak.play(app.state, today: app.today)
+    let title = Text(hero.reason == .mission && rest.contains { !$0.done } ? "Then" : "Today's missions").font(.kHeadline).foregroundStyle(Palette.ink2)
+    VStack(alignment: .leading, spacing: 10) {
+      // One row; at the biggest text sizes the title stacks above the progress instead of breaking words.
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 10) { title.fixedSize(); Spacer(minLength: 4); progress(done, ms.count, streak) }
+        VStack(alignment: .leading, spacing: 6) { title; progress(done, ms.count, streak) }
+      }
+      FlowLayout(spacing: 8) {
+        ForEach(rest) { m in
+          Button { go(m.target.nextTarget) } label: { chip(m) }
+            .buttonStyle(PressStyle())
+            .accessibilityLabel("\(m.title). \(m.done ? "Done" : "Not done yet")")
         }
-        Spacer()
-        Label("\(Streak.play(app.state, today: app.today))", systemImage: "flame.fill").font(.headline.weight(.heavy)).monospacedDigit()
-          .foregroundStyle(Hue.orange.color)
-          .accessibilityLabel("\(Streak.play(app.state, today: app.today)) day streak")
+        chest(done: done, of: ms.count)
       }
-      ForEach(ms) { m in
-        Button { go(m) } label: { row(m) }
-          .buttonStyle(PressStyle())
-          .accessibilityLabel("\(m.detail): \(m.title). \(m.done ? "Done" : "Not done yet")")
-      }
-      chest(ready: ready, opened: wasOpened)
     }
-    .padding(18)
-    .moonGlass(radius: 28)
-    .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.line.opacity(0.7), lineWidth: 0.5))
-    .shadow(color: Palette.midnight.opacity(0.06), radius: 24, y: 10)
-    .overlay(Celebrate(trigger: opened, tier: .medium))
-    .sensoryFeedback(.success, trigger: opened)
+    .padding(14)
+    .background(Palette.card.opacity(0.55), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.line.opacity(0.8), lineWidth: 0.5))
+    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     // iPhone Duo: opening the phone wide opens a ready chest (the hinge is the lid).
     .onChange(of: duo?.reading) { _, new in
       if Missions.chestReady(app.today, app.state, app.content), HingeLaunch.launches(from: lastHinge, to: new) {
         app.mutate { $0.useDuo(.hinge) }
-        openChest()
+        ChestOpener.open(app)
       }
       lastHinge = new
     }
-    .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
-    .navigationDestination(item: $node) { NodePlayer(node: $0, regions: World.regions(app.content)) }
   }
 
-  private func row(_ m: Mission) -> some View {
-    HStack(spacing: 12) {
-      ZStack {
-        Circle().stroke(Palette.line, lineWidth: 4)
-        Circle().trim(from: 0, to: m.done ? 1 : 0).stroke(Palette.good, style: .init(lineWidth: 4, lineCap: .round)).rotationEffect(.degrees(-90))
-          .animation(Motion.safe(Motion.celebrate, rm), value: m.done)
-        if m.done { Image(systemName: "checkmark").font(.system(size: 18, weight: .black)).foregroundStyle(Palette.good).transition(.scale) }
-        else { Glyph(m.art, size: 30, style: .plain) }
-      }
-      .frame(width: 46, height: 46)
-      VStack(alignment: .leading, spacing: 1) {
-        Text(m.detail.uppercased()).font(.kEyebrow).tracking(1).foregroundStyle(Palette.ink2)
-        Text(m.title).font(.kHeadline).foregroundStyle(Palette.ink).lineLimit(2).strikethrough(m.done, color: Palette.ink2)
-      }
-      Spacer(minLength: 0)
-      Image(systemName: m.done ? "arrow.counterclockwise" : "play.fill").font(.subheadline.weight(.heavy))
-        .foregroundStyle(m.done ? Palette.ink2 : .white)
-        .frame(width: 36, height: 36)
-        .background(m.done ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(Palette.accent), in: Circle())
-    }
-    .padding(10)
-    .background(Palette.card.opacity(m.done ? 0.4 : 0.75), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-  }
-
-  @ViewBuilder private func chest(ready: Bool, opened wasOpened: Bool) -> some View {
-    let next = Skins.next(app.state)
-    HStack(spacing: 12) {
-      ZStack {
-        Circle().fill(ready ? Hue.gold.light : Palette.line.opacity(0.5)).frame(width: 52, height: 52)
-        Image(systemName: wasOpened ? "shippingbox.and.arrow.backward.fill" : "shippingbox.fill").font(.system(size: 24, weight: .bold))
-          .foregroundStyle(ready ? Hue.gold.color : wasOpened ? Palette.good : Palette.ink2)
-          .symbolEffect(.bounce, options: .repeating, isActive: ready && !rm)
-      }
-      VStack(alignment: .leading, spacing: 1) {
-        if reward != nil {
-          Text("+\(Rewards.chestPoints) Moon points!").font(.kHeadline)
-          Text("Spend them in the Moon Shop.").font(.caption).foregroundStyle(Palette.ink2)
-        } else if wasOpened {
-          Text("Chest opened today").font(.kHeadline)
-          Text("Come back tomorrow for new missions.").font(.caption).foregroundStyle(Palette.ink2)
-        } else {
-          Text(ready ? "Your chest is ready!" : "Mission chest").font(.kHeadline)
-          if ready, duo?.hasHinge == true, duo?.reading?.status != .fullyOpen {
-            Text("Open your iPhone Duo wide to open it!").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
-          } else {
-            Text("Finish all 3 for \(Rewards.chestPoints) Moon points\(next.map { ", closer to the \($0.name) rocket" } ?? "").").font(.caption).foregroundStyle(Palette.ink2)
-          }
+  private func progress(_ done: Int, _ total: Int, _ streak: Int) -> some View {
+    HStack(spacing: 10) {
+      HStack(spacing: 5) {
+        ForEach(0..<total, id: \.self) { i in
+          Circle().fill(i < done ? Palette.goodInk : Palette.line).frame(width: 9, height: 9)
         }
+        Text("\(done)/\(total)").font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(Palette.ink2)
       }
-      Spacer(minLength: 0)
-      if ready {
-        Button("Open") { openChest() }.buttonStyle(ChunkyStyle(face: Hue.gold.color, edge: Color(hex: 0x9A6A0C), ink: .white, radius: 16)).frame(width: 96)
-      } else if reward != nil || wasOpened {
-        Button { openLocker(.shop) } label: { Label("Shop", systemImage: "bag.fill").font(.subheadline.weight(.heavy)) }
-          .buttonStyle(ChunkyStyle(face: Hue.gold.light, edge: Hue.gold.color, ink: Palette.ink, depth: 3, radius: 14)).frame(width: 96)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("\(done) of \(total) missions done")
+      if streak > 0 {
+        Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
+          .foregroundStyle(Hue.orange.color)
+          .accessibilityLabel("\(streak) day streak")
       }
     }
-    .padding(10)
-    .background(ready ? Hue.gold.light.opacity(0.35) : Color.clear, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-    .accessibilityElement(children: .combine)
+    .fixedSize()
   }
 
-  private func openChest() {
+  private func chip(_ m: Mission) -> some View {
+    HStack(spacing: 8) {
+      if m.done {
+        Image(systemName: "checkmark.circle.fill").font(.body.weight(.bold)).foregroundStyle(Palette.goodInk)
+      } else {
+        Glyph(m.art, size: 24, style: .plain)
+      }
+      Text(m.title).font(.subheadline.weight(.semibold)).lineLimit(2)
+        .foregroundStyle(m.done ? Palette.ink2 : Palette.ink)
+        .strikethrough(m.done, color: Palette.ink2)
+    }
+    .padding(.horizontal, 12).frame(minHeight: 44)
+    .background(Palette.card.opacity(m.done ? 0.35 : 0.9), in: Capsule())
+    .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1))
+  }
+
+  /// The mission chest as a ring that fills with each mission. Ready: tap opens it (the Start here button
+  /// opens it too). Opened: tap visits the Moon Shop.
+  @ViewBuilder private func chest(done: Int, of total: Int) -> some View {
+    let ready = Missions.chestReady(app.today, app.state, app.content)
+    let opened = Missions.chestOpened(app.today, app.state)
+    Button {
+      if ready { ChestOpener.open(app) } else if opened { openLocker(.shop) }
+    } label: {
+      HStack(spacing: 8) {
+        ZStack {
+          Circle().stroke(Palette.line, lineWidth: 3.5)
+          Circle().trim(from: 0, to: total == 0 ? 0 : CGFloat(done) / CGFloat(total))
+            .stroke(ready ? Hue.gold.color : Palette.goodInk, style: .init(lineWidth: 3.5, lineCap: .round)).rotationEffect(.degrees(-90))
+            .animation(Motion.safe(Motion.celebrate, rm), value: done)
+          Image(systemName: opened ? "checkmark" : "shippingbox.fill").font(.system(size: 13, weight: .bold))
+            .foregroundStyle(opened ? Palette.goodInk : ready ? Hue.gold.color : Palette.ink2)
+            .symbolEffect(.bounce, options: .repeat(3), isActive: ready && !rm)
+        }
+        .frame(width: 30, height: 30)
+        Text(opened ? "Chest opened" : ready ? "Chest ready!" : "Chest +\(Rewards.chestPoints)")
+          .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink).lineLimit(1)
+        if opened { Image(systemName: "bag.fill").font(.caption.weight(.bold)).foregroundStyle(Palette.ink2) }
+      }
+      .padding(.leading, 7).padding(.trailing, 12).frame(minHeight: 44)
+      .background(ready ? Hue.gold.light.opacity(0.45) : Palette.card.opacity(0.5), in: Capsule())
+      .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1))
+    }
+    .buttonStyle(PressStyle())
+    .accessibilityLabel(opened ? "Chest opened today. Opens the Moon Shop." : ready ? "Your chest is ready. Open it." : "Mission chest: \(done) of \(total). Finish all \(total) for \(Rewards.chestPoints) Moon points.")
+  }
+}
+
+/// Opening today's chest: banks it, plays the chime and throws the party (from the strip, the Start here
+/// button or the iPhone Duo hinge).
+enum ChestOpener {
+  @MainActor static func open(_ app: AppModel) {
+    guard Missions.chestReady(app.today, app.state, app.content) else { return }
     app.mutate { $0.openChest(today: app.today) }
     GameSound.play(.chest)
-    withAnimation(Motion.safe(Motion.celebrate, rm)) { reward = Skins.current(app.state); opened += 1 }
     PartyCenter.shared.fire(.chest, title: "Chest open! +\(Rewards.chestPoints)")
   }
+}
 
-  private func go(_ m: Mission) {
-    switch m.target {
-    case let .lesson(id): lesson = app.content.lessons.first { $0.id == id }
-    case let .node(id): node = World.regions(app.content).flatMap(\.nodes).first { $0.id == id }
-    case .guess: openTab(.guess)
+extension MissionTarget {
+  var nextTarget: NextTarget {
+    switch self {
+    case let .lesson(id): return .lesson(id)
+    case let .node(id): return .node(id)
+    case .guess: return .guess
     }
   }
 }
