@@ -13,7 +13,7 @@ struct SchoolView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
         Hero(eyebrow: "\(done.count) of \(app.content.lessons.count) done · about a minute each", title: "Moon", accent: "School", emoji: "🎓")
-        StartHere()
+        QuestRow()
         RefreshCard()
         if let next {
           NavigationLink(value: next) {

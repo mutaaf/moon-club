@@ -10,6 +10,11 @@ struct StoryView: View {
   /// Each page's own height: the pager is as tall as the card on screen (never the tallest card).
   @State var heights: [Int: CGFloat] = [:]
   @State var puppet = false
+  @State var more = StoryView.startMore
+  @State var lesson: Lesson?
+  @State var node: WorldNode?
+  @Environment(\.openTab) var openTab
+  @Environment(\.accessibilityReduceMotion) var rm
   @Environment(DuoModel.self) var duo: DuoModel?
 
   enum Card: Hashable { case recap, weather(Double), report(EarningsEvent), why(String), word, quiz, next }
@@ -29,46 +34,55 @@ struct StoryView: View {
     return out
   }
 
+  /// Debug `-more` opens the "Today's story" section (screenshots).
+  static var startMore: Bool {
+    #if DEBUG
+    return ProcessInfo.processInfo.arguments.contains("-more")
+    #else
+    return false
+    #endif
+  }
+
   var body: some View {
     let _ = Perf.body("StoryView")
+    // One primary action (CLAUDE.md "Story: one thing to tap"): the Start here button is the only bright,
+    // glowing thing here. Missions shrink to a "Then" strip; the day's story cards wait under "Today's story".
+    let step = NextUp.step(app.today, app.state, app.content)
+    let wide = fold.fold == nil && fold.width >= 600
     ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        Hero(eyebrow: Day.en("EEEE, MMMM d", app.today), title: "Today's", accent: "Market Story")
-        if duo?.hasHinge == true {
-          // iPhone Duo: stand it up like a tent and Luna puts on a puppet show of this story (0.14).
-          Button { puppet = true } label: {
-            DuoCallout(text: duo?.isTent == true ? "Tent mode! Start the puppet show" : "Stand me up like a tent for a puppet show", symbol: "theatermasks.fill")
+      Group {
+        if wide {
+          // iPad, Stage Manager: Start here on the left, Then + Today's story on the right.
+          let left = min(460, max(280, (fold.width - 24) * 0.46)).rounded(.down)
+          HStack(alignment: .top, spacing: 24) {
+            hero(step).frame(width: left)
+            VStack(alignment: .leading, spacing: 16) {
+              MissionStrip(hero: step, go: go)
+              more(width: fold.width - left - 24)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
           }
-          .buttonStyle(PressStyle())
-        }
-        TodaysMissions()
-        StartHere()
-        if app.loadingMarket && app.events.isEmpty && app.mood == nil {
-          RoundedRectangle(cornerRadius: 28).fill(.thinMaterial).frame(height: 460).overlay(ProgressView())
         } else {
-          let cs = cards
-          // Three layouts, chosen by the room we have (never by device):
-          //  • a fold (iPhone Duo open): a book, two cards per spread, one each side of the fold
-          //  • wide, no fold (iPad, Stage Manager): every card at once in balanced columns (a grid, no
-          //    carousel: nothing runs off the edge, and each card is only as tall as its content)
-          //  • narrow (iPhone): one card per swipe, the pager as tall as the card on screen
-          if fold.fold == nil, fold.width >= 600 {
-            StoryColumns(cards: cs, width: fold.width)
-              .foldProbe($fold)
-          } else {
-            pager(cs)
+          VStack(alignment: .leading, spacing: 16) {
+            hero(step)
+            MissionStrip(hero: step, go: go)
+            more(width: fold.width)
           }
-          if let e = app.marketError { Text(e.message).font(.footnote).foregroundStyle(.secondary) }
         }
       }
-      .padding(20)
-      .readable(fold.fold == nil && fold.width >= 600 ? 1040 : 640)
+      .frame(maxWidth: .infinity, alignment: .topLeading)
+      .foldProbe($fold)
+      .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
+      .readable(wide ? 1040 : 640)
     }
     .background(AuroraField(surface: .story))
+    .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
+    .navigationDestination(item: $node) { NodePlayer(node: $0, regions: World.regions(app.content)) }
     .fullScreenCover(isPresented: $puppet) { PuppetShow() }
     .onChange(of: duo?.isTent ?? false, initial: true) { _, tent in if tent, !puppet { puppet = true } }
     .refreshable { await app.loadMarket() }
-    .onDisappear { if cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
+    // The weekly recap counts as seen only once the kid opened Today's story.
+    .onDisappear { if more, cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
     #if DEBUG
     // Screenshots: -whyCard SYM shows the real WhyCard on its own (the story pager sits below the fold on a phone).
     .sheet(isPresented: .constant(ProcessInfo.processInfo.arguments.contains("-whyCard"))) {
@@ -85,6 +99,70 @@ struct StoryView: View {
 }
 
 extension StoryView {
+  @ViewBuilder func hero(_ step: NextStep) -> some View {
+    StartHereHero(step: step, greeting: NextUp.greeting(step, app.today, app.state, app.content)) { go(step.target) }
+  }
+
+  /// Plays a step right here (lessons and map stops open on top of Story; Guess and Piggy switch tabs).
+  func go(_ t: NextTarget) {
+    switch t {
+    case let .lesson(id): lesson = app.content.lessons.first { $0.id == id }
+    case let .quest(id): openQuest(id)
+    case .guess: openTab(.guess)
+    case .piggy: openTab(.piggy)
+    case .chest: ChestOpener.open(app)
+    case let .node(id):
+      guard let n = World.regions(app.content).flatMap(\.nodes).first(where: { $0.id == id }) else { return }
+      // The same as a tap on the map (WorldView.play).
+      switch n.kind {
+      case let .quest(q): openQuest(q)
+      case let .lesson(l): lesson = app.content.lessons.first { $0.id == l }
+      case let .unit(u):
+        let ls = app.content.lessons.filter { $0.unit == u }
+        lesson = ls.first { !app.state.lessons.contains($0.id) } ?? ls.first
+      case .guess: openTab(.guess)
+      default: node = n
+      }
+    }
+  }
+
+  /// "Today's story": the day's cards (weather, report cards, a word, a quiz, the weekly recap), closed until
+  /// the kid opens it.
+  @ViewBuilder func more(width: CGFloat) -> some View {
+    let cs = cards
+    MoreHeader(open: more, date: Day.en("EEEE, MMMM d", app.today), count: cs.count) {
+      withAnimation(Motion.safe(Motion.card, rm)) { more.toggle() }
+    }
+    if more {
+      VStack(alignment: .leading, spacing: 16) {
+        if duo?.hasHinge == true {
+          // iPhone Duo: stand it up like a tent and Luna puts on a puppet show of this story (0.14).
+          Button { puppet = true } label: {
+            DuoCallout(text: duo?.isTent == true ? "Tent mode! Start the puppet show" : "Stand me up like a tent for a puppet show", symbol: "theatermasks.fill")
+          }
+          .buttonStyle(PressStyle())
+        }
+        QuestRow()
+        if app.loadingMarket && app.events.isEmpty && app.mood == nil {
+          RoundedRectangle(cornerRadius: 28).fill(.thinMaterial).frame(height: 460).overlay(ProgressView())
+        } else {
+          // Three layouts, chosen by the room we have (never by device):
+          //  • a fold (iPhone Duo open): a book, two cards per spread, one each side of the fold
+          //  • wide, no fold (iPad, Stage Manager): every card at once in balanced columns
+          //  • narrow (iPhone): one card per swipe, the pager as tall as the card on screen
+          if fold.fold == nil, fold.width >= 600 {
+            // iPad: the right-hand column (one card under another when it's narrow).
+            StoryColumns(cards: cs, width: max(0, width))
+          } else {
+            pager(cs)
+          }
+          if let e = app.marketError { Text(e.message).font(.footnote).foregroundStyle(.secondary) }
+        }
+      }
+      .transition(rm ? .opacity : .opacity.combined(with: .move(edge: .top)))
+    }
+  }
+
   @ViewBuilder private func pager(_ cs: [Card]) -> some View {
           // Opened wide (iPhone Duo, iPad) the story reads like a book: two cards per spread, one on
           // each side of the fold. On a phone it's one card per swipe.
@@ -122,7 +200,6 @@ extension StoryView {
           .scrollPosition(id: Binding(get: { page }, set: { if let v = $0 { page = v } }))
           .scrollClipDisabled()
           PageDots(count: pages.count, page: page) { p in withAnimation(Motion.page) { page = p } }
-          .foldProbe($fold)
           .onChange(of: per) { old, new in page = page * old / new }
           .sensoryFeedback(.selection, trigger: page)
   }
@@ -308,31 +385,3 @@ struct NextAdventures: View {
   }
 }
 
-/// "New here? Start here!" until every quest chapter is done.
-struct StartHere: View {
-  @Environment(AppModel.self) private var app
-  @Environment(\.openQuest) private var openQuest
-  var body: some View {
-    let _ = Perf.body("StartHere")
-    let chapters = app.content.questChapters?.CHAPTERS ?? []
-    if let next = chapters.first(where: { !app.chaptersDone.contains($0.id) }) ?? (app.state.questDone ? nil : chapters.first) {
-      Button { openQuest(next.id) } label: {
-        HStack(spacing: 14) {
-          Glyph(next.emoji, size: 48)
-          VStack(alignment: .leading, spacing: 3) {
-            Eyebrow(text: app.chaptersDone.isEmpty ? "New here? Start here!" : "Next chapter")
-            Text(next.title).font(.kTitle).foregroundStyle(Palette.midnight)
-            Text(next.blurb).font(.subheadline).foregroundStyle(Palette.midnight.opacity(0.7))
-          }
-          Spacer(minLength: 0)
-          Image(systemName: "arrow.right.circle.fill").font(.title).foregroundStyle(Palette.accent)
-        }
-        .padding(18)
-        .background(LinearGradient(colors: [Palette.moon, Color(hex: 0xFFE2A8)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: Color(hex: 0xC9A33A).opacity(0.25), radius: 18, y: 8)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Start here: \(next.title). \(next.blurb)")
-    }
-  }
-}

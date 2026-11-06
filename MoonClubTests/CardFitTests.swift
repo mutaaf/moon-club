@@ -260,9 +260,9 @@ final class CardFitTests: XCTestCase {
   func testNoCardHasAScrollViewInside() throws {
     // Source check: the card-content views never contain a ScrollView (the page may scroll, a card may not).
     let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-    for f in ["MoonClub/Features/School.swift", "MoonClub/Features/Story.swift", "MoonClub/Features/WorldGames.swift", "MoonClub/Features/WorldBosses.swift", "MoonClub/Features/WhatsNewModal.swift", "MoonClub/Features/Missions.swift", "MoonClub/Design/GameKit.swift", "MoonClub/Features/Rewards.swift"] {
+    for f in ["MoonClub/Features/School.swift", "MoonClub/Features/Story.swift", "MoonClub/Features/WorldGames.swift", "MoonClub/Features/WorldBosses.swift", "MoonClub/Features/WhatsNewModal.swift", "MoonClub/Features/Missions.swift", "MoonClub/Features/StartHere.swift", "MoonClub/Design/GameKit.swift", "MoonClub/Features/Rewards.swift"] {
       let src = try String(contentsOf: root.appendingPathComponent(f), encoding: .utf8)
-      for marker in ["struct StepContent", "struct StoryCard", "struct ChartCard", "struct GameShell", "struct CheckView", "struct SortView", "struct TodaysMissions", "struct RunResults", "struct GameHUD", "struct ArtPanel", "struct TimeMachineBoss", "struct MoonLocker", "struct TrophyShelf", "struct TrophyCell", "struct MoonShop", "struct ShopCell", "struct PointsBook", "struct RankCeremony", "struct RunEarnings"] {
+      for marker in ["struct StepContent", "struct StoryCard", "struct ChartCard", "struct GameShell", "struct CheckView", "struct SortView", "struct MissionStrip", "struct StartHereHero", "struct RunResults", "struct GameHUD", "struct ArtPanel", "struct TimeMachineBoss", "struct MoonLocker", "struct TrophyShelf", "struct TrophyCell", "struct MoonShop", "struct ShopCell", "struct PointsBook", "struct RankCeremony", "struct RunEarnings"] {
         guard let r = src.range(of: marker) else { continue }
         let body = src[r.lowerBound...].prefix(4000)
         let end = body.range(of: "\n}\n").map { body[..<$0.lowerBound] } ?? body

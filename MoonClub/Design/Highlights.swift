@@ -11,13 +11,21 @@ struct AuroraSwatch: View {
   let colors: [Color]
   /// Picks where the blobs sit, so neighbouring tiles don't look the same.
   var seed: Float = 0
+  /// A deep base (the Story's Start here button): the field stays saturated in light and dark, and Reduce
+  /// Transparency gets this color flat, so white words on it keep their contrast.
+  var base: Color? = nil
   @Environment(\.colorScheme) private var scheme
   @Environment(\.accessibilityReduceTransparency) private var solid
   var body: some View {
     let c = colors.count >= 3 ? colors : [Hue.sky.light, Hue.grape.light, Hue.mint.light]
     Group {
       if solid {
-        c[0].opacity(scheme == .dark ? 0.35 : 0.6)
+        if let base { base } else { c[0].opacity(scheme == .dark ? 0.35 : 0.6) }
+      } else if let base {
+        GeometryReader { geo in
+          Rectangle().colorEffect(ShaderLibrary.aurora(
+            .float2(geo.size), .float(seed * 37), .color(c[0]), .color(c[1]), .color(c[2]), .color(base), .float(0.85)))
+        }
       } else {
         GeometryReader { geo in
           Rectangle().colorEffect(ShaderLibrary.aurora(

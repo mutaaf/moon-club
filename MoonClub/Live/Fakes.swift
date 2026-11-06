@@ -90,6 +90,20 @@ enum Demo {
     return s
   }
 
+  /// Today's missions for screenshots: the first `count` done (4 = all three, chest opened).
+  static func missions(_ base: KidsState, content c: KidsContent, today: String, count: Int) -> KidsState {
+    var s = base
+    for m in Missions.today(today, s, c).prefix(count) {
+      switch m.target {
+      case let .lesson(id): s.finishLesson(id, today: today); s.play("lesson", id, today: today)
+      case let .node(id): s.earn(id, stars: 2); s.play("game", id, today: today)
+      case .guess: s.play("guess", "demo", today: today)
+      }
+    }
+    if count > 3 { s.openChest(today: today) }
+    return s
+  }
+
   /// A Moon Garden for screenshots: points banked, three companies planted over the last weeks at their
   /// real closes from the bundled candles, and one harvest.
   @MainActor static func garden(_ base: KidsState, content c: KidsContent, today: String) -> KidsState {
