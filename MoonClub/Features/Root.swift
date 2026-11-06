@@ -165,6 +165,17 @@ struct RootView: View {
     #if DEBUG
     guard Perf.on else { return }
     let mon = FrameMonitor()
+    // `-bench world` / `-bench launch`: the first seconds of the World map, in 0.5 s windows.
+    if Perf.mode == "world" || Perf.mode == "launch" {
+      if Perf.mode == "world" { try? await Task.sleep(for: .seconds(6)) }
+      Perf.reset(); mon.start()
+      if Perf.mode == "world" { tab = .school }
+      try? await Task.sleep(for: .seconds(Perf.mode == "world" ? 8 : 10)); mon.stop()
+      for line in mon.buckets(0.5) { print("BENCH \(Perf.mode ?? "") \(line)") }
+      print(Perf.report(Perf.mode ?? "") + " " + mon.summary)
+      print("BENCH done"); fflush(stdout)
+      return
+    }
     // `-bench screen`: measure whatever screen the other launch args opened (`-play`, `-locker`, `-party`,
     // `-gamenight`…): 4 s to settle, then two windows — the first 3 s (effects running) and 3 s settled.
     if Perf.screen {

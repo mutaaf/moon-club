@@ -806,14 +806,14 @@ extension String {
 }
 
 /// Feeds the map's scroll offset to the sea (iOS 18+; on iOS 17 the sea stays put, like deep water) and
-/// wakes the water's animation whenever the kid starts scrolling.
+/// wakes the water's animation whenever the kid starts scrolling (never on the map's own animated scrolls).
 private struct TrackMapScroll: ViewModifier {
   let scroll: MapScroll
   func body(content: Content) -> some View {
     if #available(iOS 18.0, *) {
       content
         .onScrollGeometryChange(for: CGPoint.self) { CGPoint(x: $0.contentOffset.x + $0.contentInsets.leading, y: $0.contentOffset.y + $0.contentInsets.top) } action: { _, new in scroll.offset = new }
-        .onScrollPhaseChange { old, new in if new.isScrolling && !old.isScrolling { scroll.wake &+= 1 } }
+        .onScrollPhaseChange { old, new in if MapScroll.wakes(from: old, to: new) { scroll.wake &+= 1 } }
     } else { content }
   }
 }
