@@ -196,3 +196,16 @@ Made for iPhone Duo. `docs/IPHONE_DUO.md` covers every feature → purpose → c
 - The grown-up corner (`GrownUps.swift`) leads with "At a glance" and "How to play" `GlanceTile`s, then "Learn more" `Accordion`s (closed by default). Settings sections keep one-line footers; longer explanations go in an `About` ("How it works") row. Components live in `Design/Highlights.swift`: `AuroraSwatch` (one still frame of the `aurora` shader, so a grid costs nothing per frame), `GlanceTile`, `TileGrid` (adaptive: 1 column on iPhone, 2–3 on wide windows), `Accordion`, `Point`.
 - Lead with 3–6 bright tiles (symbol + one bold line); never a wall of bullets. Keep every fact reachable in an accordion.
 - Debug: `-demo -grownups -expand` opens every accordion; `-scrollPlay` / `-scrollLearn` scroll to How to play / Learn more.
+
+## Shipping: main requires green CI
+
+`main` is protected, with no admin bypass, so a direct push is rejected. Commit and push without asking, the same as always, but through a branch:
+
+```sh
+git switch -c <what-it-does> origin/main
+git push -u origin HEAD
+gh pr create --fill
+gh pr merge --auto --squash --delete-branch
+```
+
+It lands by itself once CI is green. If `git push` says a required status check is expected, this is why. If CI is red, fix the code. Never remove the protection to get something through.
