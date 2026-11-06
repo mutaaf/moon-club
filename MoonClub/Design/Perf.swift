@@ -12,9 +12,12 @@ import QuartzCore
   #if DEBUG
   static let on = ProcessInfo.processInfo.arguments.contains("-bench")
   /// `-bench screen`: measure the screen the other launch args opened instead of running the tab script.
-  static let screen: Bool = {
+  static let screen: Bool = mode == "screen"
+  /// `-bench world`: settle on Story, then open the World tab and report every 0.5 s for 8 s (its first seconds).
+  /// `-bench launch`: report every 0.5 s for the first 10 s after the root appears (pair with `-tab school`).
+  static let mode: String? = {
     let a = ProcessInfo.processInfo.arguments
-    return a.firstIndex(of: "-bench").map { $0 + 1 < a.count && a[$0 + 1] == "screen" } ?? false
+    return a.firstIndex(of: "-bench").flatMap { $0 + 1 < a.count ? a[$0 + 1] : nil }
   }()
   private(set) static var counts: [String: Int] = [:]
   #endif
@@ -48,9 +51,20 @@ import QuartzCore
   private(set) var frames = 0, hitches = 0
   private(set) var hitchTime: CFTimeInterval = 0, total: CFTimeInterval = 0, worst: CFTimeInterval = 0
   private var intervals: [CFTimeInterval] = []
+  /// (seconds since start, frame interval, main-thread CPU used since the last frame) for `buckets(_:)`.
+  /// The CPU column is what the simulator can show honestly: its GPU is the Mac's, so frame intervals there
+  /// stay at 16.7 ms long after a real iPad has started missing frames.
+  private var timeline: [(CFTimeInterval, CFTimeInterval, CFTimeInterval)] = []
+  private var lastCPU: CFTimeInterval = 0
+  private static func threadCPU() -> CFTimeInterval {
+    var ts = timespec(); clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts)
+    return CFTimeInterval(ts.tv_sec) + CFTimeInterval(ts.tv_nsec) / 1e9
+  }
+  private var began: CFTimeInterval = 0
 
   func start() {
     frames = 0; hitches = 0; hitchTime = 0; total = 0; worst = 0; intervals = []; last = 0
+    timeline = []; began = CACurrentMediaTime(); lastCPU = Self.threadCPU()
     let l = CADisplayLink(target: self, selector: #selector(tick(_:)))
     l.add(to: .main, forMode: .common); link = l
   }
@@ -58,11 +72,25 @@ import QuartzCore
 
   @objc private func tick(_ l: CADisplayLink) {
     let now = l.timestamp
-    defer { last = now }
+    let cpu = Self.threadCPU()
+    defer { last = now; lastCPU = cpu }
     guard last > 0 else { return }
     let dt = now - last, target = max(1.0 / 120, l.targetTimestamp - l.timestamp)
     frames += 1; total += dt; intervals.append(dt); worst = max(worst, dt)
+    timeline.append((now - began, dt, cpu - lastCPU))
     if dt > target * 1.5 { hitches += 1; hitchTime += dt - target }
+  }
+
+  /// One line per `width`-second window: "t=0.0-0.5s frames=… avg=…ms worst=…ms mainCPU=…ms/frame" (the first seconds of a screen).
+  func buckets(_ width: CFTimeInterval) -> [String] {
+    guard let end = timeline.last?.0 else { return [] }
+    return stride(from: 0.0, to: end, by: width).map { a in
+      let rows = timeline.filter { $0.0 >= a && $0.0 < a + width }
+      let w = rows.map(\.1), c = rows.map(\.2)
+      let avg = w.isEmpty ? 0 : w.reduce(0, +) / Double(w.count)
+      let cpu = c.isEmpty ? 0 : c.reduce(0, +) / Double(c.count)
+      return String(format: "t=%.1f-%.1fs frames=%d avg=%.1fms worst=%.0fms mainCPU=%.2fms/frame", a, a + width, w.count, avg * 1000, (w.max() ?? 0) * 1000, cpu * 1000)
+    }
   }
 
   /// "frames=… avg=…ms p95=…ms worst=…ms hitches=… hitchRatio=…ms/s"

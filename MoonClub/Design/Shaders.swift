@@ -48,16 +48,17 @@ final class FX {
   func allowsBursts(reduceMotion: Bool) -> Bool { level(visible: true, active: true, reduceMotion: reduceMotion) == .full }
 }
 
-/// The one animated clock for shader effects. `content` gets the time in seconds (stable when resting) and
-/// the current level. It runs while the level is `.full` and, if `runFor` is set, for that long after it
-/// appears or `wake` changes; then it rests on its last frame. `fps` caps the rate (nil = display rate).
+/// The one animated clock for shader effects. `content` gets the time in seconds (stable when resting),
+/// the current level, and whether the clock is running right now (false while it rests on its still
+/// frame). It runs while the level is `.full` and, if `runFor` is set, for that long after it appears or
+/// `wake` changes; then it rests on its last frame. `fps` caps the rate (nil = display rate).
 struct FXClock<Content: View>: View {
   var fps: Double? = nil
   var runFor: Duration? = .seconds(8)
   var wake: Int = 0
   /// Start on a still frame and move only after the first `wake` (e.g. the sea moves once you scroll).
   var waitForWake = false
-  @ViewBuilder var content: (Float, FXLevel) -> Content
+  @ViewBuilder var content: (Float, FXLevel, Bool) -> Content
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.scenePhase) private var phase
   @State private var visible = false
@@ -69,7 +70,7 @@ struct FXClock<Content: View>: View {
     let calm = level != .full || resting
     TimelineView(.animation(minimumInterval: fps.map { 1 / $0 }, paused: calm)) { ctx in
       let t = Float(ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3_600))
-      content(t, level)
+      content(t, level, !calm)
     }
     .task(id: "\(visible)|\(phase == .active)|\(wake)") {
       if waitForWake && wake == 0 { resting = true; return }
@@ -157,7 +158,7 @@ private struct Shimmer: ViewModifier {
   @Environment(\.accessibilityReduceMotion) private var rm
   func body(content: Content) -> some View {
     if on {
-      FXClock(fps: 60, runFor: .seconds(5)) { t, level in
+      FXClock(fps: 60, runFor: .seconds(5)) { t, level, _ in
         TiltReader(enabled: holo && level == .full) { tilt in
           content
             .visualEffect { c, g in
@@ -223,6 +224,9 @@ final class MotionTilt {
 
   func retain() {
     holders += 1
+    #if DEBUG
+    if holders == 1, Self.wobble { startWobble(); return }
+    #endif
     guard holders == 1, mm.isDeviceMotionAvailable else { return }
     mm.deviceMotionUpdateInterval = 1.0 / 30.0
     rest = nil
@@ -233,31 +237,65 @@ final class MotionTilt {
   }
   func release() {
     holders = max(0, holders - 1)
-    if holders == 0 { mm.stopDeviceMotionUpdates(); tilt = .zero }
+    if holders == 0 {
+      mm.stopDeviceMotionUpdates(); tilt = .zero
+      #if DEBUG
+      wobbleTimer?.invalidate(); wobbleTimer = nil
+      #endif
+    }
   }
   private func feed(_ m: CMDeviceMotion) {
-    let a = SIMD2(m.attitude.roll, m.attitude.pitch)
+    feed(attitude: SIMD2(m.attitude.roll, m.attitude.pitch))
+    let u = m.userAcceleration
+    if PocketWake.wakes(x: u.x, y: u.y, z: u.z), Date().timeIntervalSince(lastJolt) > 1 { lastJolt = Date(); jolt &+= 1 }
+  }
+  private func feed(attitude a: SIMD2<Double>) {
     if rest == nil { rest = a }
     let d = (a - (rest ?? a)) / 0.35
     smooth = smooth * 0.8 + d * 0.2
     let q = SIMD2<Float>(Float(max(-1, min(1, smooth.x))), Float(max(-1, min(1, smooth.y))))
     let r = (q * Float(50)).rounded(.toNearestOrAwayFromZero) / Float(50)
     if r != tilt { tilt = r }
-    let u = m.userAcceleration
-    if PocketWake.wakes(x: u.x, y: u.y, z: u.z), Date().timeIntervalSince(lastJolt) > 1 { lastJolt = Date(); jolt &+= 1 }
   }
+
+  #if DEBUG
+  /// Debug `-tilt wobble`: the simulator has no device motion, so the tilt path never runs there. This feeds
+  /// what a real device reports when motion starts on an iPad lying still (the attitude estimate drifting a
+  /// few degrees while it settles, ~5 s) plus a little hand tremor, at the same 30 Hz.
+  static let wobble = ProcessInfo.processInfo.arguments.contains("-tilt") && ProcessInfo.processInfo.arguments.contains("wobble")
+  @ObservationIgnored private var wobbleTimer: Timer?
+  private func startWobble() {
+    rest = nil
+    let start = Date()
+    wobbleTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { _ in
+      MainActor.assumeIsolated {
+        let t = Date().timeIntervalSince(start)
+        let settle = 0.12 * max(0, 1 - t / 5)          // drift that dies out over ~5 s
+        let tremor = 0.004 * sin(t * 9.1)               // a hand's tremor (~0.2°)
+        MotionTilt.shared.feed(attitude: SIMD2(settle * sin(t * 1.3) + tremor, settle * cos(t * 0.9) + tremor * 0.7))
+      }
+    }
+  }
+  #endif
 }
 
-/// Gives its content the device tilt while it's on screen (zero when disabled).
+/// Gives its content the device tilt while it's on screen (zero when disabled). `frozen` keeps the last
+/// tilt it saw and stops listening, so a resting effect neither jumps back to level nor redraws on every
+/// small movement of the device (the resting sea re-ran its full-screen shader ~30 times a second on a
+/// real iPad; the simulator has no device motion, so `-tilt wobble` shows it there).
 struct TiltReader<Content: View>: View {
   var enabled = true
+  var frozen = false
   @ViewBuilder var content: (SIMD2<Float>) -> Content
   @State private var motion = MotionTilt.shared
   @State private var held = false
+  @State private var last = SIMD2<Float>(0, 0)
+  private var listening: Bool { enabled && !frozen }
   var body: some View {
-    content(enabled ? motion.tilt : .zero)
-      .onAppear { if enabled, !held { held = true; motion.retain() } }
-      .onChange(of: enabled) { _, on in
+    content(!enabled ? .zero : frozen ? last : motion.tilt)
+      .onAppear { if listening, !held { held = true; motion.retain() } }
+      .onChange(of: listening) { _, on in
+        if !on { last = motion.tilt }
         if on, !held { held = true; motion.retain() } else if !on, held { held = false; motion.release() }
       }
       .onDisappear { if held { held = false; motion.release() } }
@@ -272,6 +310,7 @@ struct TiltLayer<Content: View>: View {
   @Environment(\.accessibilityReduceMotion) private var rm
   var body: some View {
     TiltReader(enabled: FX.shared.allowsBursts(reduceMotion: rm)) { t in
+      let _ = Perf.body("Tilt")
       content.offset(x: CGFloat(t.x) * depth, y: CGFloat(t.y) * depth)
         .animation(.interactiveSpring(response: 0.4), value: t)
     }

@@ -10,12 +10,23 @@ import MoonClubCore
 @MainActor @Observable final class MapScroll {
   var offset: CGPoint = .zero
   var wake = 0
+
+  /// Only the kid's own scrolling wakes the sea. The map's programmatic scrolls (open on Luna's stop, follow
+  /// the rocket, turn an atlas page) report `.animating`; on iPad the open-on-Luna scroll animates, so it
+  /// woke a 20 fps full-screen sea under the Liquid Glass for the World's first ~3.5 s, every time it
+  /// opened (the ~33 ms iPad frames reported since 0.14; iPhone's open scroll jumps, so it never woke there).
+  @available(iOS 18.0, *)
+  nonisolated static func wakes(from old: ScrollPhase, to new: ScrollPhase) -> Bool {
+    let byKid: (ScrollPhase) -> Bool = { $0 == .tracking || $0 == .interacting }
+    return byKid(new) && !byKid(old)
+  }
 }
 
 /// The sea: viewport-sized, behind the scrolling map, so the shader only ever shades what's on screen.
 /// The scroll offset keeps the water moving with the islands; the hinge's sun lights it on iPhone Duo.
 /// The waves and caustics move while the kid scrolls (and 3 s after), then rest: a moving sea under the
-/// tab bar's Liquid Glass made the World's first seconds 3x slower on the SE simulator.
+/// tab bar's Liquid Glass made the World's first seconds 3x slower on the SE simulator. Only the kid's own
+/// scrolling wakes it (`MapScroll.wakes`), and the tilt is frozen while it rests.
 struct SeaLayer: View {
   let mapHeight: CGFloat
   /// [centerY, r, g, b] per land, in map coordinates (region color grading).
@@ -24,8 +35,9 @@ struct SeaLayer: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
   var body: some View {
     let sun = Float(duo?.sun ?? 1)
-    FXClock(fps: 20, runFor: .seconds(3), wake: scroll.wake, waitForWake: true) { t, level in
-      TiltReader(enabled: level == .full && !FX.shared.lowPower) { tilt in
+    FXClock(fps: 20, runFor: .seconds(3), wake: scroll.wake, waitForWake: true) { t, level, running in
+      TiltReader(enabled: level == .full && !FX.shared.lowPower, frozen: !running) { tilt in
+        let _ = Perf.body("Sea")   // one count per sea shader frame (debug bench)
         GeometryReader { g in
           if SeaLayer.flat { Color(hex: 0x6FB7E8) } else {
           Rectangle()
@@ -36,7 +48,7 @@ struct SeaLayer: View {
       }
     }
     // Rasterize the sea into one texture: when stops pulse or flags wave above it, the compositor reuses the
-    // texture instead of re-running a full-screen shader every frame (iPad World's first seconds: 33 → ? ms).
+    // texture instead of re-running a full-screen shader every frame.
     .drawingGroup()
     .animation(.easeInOut(duration: 0.4), value: sun)
     .ignoresSafeArea()
