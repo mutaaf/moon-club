@@ -35,11 +35,11 @@
     "notes": "scripts/store-shots.sh drives the Store 69 / Store iPad 13 / Store Duo simulators. Raw files keep the NN-name.png names that shots[].raw refers to."
   },
   "shots": [
-    { "id": "world", "raw": "01-world", "layout": "cover", "title": "Conquer the *market map*.", "sub": "Win lands by reading candles, trends and patterns. A boss guards every flag.", "badge": "Zero real money" },
+    { "id": "world", "raw": "01-world", "layout": "cover", "title": "Conquer the *market map*.", "sub": "Win lands by reading candles, trends and patterns. A boss guards every flag.", "badge": "Learn by playing" },
     { "id": "candles", "raw": "03-candles", "layout": "spotlight", "focus": [0.5, 0.5, 0.5], "kicker": "Chart games", "title": "Build a candle with _your thumbs_.", "sub": "Drag start, high, low and end. Suddenly charts make sense.", "badge": "Hands on" },
     { "id": "boss", "raw": "02-boss", "layout": "tilt", "kicker": "Boss battles", "title": "Beat the *Captain's Quiz*.", "sub": "Five questions, three hearts, one flag to plant.", "badge": "Combo!" },
-    { "id": "piggy", "raw": "07-piggy", "layout": "bleed", "kicker": "Pretend Piggy Bank", "title": "Grow a pile of *pretend coins*.", "sub": "Follow real companies, learn why they move. Practice only, nothing real at stake." },
-    { "id": "story", "raw": "04-story", "layout": "hero", "kicker": "Every day", "title": "Today's *Market Story*.", "sub": "Three tiny missions a day, in plain words.", "badge": "Daily missions" },
+    { "id": "piggy", "raw": "07-piggy", "layout": "bleed", "kicker": "Moon Garden", "title": "Plant points. *Watch them grow.*", "sub": "They grow or shrink with a real company's price, once a day. Just for fun, nothing real at stake." },
+    { "id": "story", "raw": "04-story", "layout": "hero", "kicker": "Every day", "title": "One tap. *Today's lesson.*", "sub": "A big button for what's next, then three tiny missions and the day's story.", "badge": "Two minutes" },
     { "id": "luna", "raw": "06-luna", "raw2": "04-story", "layout": "duo", "kicker": "Ask Luna", "title": "Why do prices *go up*?", "sub": "Luna answers money questions in simple words." },
     { "id": "shop", "raw": "05-shop", "layout": "tilt", "kicker": "Moon Shop", "title": "Learn. Earn. *Launch rockets.*", "sub": "Lessons earn Moon points, points unlock rockets. All just for fun." },
     { "id": "badges", "raw": "08-badges", "layout": "hero", "kicker": "Badges", "title": "Collect them _all_.", "sub": "Candle Reader, Trend Tracker, Boss Slayer, and more to chase.", "badge": "Bronze to gold" }
