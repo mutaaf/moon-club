@@ -335,6 +335,7 @@ enum ShaderWarmup {
         let colors: [Shader] = [
           lib.aurora(z2, z, c, c, c, c, z), lib.sea(z2, z, z2, z, z, z2, .floatArray([0, 0, 0, 0])),
           lib.fog(z2, z, z, z, z), lib.luna(z2, z, z), lib.shimmer(z2, z, z2, z), lib.foldSeam(z2, z),
+          lib.ribbons(z2, z, c, c, c, c, z),
         ]
         for sh in colors { try? await sh.compile(as: .colorEffect) }
         for sh in [lib.bloom(z, z), lib.timeWarp(z2, z, z)] { try? await sh.compile(as: .layerEffect) }
