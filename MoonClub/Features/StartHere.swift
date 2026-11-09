@@ -24,7 +24,7 @@ struct StartHereHero: View {
     let _ = Perf.body("StartHereHero")
     VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 12) {
-        Luna(size: type.isAccessibilitySize ? 40 : 54, wave: true)
+        Luna(size: type.isAccessibilitySize ? 40 : (tall ? 72 : 54), wave: true)
         Text(greeting).font(.kTitle).foregroundStyle(Palette.ink)
           .lineLimit(2).minimumScaleFactor(0.7).fixedSize(horizontal: false, vertical: true)
       }
@@ -53,10 +53,11 @@ struct StartHereHero: View {
       if tall {
         VStack(alignment: .leading, spacing: 14) {
           HStack {
-            if !type.isAccessibilitySize { Glyph(step.art, size: min(art * 1.3, 84)) }
+            if !type.isAccessibilitySize { Glyph(step.art, size: min(art * 2, 112)) }
             Spacer(minLength: 0)
             playDisc
           }
+          Spacer(minLength: 0)
           words
         }
       } else {
@@ -71,7 +72,7 @@ struct StartHereHero: View {
       }
     }
     .padding(.horizontal, 18).padding(.vertical, 20)
-    .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
+    .frame(maxWidth: .infinity, minHeight: tall ? 360 : 132, maxHeight: tall ? 400 : nil, alignment: .leading)
     .background(AuroraSwatch(colors: [Hue.sky.color, Hue.grape.color, Hue.berry.color], seed: 3,
                              base: Palette.accent.blend(with: .black, by: 0.12)))
     .clipShape(shape)
