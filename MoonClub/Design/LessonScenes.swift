@@ -748,10 +748,12 @@ struct UpNextHero: View {
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.dynamicTypeSize) private var type
   @State private var onScreen = false
+  /// A narrow card (one page of the iPhone Duo book spread): the scene goes above the words.
+  @State private var narrow = false
 
   var body: some View {
     let scene = Scenes.scene(for: lesson)
-    let stacked = type >= .accessibility1
+    let stacked = type >= .accessibility1 || narrow
     let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
     layout {
       if stacked { stage(scene, side: 120) }
@@ -781,6 +783,7 @@ struct UpNextHero: View {
     .shadow(color: scene.palette.ribbons[0].opacity(0.28), radius: 18, y: 10)
     .environment(\.colorScheme, .dark)
     .modifier(ClockHold(clock: SceneClock.hero, live: !rm, onScreen: $onScreen))
+    .onGeometryChange(for: Bool.self) { $0.size.width < 320 } action: { narrow = $0 }
   }
 
   private func stage(_ scene: LessonScene, side: CGFloat) -> some View {

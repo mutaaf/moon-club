@@ -49,6 +49,9 @@ struct StoryView: View {
     // glowing thing here. Missions shrink to a "Then" strip; the day's story cards wait under "Today's story".
     let step = NextUp.step(app.today, app.state, app.content)
     let wide = fold.fold == nil && fold.width >= 600
+    // iPhone Duo opened like a book: Start here gets the left page to itself (the one thing to tap), and
+    // Then + Today's story (open, every card in one column) fill the right page. Nothing on the fold.
+    FoldPages {
     ScrollView {
       Group {
         if wide {
@@ -75,6 +78,15 @@ struct StoryView: View {
       .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
       .readable(wide ? 1040 : 640)
     }
+    } first: {
+      BookPage(center: true) { hero(step, tall: true) }
+    } second: {
+      BookPage(spacing: 16) {
+        MissionStrip(hero: step, go: go)
+        more(width: 0, book: true)
+      }
+      .onAppear { if !more { more = true } }
+    }
     .background(AuroraField(surface: .story))
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .navigationDestination(item: $node) { NodePlayer(node: $0, regions: World.regions(app.content)) }
@@ -99,8 +111,8 @@ struct StoryView: View {
 }
 
 extension StoryView {
-  @ViewBuilder func hero(_ step: NextStep) -> some View {
-    StartHereHero(step: step, greeting: NextUp.greeting(step, app.today, app.state, app.content)) { go(step.target) }
+  @ViewBuilder func hero(_ step: NextStep, tall: Bool = false) -> some View {
+    StartHereHero(step: step, greeting: NextUp.greeting(step, app.today, app.state, app.content), go: { go(step.target) }, tall: tall)
   }
 
   /// Plays a step right here (lessons and map stops open on top of Story; Guess and Piggy switch tabs).
@@ -128,7 +140,7 @@ extension StoryView {
 
   /// "Today's story": the day's cards (weather, report cards, a word, a quiz, the weekly recap), closed until
   /// the kid opens it.
-  @ViewBuilder func more(width: CGFloat) -> some View {
+  @ViewBuilder func more(width: CGFloat, book: Bool = false) -> some View {
     let cs = cards
     MoreHeader(open: more, date: Day.en("EEEE, MMMM d", app.today), count: cs.count) {
       withAnimation(Motion.safe(Motion.card, rm)) { more.toggle() }
@@ -150,7 +162,12 @@ extension StoryView {
           //  • a fold (iPhone Duo open): a book, two cards per spread, one each side of the fold
           //  • wide, no fold (iPad, Stage Manager): every card at once in balanced columns
           //  • narrow (iPhone): one card per swipe, the pager as tall as the card on screen
-          if fold.fold == nil, fold.width >= 600 {
+          if book {
+            // A book page: every card, one under another (a pager would hide all but one).
+            VStack(spacing: 16) {
+              ForEach(Array(cs.enumerated()), id: \.offset) { _, c in StoryCard(card: c).fixedSize(horizontal: false, vertical: true) }
+            }
+          } else if fold.fold == nil, fold.width >= 600 {
             // iPad: the right-hand column (one card under another when it's narrow).
             StoryColumns(cards: cs, width: max(0, width))
           } else {

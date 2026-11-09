@@ -1,4 +1,5 @@
 import SwiftUI
+import MoonClubCore
 
 // Bright "at a glance" tiles and accordions for reading screens (the grown-up corner's How to play and
 // For grown-ups). Lead with a few bright tiles; the long words live in accordions, closed by default.
@@ -77,8 +78,20 @@ struct GlanceTile: View {
 struct TileGrid<Content: View>: View {
   var minimum: CGFloat = 270
   @ViewBuilder var content: Content
+  @State private var fold = FoldInfo()
   var body: some View {
-    LazyVGrid(columns: [GridItem(.adaptive(minimum: minimum), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) { content }
+    // When the iPhone Duo's fold crosses the grid: an even number of columns, the middle gutter on the fold
+    // (no tile under the hinge). Anywhere else, the adaptive grid as always.
+    if let f = fold.fold, f.height >= f.width {
+      let page = max(0, (fold.width - f.width) / 2)
+      let n = Fold.columns(width: fold.width, minimum: min(minimum, page), spacing: 12, foldCrosses: true)
+      LazyVGrid(columns: (0..<n).map { i in GridItem(.flexible(), spacing: i == n / 2 - 1 ? max(12, f.width) : 12, alignment: .top) },
+                alignment: .leading, spacing: 12) { content }
+        .foldProbe($fold)
+    } else {
+      LazyVGrid(columns: [GridItem(.adaptive(minimum: minimum), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) { content }
+        .foldProbe($fold)
+    }
   }
 }
 
