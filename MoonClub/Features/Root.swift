@@ -164,7 +164,7 @@ struct RootView: View {
   /// Each phase prints body re-evaluations per view and frame/hitch stats (see Design/Perf.swift).
   private func bench() async {
     #if DEBUG
-    guard Perf.on else { return }
+    guard Perf.on, Perf.mode != "school" else { return } // `-bench school` runs inside SchoolView (it scrolls the list)
     let mon = FrameMonitor()
     // `-bench world` / `-bench launch`: the first seconds of the World map, in 0.5 s windows.
     if Perf.mode == "world" || Perf.mode == "launch" {

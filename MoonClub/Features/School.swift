@@ -6,68 +6,80 @@ struct SchoolView: View {
   @Environment(AppModel.self) private var app
   @Namespace private var zoom
   @State private var deep: Lesson?
+  @Environment(\.displayScale) private var scale
 
   var body: some View {
     let done = Set(app.state.lessons)
     let next = app.content.lessons.first { !done.contains($0.id) }
+    let _ = Perf.body("School")
+    ScrollViewReader { proxy in
     ScrollView {
-      VStack(alignment: .leading, spacing: 22) {
-        Hero(eyebrow: "\(done.count) of \(app.content.lessons.count) done · about a minute each", title: "Moon", accent: "School", emoji: "🎓")
+      // Lazy, so a row (and its living scene) exists only while it is on screen or about to be: offscreen
+      // scenes run nothing and cost nothing (LessonScenes.swift, ClockHold).
+      LazyVStack(alignment: .leading, spacing: 10) {
+        Hero(eyebrow: "\(done.count) of \(app.content.lessons.count) done · about a minute each", title: "Moon", accent: "School", emoji: "🎓").id("top")
+          .padding(.bottom, 12)
         QuestRow()
         RefreshCard()
         if let next {
           NavigationLink(value: next) {
-            HStack(spacing: 14) {
-              Glyph(next.emoji, size: 56)
-              VStack(alignment: .leading, spacing: 2) {
-                Text("UP NEXT · \(app.content.unit(of: next)?.title.uppercased() ?? "")").font(.kEyebrow).opacity(0.8)
-                Text(next.title).font(.kTitle)
-                Text("\(next.steps.count) tiny steps").font(.caption).opacity(0.8)
-              }
-              Spacer(); Image(systemName: "arrow.right").font(.title2.weight(.bold))
-            }
-            .foregroundStyle(.white).padding(18)
-            .background(Palette.accent, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .shadow(color: Palette.accent.opacity(0.35), radius: 18, y: 10)
-            .modifier(ZoomSource(id: next.id, ns: zoom))
-          }.buttonStyle(.plain)
+            UpNextHero(lesson: next, unitTitle: app.content.unit(of: next)?.title ?? "")
+              .modifier(ZoomSource(id: next.id, ns: zoom))
+          }
+          .buttonStyle(.plain)
+          .padding(.vertical, 12)
         }
         ForEach(app.content.units) { u in
           let ls = app.content.lessons.filter { $0.unit == u.id }
           let n = ls.filter { done.contains($0.id) }.count
-          VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-              Glyph(u.emoji, size: 40)
-              VStack(alignment: .leading) { Text(u.title).font(.kTitle); Text(u.blurb).font(.caption).foregroundStyle(.secondary) }
-              Spacer()
-              Text(n == ls.count ? "Done" : "\(n)/\(ls.count)").font(.caption.monospaced().weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 4).moonGlass(Capsule(), interactive: true, weight: .thin)
-            }
-            ForEach(ls) { l in
-              NavigationLink(value: l) {
-                HStack(spacing: 12) {
-                  Glyph(l.emoji, size: 40).frame(width: 44)
-                  VStack(alignment: .leading, spacing: 2) {
-                    Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink)
-                    HStack(spacing: 6) {
-                      Text("\(l.steps.count) steps · 1 min").font(.caption).foregroundStyle(.secondary)
-                      if l.since != nil && l.since == app.baseContent.pack?.version { LessonTag(text: "New", fill: Palette.moon) }
-                      if app.content.isOptional(l) { LessonTag(text: "Challenge", fill: Palette.lavender) }
-                    }
+          HStack(spacing: 12) {
+            Glyph(u.emoji, size: 40)
+            VStack(alignment: .leading) { Text(u.title).font(.kTitle); Text(u.blurb).font(.caption).foregroundStyle(.secondary) }
+            Spacer()
+            Text(n == ls.count ? "Done" : "\(n)/\(ls.count)").font(.caption.monospaced().weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 4).moonGlass(Capsule(), interactive: true, weight: .thin)
+          }
+          .padding(.top, 12)
+          .id("unit-\(u.id)")
+          ForEach(ls) { l in
+            let finished = done.contains(l.id)
+            NavigationLink(value: l) {
+              HStack(spacing: 12) {
+                if SceneClock.forced == "off" { Glyph(l.emoji, size: 40).frame(width: 44) } // debug A/B: the old icon square
+                else { SceneTile(lesson: l, scene: Scenes.scene(for: l), status: finished ? .done : l.id == next?.id ? .next : .open) }
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink)
+                  HStack(spacing: 6) {
+                    Text("\(l.steps.count) steps · 1 min").font(.caption).foregroundStyle(.secondary)
+                    if l.since != nil && l.since == app.baseContent.pack?.version { LessonTag(text: "New", fill: Palette.moon) }
+                    if app.content.isOptional(l) { LessonTag(text: "Challenge", fill: Palette.lavender) }
                   }
-                  Spacer()
-                  MoonPhase(phase: done.contains(l.id) ? 4 : 0, size: 24)
                 }
-                .padding(14).moonGlass(radius: 18, weight: .thin)
-                .modifier(ZoomSource(id: l.id, ns: zoom))
+                Spacer()
+                MoonPhase(phase: finished ? 4 : 0, size: 24)
               }
-              .buttonStyle(.plain)
-              .accessibilityLabel("\(l.title). \(app.content.isOptional(l) ? "Challenge. " : "")\(done.contains(l.id) ? "Finished" : "Not started")")
+              .padding(12).moonGlass(radius: 20, weight: .thin)
+              .modifier(ZoomSource(id: l.id, ns: zoom))
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(l.title). \(app.content.isOptional(l) ? "Challenge. " : "")\(finished ? "Finished" : "Not started")")
           }
         }
-        BadgesGrid()
+        BadgesGrid().id("badges").padding(.top, 12)
       }
       .padding(20).readable()
+    }
+    .modifier(ScenesWakeOnScroll())
+    // Draw every card's still picture a few at a time as Moon School opens, so scrolling only shows images.
+    .task(id: done.count) {
+      let frames = app.content.lessons.map { l in
+        SceneTile.frame(lesson: l, scene: Scenes.scene(for: l), status: done.contains(l.id) ? .done : l.id == next?.id ? .next : .open, side: SceneTile.side)
+      }
+      try? await Task.sleep(for: .milliseconds(300))
+      await SceneStill.prewarm(frames, scale: scale)
+    }
+    #if DEBUG
+    .task { await benchScroll(proxy) }
+    #endif
     }
     .background(AuroraField(surface: .school))
     .navigationDestination(for: Lesson.self) { l in LessonPlayer(lesson: l).modifier(ZoomDestination(id: l.id, ns: zoom)) }
@@ -82,11 +94,53 @@ struct SchoolView: View {
 }
 
 extension SchoolView {
+  #if DEBUG
+  /// Debug `-bench school` (`-demo -world mid -tab school -library -bench school`): 3 s idle at the top, then
+  /// scroll the whole list unit by unit and back to the top, then 3 s after everything has settled. Prints
+  /// `BENCH school… frames=… mainCPU=…ms/frame` plus body counts (see Design/Perf.swift).
+  func benchScroll(_ proxy: ScrollViewProxy) async {
+    // Screenshots: `-unit <id>` scrolls Moon School to that unit.
+    let a = ProcessInfo.processInfo.arguments
+    if let i = a.firstIndex(of: "-unit"), i + 1 < a.count {
+      try? await Task.sleep(for: .milliseconds(600))
+      proxy.scrollTo("unit-\(a[i + 1])", anchor: .top)
+    }
+    guard Perf.mode == "school" else { return }
+    let mon = FrameMonitor()
+    try? await Task.sleep(for: .seconds(4))
+    Perf.reset(); mon.start(); try? await Task.sleep(for: .seconds(3)); mon.stop()
+    print(Perf.report("schoolIdle") + " " + mon.summary); fflush(stdout)
+    Perf.reset(); mon.start()
+    let ids = app.content.units.map { "unit-\($0.id)" } + ["badges"]
+    for id in ids { withAnimation(.easeInOut(duration: 0.5)) { proxy.scrollTo(id, anchor: .top) }; try? await Task.sleep(for: .milliseconds(650)) }
+    for id in ids.reversed().enumerated().filter({ $0.offset % 3 == 0 }).map(\.element) { withAnimation(.easeInOut(duration: 0.5)) { proxy.scrollTo(id, anchor: .top) }; try? await Task.sleep(for: .milliseconds(650)) }
+    withAnimation(.easeInOut(duration: 0.5)) { proxy.scrollTo("top", anchor: .top) }; try? await Task.sleep(for: .milliseconds(800))
+    mon.stop()
+    print(Perf.report("schoolScroll") + " " + mon.summary); fflush(stdout)
+    try? await Task.sleep(for: .seconds(15))
+    Perf.reset(); mon.start(); try? await Task.sleep(for: .seconds(3)); mon.stop()
+    print(Perf.report("schoolSettled") + " " + mon.summary); fflush(stdout)
+    print("BENCH done"); fflush(stdout)
+  }
+  #endif
   /// A widget or Live Activity asked for a lesson: open it once.
   func openPending() {
     guard let id = app.pendingLesson else { return }
     app.pendingLesson = nil
     deep = app.content.lessons.first { $0.id == id }
+  }
+}
+
+/// Scrolling pauses the lesson scenes (the scroll gets the main thread) and wakes them when it settles,
+/// so the cards the kid scrolled to come alive. iOS 18+ (scroll phases); on 17 they wake as rows appear.
+struct ScenesWakeOnScroll: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 18, *) {
+      content.onScrollPhaseChange { _, phase in
+        SceneClock.tiles.setScrolling(phase.isScrolling)
+        SceneClock.hero.setScrolling(phase.isScrolling)
+      }
+    } else { content }
   }
 }
 
@@ -308,6 +362,8 @@ struct LessonPlayer: View {
       Spacer(minLength: 0)
       if done {
         doneArt
+      } else if step == 0, case .say = lesson.steps[step] {
+        SceneStage(lesson: lesson, maxHeight: 300, minHeight: 200)
       } else if case let .say(emoji, _) = lesson.steps[step] {
         Glyph(emoji, size: 156, style: .halo).enterOnce("say-\(lesson.id)-\(step)")
         Luna(size: 64, wave: true)
@@ -362,7 +418,7 @@ struct LessonPlayer: View {
     StepContent(step: s, art: art, seed: step + lesson.id.count,
                 picked: Binding(get: { answers[step] }, set: { if answers[step] == nil { answers[step] = $0 } }),
                 picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), stageKey: lastSay?.emoji,
-                progress: reveals[step] ?? 0, advance: { reveal() })
+                progress: reveals[step] ?? 0, advance: { reveal() }, intro: step == 0 ? lesson : nil)
   }
 }
 
@@ -385,11 +441,14 @@ struct StepContent: View {
   var progress = 0
   /// Tapping the growth picture grows a year too.
   var advance: (() -> Void)? = nil
+  /// The lesson's first step: its Moon School scene, big, in place of the picture (card → lesson feels like
+  /// one picture growing). Same spare-room sizing as the art panel.
+  var intro: Lesson? = nil
   var body: some View {
     switch step {
     case let .say(emoji, text):
       VStack(spacing: 18) {
-        if art { ArtPanel(key: emoji, maxHeight: artMax) }
+        if art { if let intro { SceneStage(lesson: intro, maxHeight: artMax) } else { ArtPanel(key: emoji, maxHeight: artMax) } }
         Text(text).font(.system(.title2, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }

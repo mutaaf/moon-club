@@ -363,3 +363,43 @@ fragment half4 particleFragment(ParticleOut in [[stage_in]]) {
   float alpha = a * in.color.a;
   return half4(half3(in.color.rgb * alpha), half(alpha));
 }
+
+// MARK: - Lesson scenes (Moon School cards)
+
+// A little night window with aurora curtains: three ribbons of light in the unit's colors, each a wavy line
+// with a sharp lower edge and soft rays fading upward, over a deep sky with a few twinkling stars. Pure ALU,
+// three loop passes. `glow` dims a not-started card; `t` comes from the shared SceneClock (a still frame when
+// it rests). Drawn small (a 60 pt tile) at ~20 fps, or once as a still frame.
+[[ stitchable ]] half4 ribbons(float2 pos, half4 color, float2 size, float t,
+                               half4 c1, half4 c2, half4 c3, half4 base, float glow) {
+  float2 uv = pos / max(size, float2(1.0));
+  float aspect = size.x / max(size.y, 1.0);
+  float x = uv.x * aspect;
+  half3 col = base.rgb;
+  // A touch of horizon light at the bottom.
+  col += half3(0.05, 0.06, 0.12) * half(uv.y * uv.y);
+
+  // Stars: one per 11 pt cell at most, brighter near the top, twinkling slowly.
+  float2 cell = floor(pos / 11.0);
+  float h = hash21(cell);
+  float2 f = fract(pos / 11.0) - 0.5 - (float2(hash21(cell + 3.1), hash21(cell + 7.7)) - 0.5) * 0.6;
+  float star = step(0.84, h) * smoothstep(0.11, 0.0, length(f)) * (0.55 + 0.45 * sin(t * 1.7 + h * 40.0)) * (1.0 - uv.y);
+  col += half(star * 0.85);
+
+  for (int i = 0; i < 3; i++) {
+    float fi = float(i);
+    half3 c = i == 0 ? c1.rgb : (i == 1 ? c2.rgb : c3.rgb);
+    float y0 = 0.30 + 0.17 * fi + 0.08 * sin(x * 2.4 + t * 0.42 + fi * 2.1) + 0.035 * sin(x * 6.3 - t * 0.77 + fi * 1.3);
+    float d = uv.y - y0;
+    // Below the line the light ends fast; above it, rays fade up into the sky.
+    float curtain = d > 0.0 ? exp(-d * d * 420.0) : exp(d * 5.0);
+    float core = exp(-d * d * 2600.0) * 0.55;
+    float rays = 0.66 + 0.34 * sin(x * 19.0 + 2.5 * sin(x * 3.7 + t * 0.55) + fi * 5.0);
+    float shimmer = 0.78 + 0.22 * sin(t * 1.1 + x * 2.6 + fi * 1.9);
+    float a = (curtain * rays + core) * shimmer * glow * (0.9 - 0.18 * fi);
+    col += c * half(a);
+  }
+  float n = fract(sin(dot(pos, float2(12.9898, 78.233))) * 43758.5453);
+  col += half((n - 0.5) * 0.014);
+  return half4(min(col, half3(1.0)), 1.0);
+}

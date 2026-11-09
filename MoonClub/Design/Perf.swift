@@ -99,7 +99,8 @@ import QuartzCore
     let p95 = sorted.isEmpty ? 0 : sorted[min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]
     let avg = frames == 0 ? 0 : total / Double(frames)
     let ratio = total == 0 ? 0 : hitchTime * 1000 / total
-    return String(format: "frames=%d avg=%.1fms p95=%.1fms worst=%.0fms hitches=%d hitchRatio=%.1fms/s", frames, avg * 1000, p95 * 1000, worst * 1000, hitches, ratio)
+    let cpu = timeline.isEmpty ? 0 : timeline.map(\.2).reduce(0, +) / Double(timeline.count)
+    return String(format: "frames=%d avg=%.1fms p95=%.1fms worst=%.0fms hitches=%d hitchRatio=%.1fms/s mainCPU=%.2fms/frame", frames, avg * 1000, p95 * 1000, worst * 1000, hitches, ratio, cpu * 1000)
   }
 }
 
