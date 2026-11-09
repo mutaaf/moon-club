@@ -326,7 +326,8 @@ struct MoonShop: View {
       Text(slot.title).font(.kHeadline).frame(maxWidth: .infinity, alignment: .leading)
       let items = Shop.visible(hinge: duo?.hasHinge ?? false, app.state).filter { $0.slot == slot }
       // Up to six items: three across. More (the rockets): four across, so a shelf is always two rows.
-      LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: items.count > 6 ? 4 : 3), spacing: 10) {
+      // If the fold crosses the shelf (a wide sheet on iPhone Duo), the count goes even and the gutter sits on it.
+      FoldColumns(minimum: 60, spacing: 8, count: items.count > 6 ? 4 : 3, rowSpacing: 10) {
         ForEach(items) { it in
           ShopCell(item: it, state: cellState(it), picked: picked == it.id) {
             withAnimation(Motion.safe(Motion.tap, rm)) { picked = it.id; confirm = false }

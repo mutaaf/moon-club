@@ -20,8 +20,41 @@ struct AskLunaView: View {
 
   var body: some View {
     let _ = Perf.body("AskLunaView")
+    // iPhone Duo opened like a book: the questions on the left page, Luna's answer on the right.
+    FoldPages {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
+        askPage
+        answerPage
+      }
+      .padding(20).readable()
+      .animation(.spring(response: 0.45, dampingFraction: 0.85), value: asked)
+    }
+    } first: {
+      BookPage { askPage }
+    } second: {
+      BookPage {
+        if asked.isEmpty { answerWaits }
+        answerPage
+      }
+      .animation(.spring(response: 0.45, dampingFraction: 0.85), value: asked)
+    }
+    .scrollDismissesKeyboard(.interactively)
+    .background(AuroraField(surface: .luna))
+    .onDisappear { task?.cancel() }
+  }
+
+  /// The right page before the first question: Luna, waiting to answer.
+  private var answerWaits: some View {
+    VStack(spacing: 14) {
+      Luna(size: 96, wave: true)
+      Text("Tap a question, and Luna answers right here.").font(.kRead).multilineTextAlignment(.center).foregroundStyle(Palette.ink2)
+    }
+    .frame(maxWidth: .infinity).padding(.vertical, 40)
+  }
+
+  /// Who Luna is, the question chips and the typed question.
+  @ViewBuilder private var askPage: some View {
         Hero(eyebrow: "Your money helper", title: "Ask", accent: "Luna")
         HStack { BrainBadge(); Spacer()
           if !turns.isEmpty { Button { turns = []; asked = ""; answer = "" } label: { Label("New chat", systemImage: "sparkles") }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("new-chat") }
@@ -44,6 +77,10 @@ struct AskLunaView: View {
           }
           Text("Please don't type your name, school or where you live.").font(.caption).foregroundStyle(.secondary)
         }
+  }
+
+  /// The chat so far, Luna's answer and the reminder that she can make mistakes.
+  @ViewBuilder private var answerPage: some View {
         if app.brainCaps.memoryTurns > 0, turns.count > 2 {
           VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(turns.dropLast(2).suffix(6).enumerated()), id: \.offset) { _, t in
@@ -67,13 +104,6 @@ struct AskLunaView: View {
           .transition(.move(edge: .bottom).combined(with: .opacity))
         }
         Text("Luna is a computer helper, so she can make mistakes. For real money questions, ask a grown-up you trust.").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity)
-      }
-      .padding(20).readable()
-      .animation(.spring(response: 0.45, dampingFraction: 0.85), value: asked)
-    }
-    .scrollDismissesKeyboard(.interactively)
-    .background(AuroraField(surface: .luna))
-    .onDisappear { task?.cancel() }
   }
 
   @State private var typedQuestion: String?

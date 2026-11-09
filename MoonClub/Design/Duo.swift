@@ -189,6 +189,9 @@ struct Storybook<Single: View, First: View, Second: View>: View {
   var spacing: CGFloat = 18
   var minPage: CGFloat = 280
   var fill = false
+  /// Only a real fold makes two pages (no wide-window split at the center): for screens whose iPad
+  /// layout is already designed for the room, so iPad, phone and closed stay exactly as they were.
+  var foldOnly = false
   @ViewBuilder var single: Single
   @ViewBuilder var first: First
   @ViewBuilder var second: Second
@@ -215,7 +218,7 @@ struct Storybook<Single: View, First: View, Second: View>: View {
     .animation(rm ? nil : .spring(response: 0.5, dampingFraction: 0.86), value: s == nil)
   }
 
-  private var split: FoldInfo.Split? { info.split(minPage: minPage) }
+  private var split: FoldInfo.Split? { info.split(minPage: minPage, foldOnly: foldOnly) }
 }
 
 /// Lays out exactly two pages with a gutter, always at the *proposed* width (scaling the measured split
@@ -247,13 +250,14 @@ extension FoldInfo {
   struct Split: Equatable { var lead: CGFloat, gap: CGFloat, trail: CGFloat }
   /// Two page widths and the gutter between them, or nil for one page. A vertical fold (book pose, or
   /// flat) sets the gutter; with no fold, a wide window splits at the center.
-  func split(minPage: CGFloat) -> Split? {
+  /// `foldOnly`: no center split without a fold (the screen keeps its own wide-window layout).
+  func split(minPage: CGFloat, foldOnly: Bool = false) -> Split? {
     guard width > 0 else { return nil }
     if let f = fold, f.height >= f.width,
        let sp = Fold.spread(in: CGRect(x: 0, y: 0, width: width, height: max(f.maxY, 1)), fold: f, minPage: minPage) {
       return Split(lead: sp.first.width, gap: f.width, trail: sp.second.width)
     }
-    guard width >= minPage * 2 + 32 else { return nil }
+    guard !foldOnly, width >= minPage * 2 + 32 else { return nil }
     return Split(lead: (width - 32) / 2, gap: 32, trail: (width - 32) / 2)
   }
 }
@@ -315,16 +319,93 @@ struct TabletopStage<Top: View, Bottom: View>: View {
 struct FoldColumns<Content: View>: View {
   var minimum: CGFloat
   var spacing: CGFloat = 12
+  /// A fixed column count (the shop shelves); rounded up to even when the fold crosses the grid.
+  var count: Int? = nil
+  var rowSpacing: CGFloat? = nil
   @ViewBuilder var content: Content
   @State private var info = FoldInfo()
   var body: some View {
     let crosses = info.fold.map { $0.height >= $0.width } ?? false
-    let n = Fold.columns(width: info.width, minimum: minimum, spacing: spacing, foldCrosses: crosses)
+    let n = count.map { crosses ? $0 + $0 % 2 : $0 } ?? Fold.columns(width: info.width, minimum: minimum, spacing: spacing, foldCrosses: crosses)
     // With a fold, the middle gap becomes a gutter as wide as the fold (margins included).
     let cols = (0..<n).map { i in GridItem(.flexible(), spacing: crosses && i == n / 2 - 1 ? max(spacing, info.fold!.width) : spacing) }
-    LazyVGrid(columns: cols, spacing: spacing) { content }
+    LazyVGrid(columns: cols, spacing: rowSpacing ?? spacing) { content }
       .foldProbe($info)
   }
+}
+
+/// A whole screen opened like a book (iPhone Duo in book pose, or flat): when a vertical fold crosses the
+/// window, `first` and `second` are two pages, one on each side of the fold, each scrolling on its own (so
+/// a long list on one page never leaves the other blank). With no fold (phone, closed, iPad, Split View)
+/// it's `single`, exactly as before: there is no wide-window fallback. Pages fill the height; each page
+/// brings its own ScrollView (`BookPage`).
+struct FoldPages<Single: View, First: View, Second: View>: View {
+  var minPage: CGFloat = 280
+  @ViewBuilder var single: Single
+  @ViewBuilder var first: First
+  @ViewBuilder var second: Second
+  @State private var info = FoldInfo()
+  var body: some View {
+    let s = info.split(minPage: minPage, foldOnly: true)
+    Group {
+      if let s {
+        PageSplit(split: s, fill: true) {
+          first.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+          second.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+      } else {
+        single
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .foldProbe($info)
+  }
+}
+
+/// One page of a `FoldPages` spread: scrolls on its own, padded like the screen it came from. `center`
+/// floats short content to the middle of the page (Story's Start here gets a page to itself).
+struct BookPage<Content: View>: View {
+  var spacing: CGFloat = 18
+  var center = false
+  @ViewBuilder var content: Content
+  var body: some View {
+    GeometryReader { g in
+      ScrollView {
+        VStack(alignment: .leading, spacing: spacing) { content }
+          .padding(.horizontal, 16).padding(.vertical, 20)
+          .frame(maxWidth: .infinity, minHeight: center ? g.size.height : nil, alignment: center ? .center : .topLeading)
+      }
+      .scrollBounceBehavior(.basedOnSize)
+    }
+  }
+}
+
+enum FoldPage { case first, second }
+
+/// Keeps a bar (a play screen's HUD, its buttons) on one page when a vertical fold crosses it, so nothing
+/// sits under the hinge; anywhere else it's untouched. Laid out at the proposed width (`PageSplit`).
+private struct FoldSide: ViewModifier {
+  let page: FoldPage
+  var minPage: CGFloat = 240
+  @State private var info = FoldInfo()
+  func body(content: Content) -> some View {
+    Group {
+      if let s = info.split(minPage: minPage, foldOnly: true) {
+        PageSplit(split: s) {
+          if page == .first { content } else { Color.clear.frame(height: 1).accessibilityHidden(true) }
+          if page == .second { content } else { Color.clear.frame(height: 1).accessibilityHidden(true) }
+        }
+      } else {
+        content
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .foldProbe($info)
+  }
+}
+extension View {
+  /// On a fold, keep this on one page (see `FoldSide`).
+  func foldSide(_ page: FoldPage) -> some View { modifier(FoldSide(page: page)) }
 }
 
 // MARK: - Hinge effects (no layout)

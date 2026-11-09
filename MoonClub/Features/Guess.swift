@@ -12,12 +12,45 @@ struct GuessView: View {
 
   var body: some View {
     let _ = Perf.body("GuessView")
+    // iPhone Duo opened like a book: how to play (and Game Night) on the left page, the guesses to make on
+    // the right. Phone, iPad and closed keep one column.
+    FoldPages {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
+        learnPage
+        guessPage
+      }
+      .padding(20).readable()
+      .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
+    }
+    } first: {
+      BookPage(spacing: 22) { learnPage }
+    } second: {
+      BookPage(spacing: 22) { guessPage }
+        .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
+    }
+    .background(AuroraField(surface: .guess))
+    .refreshable { await app.loadMarket() }
+    .sheet(item: Binding(get: { word.map(Ident.init) }, set: { word = $0?.id })) { WordSheet(key: $0.id) }
+    .fullScreenCover(isPresented: $gameNight) { GameNightView() }
+    // Deep link (moonclub://gamenight, mutaafaziz.com/metaphases/kids/gamenight).
+    .onAppear { if app.pendingGameNight { app.pendingGameNight = false; gameNight = true } }
+    .onChange(of: app.pendingGameNight) { _, on in if on { app.pendingGameNight = false; gameNight = true } }
+    #if DEBUG
+    .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
+    #endif
+  }
+
+  /// How the game works, the course and Game Night (the left page when opened like a book).
+  @ViewBuilder private var learnPage: some View {
         Hero(eyebrow: "A guessing game", title: "Guess the", accent: "Report Card", emoji: "🎯")
         intro
         CourseCard(kind: .guess)
         gameNightCard
+  }
+
+  /// The family league, your guesses and the report cards coming up (the right page).
+  @ViewBuilder private var guessPage: some View {
         LeagueBoard()
         let mine = app.state.guesses.sorted { $0.d < $1.d }
         if !mine.isEmpty {
@@ -32,20 +65,6 @@ struct GuessView: View {
         else {
           ForEach(Array(open)) { e in upcomingCard(e).matchedGeometryEffect(id: e.id, in: ns) }
         }
-      }
-      .padding(20).readable()
-      .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
-    }
-    .background(AuroraField(surface: .guess))
-    .refreshable { await app.loadMarket() }
-    .sheet(item: Binding(get: { word.map(Ident.init) }, set: { word = $0?.id })) { WordSheet(key: $0.id) }
-    .fullScreenCover(isPresented: $gameNight) { GameNightView() }
-    // Deep link (moonclub://gamenight, mutaafaziz.com/metaphases/kids/gamenight).
-    .onAppear { if app.pendingGameNight { app.pendingGameNight = false; gameNight = true } }
-    .onChange(of: app.pendingGameNight) { _, on in if on { app.pendingGameNight = false; gameNight = true } }
-    #if DEBUG
-    .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
-    #endif
   }
 
   /// Two players, one phone. Best on iPhone Duo, where each player gets their own half of the screen.

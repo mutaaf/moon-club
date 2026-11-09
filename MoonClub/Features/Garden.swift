@@ -48,6 +48,8 @@ enum PiggySide: String, CaseIterable, Identifiable {
 
 /// The Moon Garden page section.
 struct MoonGarden: View {
+  /// All of it, or one page of the iPhone Duo book spread: the garden itself (`first`) or its tips (`second`).
+  var part: PagePart = .all
   @Environment(AppModel.self) private var app
   @State private var planting = false
   @State private var plot: String?
@@ -55,21 +57,8 @@ struct MoonGarden: View {
     let _ = Perf.body("MoonGarden")
     let book = app.derived.garden
     VStack(alignment: .leading, spacing: 16) {
-      GardenSummary(book: book) { planting = true }
-      if book.growing.isEmpty {
-        EmptyGarden { planting = true }
-      } else {
-        VStack(spacing: 10) {
-          ForEach(book.growing) { p in PlotRow(plot: p) { plot = p.s } }
-        }
-      }
-      if let nudge = Garden.basketNudge(book) {
-        TipCard(symbol: "basket.fill", hue: .orange, title: "One basket?", text: nudge)
-      }
-      TipCard(symbol: "moon.zzz.fill", hue: .sky, title: "Check less often", text: Garden.wisdom(today: app.today))
-      // Garden School: growth on growth, baskets, fees and the Rule of 72, next lesson first.
-      CourseCard(kind: .garden)
-      if !book.harvests.isEmpty { HarvestHistory(lines: Array(book.harvests.suffix(3).reversed())) }
+      if part != .second { garden(book) }
+      if part != .first { tips(book) }
     }
     .sheet(isPresented: $planting) { PlantSheet().presentationDetents([.large]).presentationCornerRadius(32) }
     .sheet(item: Binding(get: { plot.map(PlotRoute.init) }, set: { plot = $0?.id })) { r in
@@ -77,11 +66,39 @@ struct MoonGarden: View {
     }
     .onAppear {
       #if DEBUG
+      guard part != .second else { return }
       let a = ProcessInfo.processInfo.arguments
       if a.contains("-plant") { planting = true }
       if let i = a.firstIndex(of: "-plot"), i + 1 < a.count { plot = a[i + 1] }
       #endif
     }
+  }
+
+  /// The left page holds the summary (what you have, Plant points); the plots start the right page.
+  @ViewBuilder private func garden(_ book: GardenBook) -> some View {
+      GardenSummary(book: book) { planting = true }
+      if part == .all { plots(book) }
+  }
+
+  @ViewBuilder private func plots(_ book: GardenBook) -> some View {
+      if book.growing.isEmpty {
+        EmptyGarden { planting = true }
+      } else {
+        VStack(spacing: 10) {
+          ForEach(book.growing) { p in PlotRow(plot: p) { plot = p.s } }
+        }
+      }
+  }
+
+  @ViewBuilder private func tips(_ book: GardenBook) -> some View {
+      if part == .second { plots(book) }
+      if let nudge = Garden.basketNudge(book) {
+        TipCard(symbol: "basket.fill", hue: .orange, title: "One basket?", text: nudge)
+      }
+      TipCard(symbol: "moon.zzz.fill", hue: .sky, title: "Check less often", text: Garden.wisdom(today: app.today))
+      // Garden School: growth on growth, baskets, fees and the Rule of 72, next lesson first.
+      CourseCard(kind: .garden)
+      if !book.harvests.isEmpty { HarvestHistory(lines: Array(book.harvests.suffix(3).reversed())) }
   }
 }
 

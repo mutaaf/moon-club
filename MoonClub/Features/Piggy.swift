@@ -11,26 +11,66 @@ struct PiggyView: View {
     #endif
     return .garden
   }()
+  /// One piggy's prices and peeks, shared by both pages of the book spread (so they load once).
+  @State private var quotes = PiggyQuotes()
+
   var body: some View {
     let _ = Perf.body("PiggyView")
+    // iPhone Duo opened like a book: the jar (what you have, its line, what's growing) on the left page,
+    // the controls and tips on the right. Phone, iPad and closed keep one column.
+    FoldPages {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        Hero(eyebrow: side == .garden ? "Grow your Moon points" : "Practice with pretend coins", title: side == .garden ? "Moon" : "Pretend", accent: side == .garden ? "Garden" : "Piggy Bank", emoji: side == .garden ? "🌱" : nil, piggy: side == .coins)
-        // Two things live here, kept apart so the currencies never mix: Moon points grow in the garden,
-        // pretend coins stay in the practice piggy.
-        Picker("Show", selection: $side) {
-          ForEach(PiggySide.allCases) { s in Label(s.title, systemImage: s.icon).tag(s) }
-        }
-        .pickerStyle(.segmented)
+        header
         switch side {
         case .garden: MoonGarden()
-        case .coins: if app.state.piggy == nil { PiggySetup() } else { PiggyBank() }
+        case .coins: if app.state.piggy == nil { PiggySetup() } else { PiggyBank(quotes: quotes) }
         }
       }
       .padding(20).readable()
     }
+    } first: {
+      BookPage(spacing: 20) {
+        header
+        switch side {
+        case .garden: MoonGarden(part: .first)
+        case .coins: if app.state.piggy != nil { PiggyBank(part: .first, quotes: quotes) }
+        }
+      }
+    } second: {
+      BookPage(spacing: 20) {
+        switch side {
+        case .garden: MoonGarden(part: .second)
+        case .coins: if app.state.piggy == nil { PiggySetup() } else { PiggyBank(part: .second, quotes: quotes) }
+        }
+      }
+    }
     .background(AuroraField(surface: .piggy))
   }
+
+  @ViewBuilder private var header: some View {
+    Hero(eyebrow: side == .garden ? "Grow your Moon points" : "Practice with pretend coins", title: side == .garden ? "Moon" : "Pretend", accent: side == .garden ? "Garden" : "Piggy Bank", emoji: side == .garden ? "🌱" : nil, piggy: side == .coins)
+    // Two things live here, kept apart so the currencies never mix: Moon points grow in the garden,
+    // pretend coins stay in the practice piggy.
+    Picker("Show", selection: $side) {
+      ForEach(PiggySide.allCases) { s in Label(s.title, systemImage: s.icon).tag(s) }
+    }
+    .pickerStyle(.segmented)
+  }
+}
+
+/// Which part of a screen to draw: all of it (one column, or its own two-page spread), or one page of
+/// the iPhone Duo book spread.
+enum PagePart { case all, first, second }
+
+/// The pretend piggy's prices, kept above the bank so both pages of a book spread share one load.
+@MainActor @Observable
+final class PiggyQuotes {
+  var prices: [String: Double] = [:]
+  var loaded = false
+  var confirm = false
+  /// Times the bank was opened today (device-only count) for Luna's "don't peek every minute" tip.
+  var peeks = 0
 }
 
 struct PiggySetup: View {
@@ -102,12 +142,14 @@ struct PiggySetup: View {
 }
 
 struct PiggyBank: View {
+  var part: PagePart = .all
+  var quotes: PiggyQuotes? = nil
   @Environment(AppModel.self) private var app
-  @State private var prices: [String: Double] = [:]
-  @State private var loaded = false
-  @State private var confirm = false
-  /// Times the bank was opened today (device-only count) for Luna's "don't peek every minute" tip.
-  @State private var peeks = 0
+  @State private var own = PiggyQuotes()
+  private var q: PiggyQuotes { quotes ?? own }
+  private var prices: [String: Double] { q.prices }
+  private var loaded: Bool { q.loaded }
+  private var peeks: Int { q.peeks }
   var body: some View {
     let _ = Perf.body("PiggyBank")
     // The piggy can disappear while this view is still on screen (start over, reset, an iCloud merge):
@@ -120,7 +162,14 @@ struct PiggyBank: View {
     let change = value - app.content.startCoins
     let hist = p.history.sorted { $0.key < $1.key }
     // Open wide (iPhone Duo, iPad): the money and its line on one page, what's inside on the other.
-    TwoPage {
+    switch part {
+    case .all: TwoPage { money(p, value, change, hist) } second: { inside(p, value) }
+    case .first: money(p, value, change, hist)
+    case .second: inside(p, value)
+    }
+  }
+
+  @ViewBuilder private func money(_ p: Piggy, _ value: Double, _ change: Double, _ hist: [(key: String, value: Double)]) -> some View {
     Card {
       HStack { Eyebrow(text: "Your pretend money today"); Spacer(); PretendPill() }
       Ticker(value: value, format: { coins($0) }, font: .system(size: 48, weight: .heavy, design: .rounded))
@@ -143,7 +192,9 @@ struct PiggyBank: View {
       Text("**\(co.nick)** moved the most: \(m.change >= 0 ? "up" : "down") \(toFixed(abs(m.change), 1))% since you started. \(m.change >= 0 ? "Lots of people wanted its shares, so the price went up." : "More people were selling its shares, so the price went down. That's normal!")")
         .font(.callout).padding(14).background(Palette.moon.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
     }
-    } second: {
+  }
+
+  @ViewBuilder private func inside(_ p: Piggy, _ value: Double) -> some View {
     VStack(spacing: 10) {
       ForEach(p.holdings, id: \.s) { h in
         let c = holdingChange(h, price: prices[h.s])
@@ -163,16 +214,16 @@ struct PiggyBank: View {
     }
     if loaded, let m = biggestMover(p.holdings, prices: prices), abs(m.change) >= 0.05 { Card { WhyCard(symbol: m.s, title: "Why did \(app.company(m.s).nick) move?") } }
     CourseCard(kind: .piggy)
-    Button(confirm ? "Yes, empty it and start over" : "Start over with new pretend coins") {
-      if confirm { withAnimation { app.mutate { $0.resetPiggy() } } } else { confirm = true }
+    Button(q.confirm ? "Yes, empty it and start over" : "Start over with new pretend coins") {
+      if q.confirm { withAnimation { app.mutate { $0.resetPiggy() } } } else { q.confirm = true }
     }.font(.footnote).frame(maxWidth: .infinity)
     .task {
-      if peeks == 0 { peeks = app.peekPiggy() }
-      if let q = try? await app.market.quotes(p.holdings.map(\.s)) {
-        prices = q; withAnimation(.snappy) { loaded = true }
-        app.mutate { $0.recordValue(today: app.today, value: piggyValue(p.holdings, prices: q)) }
+      let q = self.q
+      if q.peeks == 0 { q.peeks = app.peekPiggy() }
+      if let quotes = try? await app.market.quotes(p.holdings.map(\.s)) {
+        q.prices = quotes; withAnimation(.snappy) { q.loaded = true }
+        app.mutate { $0.recordValue(today: app.today, value: piggyValue(p.holdings, prices: quotes)) }
       }
-    }
     }
   }
 }

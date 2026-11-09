@@ -48,7 +48,35 @@ struct GrownUpsView: View {
   var body: some View {
     NavigationStack {
       ScrollViewReader { proxy in
-      List {
+      // iPhone Duo opened like a book: the read-me side (promises, how to play, what your child is
+      // learning) on the left page, the settings on the right. Each list scrolls on its own; nothing
+      // runs under the fold. One list everywhere else.
+      FoldPages {
+        List { overview; settings }
+      } first: {
+        List { overview }
+      } second: {
+        List { settings }
+      }
+      #if DEBUG
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-askReset") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("reset", anchor: .bottom) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPacks") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("packs", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollSync") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("sync", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollShare") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("share", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPlay") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("play", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollLearn") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("learn", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
+      #endif
+      }
+      .navigationTitle("For grown-ups")
+      .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+    }
+  }
+}
+
+extension GrownUpsView {
+  /// The read-me side: who we are, our promises, how to play, learn more, what's new, the learning report.
+  @ViewBuilder var overview: some View {
         if let link, link.needsGrownUp { LinkOffer(link: link) }
         Section {
           HStack(spacing: 14) { Luna(size: 54); VStack(alignment: .leading) { Text("Moon Club").font(.kTitle); Text("Metaphases Kids · prototype").font(.caption).foregroundStyle(.secondary) } }
@@ -116,6 +144,10 @@ struct GrownUpsView: View {
         Section { UnitsReport().id("packs") } header: { Text("What your child is learning") } footer: {
           Text("Worked out on this device. Nothing is sent. Open a unit for its dinner table talk.")
         }
+  }
+
+  /// Every setting: packs, Luna's brain and voice, the garden limit, games, league, sync, share, more.
+  @ViewBuilder var settings: some View {
         Section {
           PackSettings()
           About {
@@ -161,20 +193,6 @@ struct GrownUpsView: View {
           Link(destination: URL(string: "https://mutaafaziz.com/metaphases/kids/grownups")!) { Label("Printable worksheets", systemImage: "printer") }
           ResetProgressButton()
         }
-      }
-      #if DEBUG
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-askReset") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("reset", anchor: .bottom) } } }
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPacks") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("packs", anchor: .top) } } }
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollSync") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("sync", anchor: .top) } } }
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollShare") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("share", anchor: .top) } } }
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPlay") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("play", anchor: .top) } } }
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollLearn") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("learn", anchor: .top) } } }
-      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
-      #endif
-      }
-      .navigationTitle("For grown-ups")
-      .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-    }
   }
 }
 

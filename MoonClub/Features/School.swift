@@ -13,10 +13,62 @@ struct SchoolView: View {
     let next = app.content.lessons.first { !done.contains($0.id) }
     let _ = Perf.body("School")
     ScrollViewReader { proxy in
+    // iPhone Duo opened like a book: the left page is the cover (where you are, Luna's quest, Up Next's
+    // living scene, your badges), the right page is every unit and lesson. Each page scrolls on its own,
+    // so the lessons never run under the fold and the Up Next card stays in view. One column elsewhere.
+    FoldPages {
     ScrollView {
       // Lazy, so a row (and its living scene) exists only while it is on screen or about to be: offscreen
       // scenes run nothing and cost nothing (LessonScenes.swift, ClockHold).
       LazyVStack(alignment: .leading, spacing: 10) {
+        cover(done: done, next: next)
+        units(done: done, next: next)
+        BadgesGrid().id("badges").padding(.top, 12)
+      }
+      .padding(20).readable()
+    }
+    .modifier(ScenesWakeOnScroll())
+    } first: {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 10) {
+          cover(done: done, next: next)
+          BadgesGrid().id("badges").padding(.top, 12)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 20)
+      }
+      .modifier(ScenesWakeOnScroll())
+    } second: {
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 10) { units(done: done, next: next) }
+          .padding(.horizontal, 16).padding(.vertical, 20)
+      }
+      .modifier(ScenesWakeOnScroll())
+    }
+    // Draw every card's still picture a few at a time as Moon School opens, so scrolling only shows images.
+    .task(id: done.count) {
+      let frames = app.content.lessons.map { l in
+        SceneTile.frame(lesson: l, scene: Scenes.scene(for: l), status: done.contains(l.id) ? .done : l.id == next?.id ? .next : .open, side: SceneTile.side)
+      }
+      try? await Task.sleep(for: .milliseconds(300))
+      await SceneStill.prewarm(frames, scale: scale)
+    }
+    #if DEBUG
+    .task { await benchScroll(proxy) }
+    #endif
+    }
+    .background(AuroraField(surface: .school))
+    .navigationDestination(for: Lesson.self) { l in LessonPlayer(lesson: l).modifier(ZoomDestination(id: l.id, ns: zoom)) }
+    .navigationDestination(item: $deep) { LessonPlayer(lesson: $0) }
+    .onAppear {
+      let a = ProcessInfo.processInfo.arguments
+      if deep == nil, let i = a.firstIndex(of: "-lesson"), i + 1 < a.count { deep = app.content.lessons.first { $0.id == a[i + 1] } }
+      openPending()
+    }
+    .onChange(of: app.pendingLesson) { openPending() }
+  }
+
+  /// Where you are: the title, Luna's quest, a refresh, and the Up Next card.
+  @ViewBuilder private func cover(done: Set<String>, next: Lesson?) -> some View {
         Hero(eyebrow: "\(done.count) of \(app.content.lessons.count) done · about a minute each", title: "Moon", accent: "School", emoji: "🎓").id("top")
           .padding(.bottom, 12)
         QuestRow()
@@ -29,6 +81,10 @@ struct SchoolView: View {
           .buttonStyle(.plain)
           .padding(.vertical, 12)
         }
+  }
+
+  /// Every unit and its lessons (living scene cards).
+  @ViewBuilder private func units(done: Set<String>, next: Lesson?) -> some View {
         ForEach(app.content.units) { u in
           let ls = app.content.lessons.filter { $0.unit == u.id }
           let n = ls.filter { done.contains($0.id) }.count
@@ -64,32 +120,6 @@ struct SchoolView: View {
             .accessibilityLabel("\(l.title). \(app.content.isOptional(l) ? "Challenge. " : "")\(finished ? "Finished" : "Not started")")
           }
         }
-        BadgesGrid().id("badges").padding(.top, 12)
-      }
-      .padding(20).readable()
-    }
-    .modifier(ScenesWakeOnScroll())
-    // Draw every card's still picture a few at a time as Moon School opens, so scrolling only shows images.
-    .task(id: done.count) {
-      let frames = app.content.lessons.map { l in
-        SceneTile.frame(lesson: l, scene: Scenes.scene(for: l), status: done.contains(l.id) ? .done : l.id == next?.id ? .next : .open, side: SceneTile.side)
-      }
-      try? await Task.sleep(for: .milliseconds(300))
-      await SceneStill.prewarm(frames, scale: scale)
-    }
-    #if DEBUG
-    .task { await benchScroll(proxy) }
-    #endif
-    }
-    .background(AuroraField(surface: .school))
-    .navigationDestination(for: Lesson.self) { l in LessonPlayer(lesson: l).modifier(ZoomDestination(id: l.id, ns: zoom)) }
-    .navigationDestination(item: $deep) { LessonPlayer(lesson: $0) }
-    .onAppear {
-      let a = ProcessInfo.processInfo.arguments
-      if deep == nil, let i = a.firstIndex(of: "-lesson"), i + 1 < a.count { deep = app.content.lessons.first { $0.id == a[i + 1] } }
-      openPending()
-    }
-    .onChange(of: app.pendingLesson) { openPending() }
   }
 }
 
@@ -279,8 +309,12 @@ struct LessonPlayer: View {
 
   private var stage: some View {
     VStack(spacing: 12) {
-      GameHUD(run: run, title: lesson.title, done: min(step, lesson.steps.count), total: lesson.steps.count) { dismiss() }
-      if bookOpen { DuoCallout(text: "Storybook mode: one page each side", symbol: "book.pages.fill") }
+      // On the fold the HUD and its callout keep to the story page, the buttons to the play page.
+      VStack(spacing: 12) {
+        GameHUD(run: run, title: lesson.title, done: min(step, lesson.steps.count), total: lesson.steps.count) { dismiss() }
+        if bookOpen { DuoCallout(text: "Storybook mode: one page each side", symbol: "book.pages.fill") }
+      }
+      .foldSide(.first)
       // One card on a phone; opened wide (iPhone Duo, iPad) it's a storybook spread: the story on the
       // left page, the play on the right, never across the fold.
       Storybook(minPage: 280, fill: true) {
@@ -313,6 +347,7 @@ struct LessonPlayer: View {
         }
       }
     }
+    .foldSide(.second)
     .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 6)
     .readable(720)
   }

@@ -11,6 +11,9 @@ struct StartHereHero: View {
   let step: NextStep
   let greeting: String
   let go: () -> Void
+  /// A page to itself (iPhone Duo book pose): a tall card, the art and play button above the words,
+  /// so the title reads in full on a narrow page instead of breaking word by word.
+  var tall = false
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.dynamicTypeSize) private var type
   @State private var pulse = false
@@ -46,29 +49,26 @@ struct StartHereHero: View {
 
   private var face: some View {
     let shape = RoundedRectangle(cornerRadius: 30, style: .continuous)
-    return HStack(spacing: 14) {
-      if !type.isAccessibilitySize {
-        Glyph(step.art, size: min(art, 72))
-      }
-      VStack(alignment: .leading, spacing: 4) {
-        Text(step.verb).font(.system(.headline, design: .rounded).weight(.heavy)).foregroundStyle(.white.opacity(0.9))
-          .textCase(.uppercase).tracking(0.6)
-        Text(step.title).font(.system(.title, design: .rounded).weight(.heavy)).foregroundStyle(.white)
-          .lineLimit(3).minimumScaleFactor(0.6).fixedSize(horizontal: false, vertical: true)
-        if let m = step.minutes {
-          Label("\(m) min", systemImage: "clock.fill").font(.subheadline.weight(.bold)).foregroundStyle(.white)
-            .padding(.horizontal, 10).padding(.vertical, 4)
-            .background(.white.opacity(0.22), in: Capsule())
-            .padding(.top, 2)
+    return Group {
+      if tall {
+        VStack(alignment: .leading, spacing: 14) {
+          HStack {
+            if !type.isAccessibilitySize { Glyph(step.art, size: min(art * 1.3, 84)) }
+            Spacer(minLength: 0)
+            playDisc
+          }
+          words
+        }
+      } else {
+        HStack(spacing: 14) {
+          if !type.isAccessibilitySize {
+            Glyph(step.art, size: min(art, 72))
+          }
+          words
+          Spacer(minLength: 0)
+          playDisc
         }
       }
-      Spacer(minLength: 0)
-      Image(systemName: step.target == .chest ? "gift.fill" : "play.fill")
-        .font(.system(size: 24, weight: .black))
-        .foregroundStyle(Palette.accent)
-        .frame(width: 58, height: 58)
-        .background(.white, in: Circle())
-        .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
     }
     .padding(.horizontal, 18).padding(.vertical, 20)
     .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
@@ -84,6 +84,30 @@ struct StartHereHero: View {
         .allowsHitTesting(false)
     }
     .contentShape(shape)
+  }
+
+  private var words: some View {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(step.verb).font(.system(.headline, design: .rounded).weight(.heavy)).foregroundStyle(.white.opacity(0.9))
+          .textCase(.uppercase).tracking(0.6)
+        Text(step.title).font(.system(.title, design: .rounded).weight(.heavy)).foregroundStyle(.white)
+          .lineLimit(3).minimumScaleFactor(0.6).fixedSize(horizontal: false, vertical: true)
+        if let m = step.minutes {
+          Label("\(m) min", systemImage: "clock.fill").font(.subheadline.weight(.bold)).foregroundStyle(.white)
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(.white.opacity(0.22), in: Capsule())
+            .padding(.top, 2)
+        }
+      }
+  }
+
+  private var playDisc: some View {
+      Image(systemName: step.target == .chest ? "gift.fill" : "play.fill")
+        .font(.system(size: 24, weight: .black))
+        .foregroundStyle(Palette.accent)
+        .frame(width: 58, height: 58)
+        .background(.white, in: Circle())
+        .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
   }
 }
 

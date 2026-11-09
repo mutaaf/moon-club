@@ -86,7 +86,7 @@ struct RootView: View {
     }
     .onChange(of: phase) { old, new in if new == .active && old == .background { bedtime.newSession() } }
     .sheet(isPresented: $gate, onDismiss: { if !grownUps { grownUpsLink = nil } }) { ParentGate { gate = false; grownUps = true } }
-    .fullScreenCover(isPresented: $grownUps, onDismiss: { grownUpsLink = nil; app.refreshBrain() }) { GrownUpsView(link: grownUpsLink) }
+    .fullScreenCover(isPresented: $grownUps, onDismiss: { grownUpsLink = nil; app.refreshBrain() }) { GrownUpsView(link: grownUpsLink).modifier(DebugWindow()) }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
     .fullScreenCover(isPresented: Binding(get: { !whatsNew.isEmpty }, set: { if !$0 { whatsNew = [] } })) {
       WhatsNewModal(news: whatsNew) { whatsNew = [] }
