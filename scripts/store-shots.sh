@@ -20,7 +20,7 @@ sim() { ID=$(id_of "$1"); [ -n "$ID" ] || ID=$(xcrun simctl create "$1" "$2" "$R
 t() { "$@" & p=$!; ( sleep "${T:-60}"; kill $p 2>/dev/null ) 2>/dev/null & w=$!; wait $p 2>/dev/null || true; kill $w 2>/dev/null || true; }
 
 # The order is the App Store order: the first three carry the listing.
-SHOTS="world boss candles story shop luna piggy badges"
+SHOTS="world boss candles story shop luna piggy badges school"
 args() {
   case $1 in
     world) echo "-tab school -world mid" ;;
@@ -31,6 +31,7 @@ args() {
     luna) echo "-tab luna" ;;
     piggy) echo "-tab piggy" ;;
     badges) echo "-tab story -locker badges -world mid" ;;
+    school) echo "-tab school -world mid -library" ;;  # the living lesson cards (0.16.2)
   esac
 }
 
