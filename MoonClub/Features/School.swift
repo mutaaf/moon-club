@@ -225,6 +225,9 @@ struct LessonPlayer: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.dynamicTypeSize) private var type
+  /// A short room (sideways on iPhone Duo's outer display, ~430 pt): the picture shrinks so the words and
+  /// answers stay in view above the buttons instead of a full-size picture filling the page.
+  @State private var shortRoom = false
   @State private var step = 0
   @State private var answers: [Int: Int] = [:]
   @State private var sorts: [Int: [Int: Int]] = [:]
@@ -270,10 +273,11 @@ struct LessonPlayer: View {
         ScrollView { stage.frame(minHeight: 640) }.scrollBounceBehavior(.basedOnSize)
       } else {
         // Sideways on iPhone Duo's outer display the stage is ~360 pt tall: the page scrolls there.
-        stage.scrollsWhenShort()
+        stage.scrollsWhenShort(minHeight: 0)
       }
     }
     .safeAreaInset(edge: .bottom) { actions }
+    .onGeometryChange(for: Bool.self) { $0.size.height < ShortRoom.below } action: { shortRoom = $0 }
     .background(AuroraField(surface: .school))
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .glassStage()
@@ -453,7 +457,8 @@ struct LessonPlayer: View {
   func stepView(_ s: Step, art: Bool = true) -> some View {
     StepContent(step: s, art: art, seed: step + lesson.id.count,
                 picked: Binding(get: { answers[step] }, set: { if answers[step] == nil { answers[step] = $0 } }),
-                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), stageKey: lastSay?.emoji,
+                picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), artMax: shortRoom ? 110 : 420,
+                stageKey: lastSay?.emoji, quizArtMax: shortRoom ? 0 : 360,
                 progress: reveals[step] ?? 0, advance: { reveal() }, intro: step == 0 ? lesson : nil)
   }
 }
