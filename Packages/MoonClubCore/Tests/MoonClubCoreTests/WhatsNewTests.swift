@@ -45,6 +45,41 @@ final class WhatsNewTests: XCTestCase {
     XCTAssertEqual(WhatsNew.lint(WhatsNew.parse(version: "0.7.0", markdown: md)), [], "old notes are grandfathered")
   }
 
+  func testCardPlaces() {
+    let md = """
+    # Moon Club 0.17.1
+    ## Luna's news
+    > Big news!
+    - [hand.point.up.left.fill] **Super button!** Tap it. I pick for you! → story
+    - [sparkles] **Lights, camera!** Every lesson card is a show. → moon-school
+    - [map.fill] **Train on my map** Real teams want astronauts.  →  world
+    - [target] **One lesson** Try it. → school/what-is-money
+    - [moon.stars.fill] **Plain card** Arrows like A → B in the middle stay put, no place.
+    """
+    let n = WhatsNew.parse(version: "0.17.1", markdown: md)
+    XCTAssertEqual(n.items.map(\.go), [.link(.home), .moonSchool, .link(.world), .link(.lesson("what-is-money")), nil])
+    XCTAssertEqual(n.items[0].text, "Tap it. I pick for you!", "the place is not part of the line")
+    XCTAssertEqual(n.items[2].text, "Real teams want astronauts.")
+    XCTAssertEqual(n.items[4].text, "Arrows like A → B in the middle stay put, no place.")
+    XCTAssertEqual(n.badPlaces, [])
+  }
+
+  func testPlacesAreKidPlacesOnly() {
+    for (t, p) in [("story", NewsPlace.link(.home)), ("home", .link(.home)), ("world", .link(.world)), ("school", .link(.world)),
+                   ("guess", .link(.guess)), ("gamenight", .link(.gameNight)), ("piggy", .link(.piggy)), ("garden", .link(.garden)),
+                   ("luna", .link(.luna)), ("ask", .link(.luna)), ("Moon-School", .moonSchool)] {
+      XCTAssertEqual(NewsPlace(t), p, t)
+    }
+    // Grown-up places (they change settings), unknown and malformed tokens: no place.
+    for t in ["league/ABCDEFGH12", "pack/space", "settings", "", "moon school", "a/b/c", "https://mutaafaziz.com"] { XCTAssertNil(NewsPlace(t), t) }
+  }
+
+  func testUnknownPlaceFailsLint() {
+    let n = WhatsNew.parse(version: "0.17.1", markdown: "## Luna's news\n> Hi!\n- [sparkles] **One** Line. → nowhere\n- [sparkles] **Two** Line. → piggy\n")
+    XCTAssertEqual(n.items.map(\.go), [nil, .link(.piggy)])
+    XCTAssertEqual(WhatsNew.lint(n), ["unknown card place → nowhere (see release-notes/README.md)"])
+  }
+
   func testSemverOrder() {
     XCTAssertTrue(WhatsNew.less("0.9.0", "0.10.0"))
     XCTAssertFalse(WhatsNew.less("0.10.0", "0.9.0"))
@@ -101,6 +136,13 @@ final class WhatsNewTests: XCTestCase {
     XCTAssertNil(f.record)
   }
 
+  func testDebugForceWinsOverQuietAndNeverRecords() {
+    XCTAssertNil(launch(nil, force: "0").record, "even a fresh install isn't recorded")
+    XCTAssertEqual(launch(nil, force: "0").news?.version, "0.17.0")
+    XCTAssertEqual(launch("0.17.0", env: [WhatsNew.testEnvKey: "x"], force: "0").news?.version, "0.17.0", "shows under a test host")
+    XCTAssertNil(launch("0.17.0", force: "0.17.0").news, "forcing from the current version: nothing newer")
+  }
+
   // MARK: the shipped notes
 
   static let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../..").standardized
@@ -128,6 +170,8 @@ final class WhatsNewTests: XCTestCase {
     XCTAssert((2...WhatsNew.maxCards).contains(n.items.count))
     XCTAssert(n.items.allSatisfy { $0.title != nil })
     XCTAssertEqual(WhatsNew.news(lastSeen: "0.15.0", current: v, all: [n])?.items, n.items)
+    XCTAssertEqual(n.badPlaces, [])
+    XCTAssert(n.items.contains { $0.go != nil }, "at least one card takes the kid to the feature")
     // Kids rules: no links, no web addresses in the kid copy.
     for s in [n.headline ?? ""] + n.items.flatMap({ [$0.title ?? "", $0.text] }) {
       XCTAssertNil(s.range(of: #"https?://|www\.|\.com"#, options: .regularExpression), s)

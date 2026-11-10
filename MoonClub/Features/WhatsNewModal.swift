@@ -5,6 +5,8 @@ import MoonClubCore
 /// `## Luna's news` (release-notes/<version>.md, bundled; the same file feeds TestFlight, the GitHub release and
 /// the App Store "What's New", so they can't drift). No links, nothing to type, one "Let's go". The full notes
 /// stay behind the grown-up gate (For grown-ups → What's new). The rule itself is pure: `WhatsNew.launch`.
+/// A card whose line ends in `→ <place>` is a callout: tapping it closes the modal and opens that place
+/// (`NewsPlace`, routed by RootView through `AppModel.open(_:)`, the same switch a link makes).
 @MainActor
 enum WhatsNewStore {
   static let key = "whatsNew.lastSeen"
@@ -19,7 +21,9 @@ enum WhatsNewStore {
   }
 
   /// DEBUG only: `-whatsNew` shows the current version's card as if just updated; `-whatsnewFrom 0.15.0` picks
-  /// the version updated from. Neither records anything. Release builds ignore both.
+  /// the version updated from. Neither records anything, and both win over `-demo` (so a screenshot run can
+  /// show it). Release builds ignore both. Phone: `xcrun simctl launch <sim> com.mutaafaziz.moonclub -whatsNew`,
+  /// or in Xcode, Edit Scheme → Run → Arguments. Documented in release-notes/README.md.
   static func forceFrom(_ args: [String]) -> String? {
     #if DEBUG
     if let i = args.firstIndex(of: "-whatsnewFrom"), i + 1 < args.count { return args[i + 1] }
@@ -43,6 +47,8 @@ enum WhatsNewStore {
 struct WhatsNewModal: View {
   let news: ReleaseNews
   var onDone: () -> Void
+  /// A callout card was tapped: close and open its place.
+  var onGo: (NewsPlace) -> Void = { _ in }
   @State private var shown = false
   @State private var burst = 0
   @State private var tour = false
@@ -126,7 +132,8 @@ struct WhatsNewModal: View {
   }
 
   private func card(_ item: ReleaseNews.Item, index i: Int, vertical: Bool) -> some View {
-    WhatsNewCard(item: item, hue: hues[i % hues.count], vertical: vertical, tour: Self.isDuo(item) ? { tour = true } : nil)
+    WhatsNewCard(item: item, hue: hues[i % hues.count], vertical: vertical, tour: Self.isDuo(item) ? { tour = true } : nil,
+                 go: item.go.map { p in { onGo(p) } }, index: i)
       .opacity(shown ? 1 : 0)
       .offset(y: shown || reduceMotion ? 0 : 28)
       .animation(reduceMotion ? Motion.fade : Motion.card.delay(0.15 + Double(i) * 0.09), value: shown)
@@ -159,9 +166,49 @@ struct WhatsNewCard: View {
   let hue: Hue
   var vertical = false
   var tour: (() -> Void)? = nil
+  /// Callout: the whole card is one button to the feature (nil = a plain card).
+  var go: (() -> Void)? = nil
+  var index = 0
   @ScaledMetric(relativeTo: .title) private var art: CGFloat = 60
 
-  var body: some View {
+  /// Where a place lives, for the button's VoiceOver hint.
+  static func placeName(_ p: NewsPlace) -> String {
+    switch p {
+    case .moonSchool: return "Moon School"
+    case .link(.lesson): return "a lesson"
+    case .link(.gameNight): return "Game Night"
+    case .link(.garden): return "the garden"
+    case .link(let l): return Tab(link: l)?.title ?? "Moon Club"
+    }
+  }
+
+  @ViewBuilder var body: some View {
+    if let go, tour == nil {
+      Button(action: go) { content }
+        .buttonStyle(PressStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(item.go.map { "Opens \(Self.placeName($0))" } ?? "")
+        .accessibilityIdentifier("whatsnew-go-\(index)")
+    } else {
+      content.accessibilityElement(children: .combine)
+    }
+  }
+
+  /// "Show me" on a callout: says the card goes somewhere (the card itself is the tap target).
+  private var showMe: some View {
+    HStack(spacing: 6) {
+      Text("Show me").font(.subheadline.weight(.heavy))
+      Image(systemName: "arrow.right").font(.caption.weight(.heavy))
+    }
+    .foregroundStyle(.white)
+    .padding(.horizontal, 14).padding(.vertical, 8)
+    .background(hue.color, in: Capsule())
+    .padding(.top, 6)
+    .accessibilityHidden(true)
+  }
+
+  @ViewBuilder private var content: some View {
     let layout = vertical ? AnyLayout(VStackLayout(spacing: 14)) : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
     layout {
       glyph
@@ -173,6 +220,8 @@ struct WhatsNewCard: View {
         if let tour {
           Button(action: tour) { DuoCallout(text: "Take the iPhone Duo tour", symbol: "play.circle.fill") }
             .buttonStyle(PressStyle()).padding(.top, 6)
+        } else if go != nil {
+          showMe
         }
       }
       .multilineTextAlignment(vertical ? .center : .leading)
@@ -182,8 +231,8 @@ struct WhatsNewCard: View {
     .padding(vertical ? 22 : 16)
     .frame(maxWidth: .infinity, maxHeight: vertical ? .infinity : nil)
     .moonGlass(radius: 26)
-    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(hue.color.opacity(0.35), lineWidth: 1))
-    .accessibilityElement(children: .combine)
+    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(hue.color.opacity(go == nil ? 0.35 : 0.7), lineWidth: go == nil ? 1 : 2))
+    .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
   }
 
   @ViewBuilder private var glyph: some View {
