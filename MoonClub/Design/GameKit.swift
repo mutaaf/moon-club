@@ -787,23 +787,19 @@ struct ReadsCameraCorner: ViewModifier {
   @State private var topTrailing = false
   @Environment(\.layoutDirection) private var direction
   func body(content: Content) -> some View {
-    content
-      .environment(\.cameraTopTrailing, topTrailing)
-      .background(GeometryReader { g in
-        Color.clear
-          .onAppear { read(g) }
-          .onChange(of: g.frame(in: .global)) { _, _ in read(g) }
-      })
-  }
-  private func read(_ g: GeometryProxy) {
-    let f = g.frame(in: .global)
-    var regions: [CGRect] = []
     if #available(iOS 27.1, *) {
-      regions = g.reservedRegions(kind: .occlusion, options: [.includeInactive], layoutDirectionBehavior: .fixed)
-        .map { $0.frame.offsetBy(dx: f.minX, dy: f.minY) }
+      // onGeometryChange re-runs whenever the regions arrive or move (reading once on appear raced them).
+      content
+        .environment(\.cameraTopTrailing, topTrailing)
+        .onGeometryChange(for: Bool.self) { g in
+          let f = g.frame(in: .global)
+          let regions = g.reservedRegions(kind: .occlusion, options: [.includeInactive], layoutDirectionBehavior: .fixed)
+            .map { $0.frame.offsetBy(dx: f.minX, dy: f.minY) }
+          return CameraCorner.topTrailing(regions, window: f, rtl: direction == .rightToLeft)
+        } action: { v in topTrailing = v }
+    } else {
+      content   // no occlusion regions before iOS 27.1
     }
-    let v = CameraCorner.topTrailing(regions, window: f, rtl: direction == .rightToLeft)
-    if v != topTrailing { topTrailing = v }
   }
 }
 
