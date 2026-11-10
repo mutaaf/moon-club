@@ -41,6 +41,8 @@ final class AppModel {
   var brainCaps: BrainCapabilities { .of(brain) }
   /// A lesson to open from a widget or Live Activity deep link (Moon School consumes it).
   var pendingLesson: String?
+  /// Moon School (the lesson list) to open on the World map, from a What's-new card (`NewsPlace.moonSchool`).
+  var pendingMoonSchool = false
   /// Market World charts: a year of real daily candles, bundled (works offline, deterministic in demo
   /// mode) and refreshed from /api/kids/candles when the live app has a connection.
   var candles: [String: CandleSeries] = AppModel.bundledCandles
@@ -235,6 +237,15 @@ final class AppModel {
     default: break
     }
     return l
+  }
+
+  /// A What's-new card's place: sets up what the place needs (a lesson, Game Night, the Piggy side, Moon School)
+  /// and returns the tab it lives on. Kid places only (`NewsPlace` refuses grown-up links).
+  func open(_ place: NewsPlace) -> Tab? {
+    switch place {
+    case .moonSchool: pendingMoonSchool = true; return .school
+    case .link(let l): return Tab(link: open(l.appURL))
+    }
   }
 
   func loadMarket() async {

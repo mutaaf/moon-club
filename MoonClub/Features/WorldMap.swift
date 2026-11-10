@@ -78,6 +78,7 @@ struct WorldView: View {
       conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
       atlasPage = cur.region
       if let id = app.pendingLesson { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } }
+      if app.pendingMoonSchool { app.pendingMoonSchool = false; library = true }
       let a = ProcessInfo.processInfo.arguments
       if let i = a.firstIndex(of: "-lesson"), i + 1 < a.count, lesson == nil { lesson = app.content.lessons.first { $0.id == a[i + 1] } }
       if let i = a.firstIndex(of: "-play"), i + 1 < a.count, playing == nil, lesson == nil, let n = regions.flatMap(\.nodes).first(where: { $0.id == a[i + 1] }) { play(n) }
@@ -93,6 +94,7 @@ struct WorldView: View {
       }
       #endif
     }
+    .onChange(of: app.pendingMoonSchool) { _, on in if on { app.pendingMoonSchool = false; library = true } }
     .onChange(of: app.pendingLesson) { _, id in if let id { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } } }
     .onChange(of: regions.filter { World.conquered($0, app.state, app.content) }.map(\.id)) { _, now in
       let fresh = Set(now).subtracting(conquered)

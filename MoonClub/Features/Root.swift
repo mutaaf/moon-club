@@ -93,7 +93,7 @@ struct RootView: View {
     .fullScreenCover(isPresented: $grownUps, onDismiss: { grownUpsLink = nil; app.refreshBrain() }) { GrownUpsView(link: grownUpsLink).modifier(DebugWindow()) }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
     .fullScreenCover(isPresented: Binding(get: { whatsNew != nil }, set: { if !$0 { whatsNew = nil } })) {
-      if let n = whatsNew { WhatsNewModal(news: n) { whatsNew = nil }.readsCameraCorner() }
+      if let n = whatsNew { WhatsNewModal(news: n, onDone: { whatsNew = nil }, onGo: { go($0) }).readsCameraCorner() }
     }
     .sheet(item: $locker) { t in MoonLocker(tab: t, slot: lockerSlot).presentationCornerRadius(32) }
     .fullScreenCover(item: Binding(get: { ceremony.map(RankRoute.init) }, set: { ceremony = $0?.id })) { r in
@@ -175,6 +175,13 @@ struct RootView: View {
     }
     grownUps = false; gate = false; quest = nil; locker = nil
     if let t = Tab(link: link) { withAnimation(Motion.page) { tab = t } }
+  }
+
+  /// A What's-new card's button: close the modal and open the card's place (the same switch a link makes).
+  private func go(_ place: NewsPlace) {
+    whatsNew = nil
+    grownUps = false; gate = false; quest = nil; locker = nil
+    if let t = app.open(place) { withAnimation(Motion.page) { tab = t } }
   }
 
   /// Debug `-bench`: one fixed script so performance can be compared before and after a change.

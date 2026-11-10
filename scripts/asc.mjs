@@ -99,7 +99,7 @@ export function notesFor(v = version()) {
   const kid = raw.match(/^## Luna's news\n([\s\S]*?)(?=^## |(?![\s\S]))/m);
   const kidLines = kid ? kid[1].split("\n").filter((l) => /^- \[[a-z0-9.]+\] \S/.test(l)) : [];
   if (kidLines.length < 1 || kidLines.length > 4) throw new Error(`release-notes/${v}.md needs a "## Luna's news" section with 1–4 "- [sf.symbol] kid line" items (shown in the in-app update reel).`);
-  const long = kidLines.find((l) => l.replace(/^- \[[^\]]+\] /, "").length > 90);
+  const long = kidLines.find((l) => l.replace(/^- \[[^\]]+\] /, "").replace(/\s*→\s*\S*\s*$/, "").length > 90);
   if (long) throw new Error(`release-notes/${v}.md: Luna's news lines must be ≤ 90 characters: ${long}`);
   // 0.17.0 on: the in-app update modal needs a "> headline" and 2–4 "- [art] **Title** one short line" cards.
   // Same limits as `WhatsNew.lint` in MoonClubCore (headline 40, title ≤ 4 words / 26, line 64).
@@ -113,7 +113,11 @@ export function notesFor(v = version()) {
     for (const l of kidLines) {
       const m = l.match(/^- \[[^\]]+\] \*\*(.+?)\*\*\s*(.+)$/);
       if (!m) bad(`card needs a **Title** and a line: ${l}`);
-      const [, t, line] = m;
+      const [, t, rest] = m;
+      // Optional "→ place" at the end: the card opens that place (NewsPlace in MoonClubCore; kid places only).
+      const go = rest.match(/\s*→\s*(\S*)\s*$/);
+      const line = go ? rest.slice(0, go.index) : rest;
+      if (go && !/^(home|story|world|school|school\/[a-z0-9][a-z0-9-]{0,47}|lesson\/[a-z0-9][a-z0-9-]{0,47}|moon-school|guess|gamenight|piggy|garden|ask|luna)$/.test(go[1])) bad(`unknown card place → ${go[1]}`);
       if (t.length > 26 || t.trim().split(/\s+/).length > 4) bad(`card title too long: ${t}`);
       if (line.trim().length > 64) bad(`card line over 64 characters: ${line}`);
     }
