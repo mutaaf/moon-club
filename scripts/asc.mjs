@@ -85,6 +85,12 @@ function version() {
   return readFileSync(join(ROOT, "project.yml"), "utf8").match(/MARKETING_VERSION:\s*"([^"]+)"/)[1];
 }
 
+function semverAtLeast(a, b) {
+  const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const x = pa[i] || 0, y = pb[i] || 0; if (x !== y) return x > y; }
+  return true;
+}
+
 /** release-notes/<version>.md → TestFlight "What to Test" text: markdown stripped, ≤ 4000 characters. */
 export function notesFor(v = version()) {
   const f = join(ROOT, "release-notes", `${v}.md`);
@@ -95,6 +101,23 @@ export function notesFor(v = version()) {
   if (kidLines.length < 1 || kidLines.length > 4) throw new Error(`release-notes/${v}.md needs a "## Luna's news" section with 1–4 "- [sf.symbol] kid line" items (shown in the in-app update reel).`);
   const long = kidLines.find((l) => l.replace(/^- \[[^\]]+\] /, "").length > 90);
   if (long) throw new Error(`release-notes/${v}.md: Luna's news lines must be ≤ 90 characters: ${long}`);
+  // 0.17.0 on: the in-app update modal needs a "> headline" and 2–4 "- [art] **Title** one short line" cards.
+  // Same limits as `WhatsNew.lint` in MoonClubCore (headline 40, title ≤ 4 words / 26, line 64).
+  if (semverAtLeast(v, "0.17.0")) {
+    const bad = (m) => { throw new Error(`release-notes/${v}.md, Luna's news: ${m} (format: release-notes/README.md)`); };
+    const head = kid[1].split("\n").find((l) => l.startsWith(">"));
+    const h = head ? head.slice(1).replace(/\*\*/g, "").trim() : "";
+    if (!h) bad(`needs a "> headline" line`);
+    if (h.length > 40) bad(`headline over 40 characters: ${h}`);
+    if (kidLines.length < 2) bad("needs 2–4 cards");
+    for (const l of kidLines) {
+      const m = l.match(/^- \[[^\]]+\] \*\*(.+?)\*\*\s*(.+)$/);
+      if (!m) bad(`card needs a **Title** and a line: ${l}`);
+      const [, t, line] = m;
+      if (t.length > 26 || t.trim().split(/\s+/).length > 4) bad(`card title too long: ${t}`);
+      if (line.trim().length > 64) bad(`card line over 64 characters: ${line}`);
+    }
+  }
   const text = raw
     .replace(/^## Luna's news\n[\s\S]*?(?=^## |(?![\s\S]))/m, "") // kid reel lives in the app; TestFlight gets the grown-up notes
     .replace(/<!--[\s\S]*?-->/g, "")
