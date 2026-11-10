@@ -345,6 +345,8 @@ struct PlantSheet: View {
         .disabled(pick == nil || room < Garden.minPlant)
     }
     .padding(20)
+    // Sideways on iPhone Duo's outer display the title and close button were cut off at the top.
+    .scrollsWhenShort(minHeight: 520)
     .overlay { Celebrate(trigger: burst, tier: .small).allowsHitTesting(false) }
     .onAppear { amount = Double(min(max(Garden.minPlant, room / 2), max(room, Garden.minPlant))) }
     .confirmationDialog(pick.map { "Plant \(Int(amount)) points in \(app.company($0).nick)?" } ?? "", isPresented: $asking, titleVisibility: .visible) {

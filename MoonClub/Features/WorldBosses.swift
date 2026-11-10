@@ -81,6 +81,7 @@ struct TimeMachineBoss: View {
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
+    .scrollsWhenShort(minHeight: 600)
     .background(BossBackdrop(shock: burst))
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))
     .overlay(Celebrate(trigger: burst))

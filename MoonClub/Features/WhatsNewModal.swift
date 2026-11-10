@@ -37,6 +37,15 @@ struct WhatsNewModal: View {
   @State private var burst = 0
   @State private var tour = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.cameraTopTrailing) private var cameraTopTrailing
+  private var versionTag: some View {
+    Text(news.count > 1 ? "Updates \(news.last?.version ?? "")–\(news.first?.version ?? "")" : "Version \(news.first?.version ?? "")")
+      .font(.kEyebrow).foregroundStyle(Palette.accent)
+      .padding(.horizontal, 12).padding(.vertical, 6).background(Palette.accent.opacity(0.1), in: Capsule())
+  }
+  private var skip: some View {
+    Button("Skip") { finish() }.font(.kHeadline).foregroundStyle(Palette.ink2).accessibilityIdentifier("whatsnew-skip")
+  }
 
   @Environment(DuoModel.self) private var duo: DuoModel?
   /// iPhone Duo news shows only on a device with a hinge (its own "Made for iPhone Duo" card); everyone else
@@ -50,12 +59,9 @@ struct WhatsNewModal: View {
 
   var body: some View {
     VStack(spacing: 18) {
+      // iPhone Duo closed: the camera sits top-trailing, so Skip (the button) swaps ends with the version tag.
       HStack {
-        Text(news.count > 1 ? "Updates \(news.last?.version ?? "")–\(news.first?.version ?? "")" : "Version \(news.first?.version ?? "")")
-          .font(.kEyebrow).foregroundStyle(Palette.accent)
-          .padding(.horizontal, 12).padding(.vertical, 6).background(Palette.accent.opacity(0.1), in: Capsule())
-        Spacer()
-        Button("Skip") { finish() }.font(.kHeadline).foregroundStyle(Palette.ink2).accessibilityIdentifier("whatsnew-skip")
+        if cameraTopTrailing { skip; Spacer(); versionTag } else { versionTag; Spacer(); skip }
       }
       Luna(size: 92, wave: true, mood: .cheering).padding(.top, 4)
       Text("Moon Club got an upgrade!").font(.kHero).multilineTextAlignment(.center).minimumScaleFactor(0.7).lineLimit(2)
@@ -78,6 +84,8 @@ struct WhatsNewModal: View {
     .padding(24)
     .frame(maxWidth: 520)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // Sideways on iPhone Duo's outer display the update card was squeezed to a sliver: scroll instead.
+    .scrollsWhenShort(minHeight: 640)
     .background(AuroraField(surface: .story).ignoresSafeArea())
     .overlay { Celebrate(trigger: burst).allowsHitTesting(false) }
     .sensoryFeedback(.success, trigger: burst)

@@ -42,6 +42,7 @@ extension DuoModel {
 struct DuoCoach: View {
   let done: () -> Void
   @Environment(\.accessibilityReduceMotion) private var rm
+  @Environment(\.cameraTopTrailing) private var cameraTopTrailing
   @State private var page = 0
   enum Art { case closed, book, tent, tabletop, flat, hinge }
   struct Pose { let title: String; let body: String; let art: Art }
@@ -56,12 +57,22 @@ struct DuoCoach: View {
   private var poses: [Pose] { Self.poses }
   var body: some View {
     VStack(spacing: 18) {
-      HStack { Spacer(); Button("Skip") { done() }.font(.kHeadline).foregroundStyle(Palette.ink2) }
+      // iPhone Duo closed: the camera sits top-trailing, right beside a trailing Skip; there it goes leading.
+      HStack {
+        if !cameraTopTrailing { Spacer() }
+        Button("Skip") { done() }.font(.kHeadline).foregroundStyle(Palette.ink2)
+        if cameraTopTrailing { Spacer() }
+      }
       DuoCallout(text: "\(poses.count) ways to play")
       TabView(selection: $page) {
         ForEach(poses.indices, id: \.self) { i in
           VStack(spacing: 18) {
-            PoseArt(art: poses[i].art).frame(height: 140)
+            // 140 pt tall; scales down only in a short room (sideways on the outer display).
+            GeometryReader { g in
+              PoseArt(art: poses[i].art).frame(height: 140).scaleEffect(min(1, g.size.height / 140))
+                .frame(width: g.size.width, height: g.size.height)
+            }
+            .frame(minHeight: 56, maxHeight: 140)
             Text(poses[i].title).font(.kTitle).multilineTextAlignment(.center).minimumScaleFactor(0.8)
             Text(poses[i].body).font(.kRead).multilineTextAlignment(.center).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
           }
@@ -78,6 +89,8 @@ struct DuoCoach: View {
     }
     .padding(24)
     .readable(560)
+    // Sideways on iPhone Duo's outer display the page dots sat on the words: scroll instead.
+    .scrollsWhenShort(minHeight: 420)
     .background(AuroraField(surface: .school))
   }
 }

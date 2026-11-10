@@ -129,6 +129,8 @@ struct MoonLocker: View {
     }
     .padding(.horizontal, 18).padding(.top, 16)
     .readable(640)
+    // Sideways on iPhone Duo's outer display the header (and its close button) was pushed off the top.
+    .scrollsWhenShort(minHeight: 600)
     .background(AuroraField(surface: .story).ignoresSafeArea())
     .animation(Motion.safe(Motion.card, rm), value: tab)
   }
@@ -582,7 +584,8 @@ struct RankCeremony: View {
     }
     .padding(24)
     .readable(520)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // Sideways on iPhone Duo's outer display the art ran off the top and the buttons off the bottom.
+    .scrollsWhenShort(minHeight: 600)
     .background(BossBackdrop())
     .modifier(Shake(amount: rm ? 0 : 7, tick: burst))
     .animation(.linear(duration: 0.45), value: burst)

@@ -503,3 +503,43 @@ struct SleepyLuna: View {
       .background(Palette.moon.frame(width: size * 0.12, height: size * 0.11).offset(y: -size * 0.02))
   }
 }
+
+#if DEBUG
+/// Debug `-safearea`: tints the window's unsafe edges, outlines the cameras' occlusion regions and prints
+/// both (`SAFE <tag> …`), so the outer display's shape can be audited from a screenshot.
+struct SafeAreaDebug: View {
+  var tag = "root"
+  @State private var ins = EdgeInsets()
+  @State private var occ: [CGRect] = []
+  var body: some View {
+    GeometryReader { p in
+      Color.clear
+        .onAppear { read(p) }
+        .onChange(of: p.size) { _, _ in read(p) }
+        .onChange(of: p.safeAreaInsets) { _, _ in read(p) }
+    }
+    .overlay {
+      Canvas { g, size in
+        let red = GraphicsContext.Shading.color(.red.opacity(0.22))
+        g.fill(Path(CGRect(x: 0, y: 0, width: size.width, height: ins.top)), with: red)
+        g.fill(Path(CGRect(x: 0, y: size.height - ins.bottom, width: size.width, height: ins.bottom)), with: red)
+        g.fill(Path(CGRect(x: 0, y: 0, width: ins.leading, height: size.height)), with: red)
+        g.fill(Path(CGRect(x: size.width - ins.trailing, y: 0, width: ins.trailing, height: size.height)), with: red)
+        for r in occ { g.stroke(Path(r.offsetBy(dx: ins.leading, dy: ins.top)), with: .color(.green), lineWidth: 2) }
+      }
+      .ignoresSafeArea()
+    }
+    .allowsHitTesting(false)
+  }
+  private func read(_ p: GeometryProxy) {
+    ins = p.safeAreaInsets
+    var desc = ""
+    if #available(iOS 27.1, *) {
+      let r = p.reservedRegions(kind: .occlusion, options: [.includeInactive])
+      occ = r.map(\.frame); desc = r.map { "\($0.frame) margins=\($0.margins) active=\($0.isActive)" }.joined(separator: "; ")
+    }
+    let i = ins
+    print("SAFE \(tag) size=\(p.size) top=\(i.top) leading=\(i.leading) bottom=\(i.bottom) trailing=\(i.trailing) occlusion=[\(desc)]"); fflush(stdout)
+  }
+}
+#endif

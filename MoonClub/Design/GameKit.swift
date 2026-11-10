@@ -708,6 +708,119 @@ struct RocketMark: View {
   }
 }
 
+// MARK: - Short rooms
+
+/// Play screens, the Moon Locker and the Duo tour are fixed layouts sized for a phone held upright. In a much
+/// shorter room they overflowed: on iPhone Duo's outer display turned sideways (~430 pt tall) the lesson HUD's
+/// close button was pushed into the top edge beside the camera, and the locker's header (with its close
+/// button) went off the top. There the page scrolls instead, laid out at its designed minimum height.
+///
+/// The room is what's *on screen*: sideways on the outer display a `.large` sheet is laid out ~636 pt tall
+/// on a 466 pt screen (the tour's Next button and the shop's shelf sat below the bottom edge), so the room
+/// is clipped to the window's safe area (`windowSafeFrame`, measured at the root) and the content is pinned
+/// to that visible part. Chosen by geometry, never by device: every upright phone, iPad and the open Duo
+/// stay above `below` and fully on screen, so they're unchanged (`ShortRoomTests`).
+struct ScrollsWhenShort: ViewModifier {
+  /// Rooms shorter than this scroll (an iPhone SE upright leaves ~570 pt for a lesson's stage).
+  var below: CGFloat = ShortRoom.below
+  /// The layout's height inside the scroll view.
+  var minHeight: CGFloat = ShortRoom.minHeight
+  @Environment(\.windowSafeFrame) private var window
+  @State private var room = CGRect.zero
+  func body(content: Content) -> some View {
+    let fit = ShortRoom.fit(room: room, window: window, below: below)
+    VStack(spacing: 0) {
+      Group {
+        if fit.scrolls {
+          ScrollView { content.frame(minHeight: minHeight) }.scrollBounceBehavior(.basedOnSize)
+        } else {
+          content
+        }
+      }
+      .frame(maxWidth: .infinity, maxHeight: fit.height ?? .infinity)
+      if fit.height != nil { Spacer(minLength: 0) }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // Measures the room (the outer frame), never the content, so switching modes can't feed back.
+    .background(GeometryReader { g in
+      Color.clear
+        .onAppear { room = g.frame(in: .global) }
+        .onChange(of: g.frame(in: .global)) { _, f in room = f }
+    })
+  }
+}
+
+enum ShortRoom {
+  static let below: CGFloat = 480
+  static let minHeight: CGFloat = 560
+  /// `height`: pin the content to this much of the room (the rest is off screen); nil = the whole room.
+  struct Fit: Equatable { var scrolls: Bool; var height: CGFloat? }
+  /// `room` and `window` are in the same (global) space; an empty rect means "not measured yet".
+  static func fit(room: CGRect, window: CGRect, below: CGFloat = below) -> Fit {
+    guard room.height > 0 else { return Fit(scrolls: false, height: nil) }
+    var visible = room.height
+    if !window.isEmpty { visible = min(visible, max(0, window.maxY - room.minY)) }
+    let clipped = visible < room.height - 1
+    return Fit(scrolls: visible < below, height: clipped ? visible : nil)
+  }
+}
+
+/// Where the window's camera sits, from its occlusion regions (iOS 27.1 `reservedRegions(kind: .occlusion)`).
+/// iPhone Duo's outer display has its camera and vertical status bar in the top-*trailing* corner, in the
+/// same row as a trailing "Skip" (the Duo tour and What's New move it to the leading end there). System bar
+/// buttons are the system's: the grown-ups "Done" stays trailing even as a cancellation action. An iPhone's Dynamic
+/// Island is top-center and sits above the bars, so it never counts.
+enum CameraCorner {
+  /// Regions and window in the same (global) space. "Top" is the window's top 80 pt (a bar's row).
+  static func topTrailing(_ regions: [CGRect], window: CGRect, rtl: Bool = false) -> Bool {
+    guard !window.isEmpty else { return false }
+    return regions.contains { r in
+      guard r.minY < window.minY + 80 else { return false }
+      return rtl ? r.midX < window.minX + window.width * 0.25 : r.midX > window.maxX - window.width * 0.25
+    }
+  }
+}
+
+/// Reads the camera corner from this view's own geometry and hands it to its content. The root applies it,
+/// and so does each full-screen cover (they don't pick up the root's value).
+struct ReadsCameraCorner: ViewModifier {
+  @State private var topTrailing = false
+  @Environment(\.layoutDirection) private var direction
+  func body(content: Content) -> some View {
+    if #available(iOS 27.1, *) {
+      // onGeometryChange re-runs whenever the regions arrive or move (reading once on appear raced them).
+      content
+        .environment(\.cameraTopTrailing, topTrailing)
+        .onGeometryChange(for: Bool.self) { g in
+          let f = g.frame(in: .global)
+          let regions = g.reservedRegions(kind: .occlusion, options: [.includeInactive], layoutDirectionBehavior: .fixed)
+            .map { $0.frame.offsetBy(dx: f.minX, dy: f.minY) }
+          return CameraCorner.topTrailing(regions, window: f, rtl: direction == .rightToLeft)
+        } action: { v in topTrailing = v }
+    } else {
+      content   // no occlusion regions before iOS 27.1
+    }
+  }
+}
+
+extension View { func readsCameraCorner() -> some View { modifier(ReadsCameraCorner()) } }
+
+private struct CameraTopTrailingKey: EnvironmentKey { static let defaultValue = false }
+private struct WindowSafeFrameKey: EnvironmentKey { static let defaultValue = CGRect.zero }
+extension EnvironmentValues {
+  /// The window's safe area in global coordinates (set at the root). Sheets read it to know how much of
+  /// themselves is actually on screen.
+  var windowSafeFrame: CGRect { get { self[WindowSafeFrameKey.self] } set { self[WindowSafeFrameKey.self] = newValue } }
+  /// A camera sits in the window's top-trailing corner (`CameraCorner`): keep trailing bar buttons away from it.
+  var cameraTopTrailing: Bool { get { self[CameraTopTrailingKey.self] } set { self[CameraTopTrailingKey.self] = newValue } }
+}
+
+extension View {
+  func scrollsWhenShort(below: CGFloat = ShortRoom.below, minHeight: CGFloat = ShortRoom.minHeight) -> some View {
+    modifier(ScrollsWhenShort(below: below, minHeight: minHeight))
+  }
+}
+
 // MARK: - Immersive play chrome
 
 extension View {
