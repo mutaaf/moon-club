@@ -81,6 +81,7 @@ struct GameShell<Round: View>: View {
     }
     .padding(.horizontal, 20).padding(.bottom, 12)
     .readable(760)
+    .scrollsWhenShort(minHeight: 600)
     // A boss beaten: the stage behind ripples with a Metal shockwave (BossBackdrop(shock:)).
     .background { if dark { BossBackdrop(shock: burst) } else { AuroraField(surface: .school) } }
     .overlay(CoinBurst(tick: run.coinTick, target: run.coinTarget))

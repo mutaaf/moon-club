@@ -46,6 +46,7 @@ struct RootView: View {
   /// iPhone Duo closed outside of play: Luna's pocket on the outer display (0.14).
   @State private var pocket = ProcessInfo.processInfo.arguments.contains("-pocket")
   @State private var bedtime = BedtimeClock.shared
+  @State private var windowSafe = CGRect.zero
   /// iPad sidebar: shown or hidden (debug `-sidebar hidden` for screenshots).
   @State private var columns: NavigationSplitViewVisibility = {
     #if DEBUG
@@ -70,6 +71,9 @@ struct RootView: View {
     .onChange(of: duo.reading?.status) { _, s in if s != nil, s != .closed, duo.pinned == nil { withAnimation(Motion.fade) { pocket = false } } }        // iPhone Duo: the crease's soft shadow follows the hinge (0.14)
     .overlay { PartyOverlay() }
     .overlay(alignment: .bottom) { BadgeToast() }
+    #if DEBUG
+    .overlay { if ProcessInfo.processInfo.arguments.contains("-safearea") { SafeAreaDebug() } }
+    #endif
     // iPhone Duo: "Fold me like a book!" once, the first time this device reports a hinge.
     .sheet(isPresented: $duoCoach) { DuoCoach { DuoCoachStore.markSeen(); duoCoach = false }.presentationDetents([.large]) }
     .onChange(of: duo.hasHinge, initial: true) { _, has in showDuoCoach(has) }
@@ -89,7 +93,7 @@ struct RootView: View {
     .fullScreenCover(isPresented: $grownUps, onDismiss: { grownUpsLink = nil; app.refreshBrain() }) { GrownUpsView(link: grownUpsLink).modifier(DebugWindow()) }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
     .fullScreenCover(isPresented: Binding(get: { !whatsNew.isEmpty }, set: { if !$0 { whatsNew = [] } })) {
-      WhatsNewModal(news: whatsNew) { whatsNew = [] }
+      WhatsNewModal(news: whatsNew) { whatsNew = [] }.readsCameraCorner()
     }
     .sheet(item: $locker) { t in MoonLocker(tab: t, slot: lockerSlot).presentationCornerRadius(32) }
     .fullScreenCover(item: Binding(get: { ceremony.map(RankRoute.init) }, set: { ceremony = $0?.id })) { r in
@@ -104,6 +108,16 @@ struct RootView: View {
     .onChange(of: PlayActivity.shared.playing) { _, _ in showRank(app.pendingRank) }
     .environment(\.openLocker, OpenLocker { t in locker = t })
     .environment(\.lunaLook, app.lunaLook)
+    // The window's safe area, for sheets that are laid out taller than the screen (`ScrollsWhenShort`).
+    .environment(\.windowSafeFrame, windowSafe)
+    .background(GeometryReader { g in
+      Color.clear
+        .onAppear { windowSafe = g.frame(in: .global) }
+        .onChange(of: g.frame(in: .global)) { _, f in windowSafe = f }
+    })
+    // Where the camera is (occlusion regions): iPhone Duo's outer display has it top-trailing, beside a
+    // trailing Skip. Sheets inherit this; full-screen covers (What's New) read their own.
+    .readsCameraCorner()
     .environment(\.openQuest, OpenQuest { quest = $0 })
     .environment(\.openTab, OpenTab { t in withAnimation(Motion.page) { tab = t } })
     .task { await app.loadMarket() }
@@ -122,14 +136,17 @@ struct RootView: View {
       }
       if args.contains("-demo") && args.contains("-liveactivity") { LiveActivities.demo() } // simulator check of the real Live Activity
       // Screenshots: -locker badges|shop|points [-slot rocket|hat|…] opens the Moon Locker.
-      if args.contains("-demo"), let i = args.firstIndex(of: "-locker"), i + 1 < args.count { locker = LockerTab(rawValue: args[i + 1]) }
+      if args.contains("-demo"), let i = args.firstIndex(of: "-locker"), i + 1 < args.count {
+        Task { if args.contains("-orient") { try? await Task.sleep(for: .seconds(1.5)) }; locker = LockerTab(rawValue: args[i + 1]) } // after -orient turns the window
+      }
       if args.contains("-demo"), let i = args.firstIndex(of: "-slot"), i + 1 < args.count { lockerSlot = ShopSlot(rawValue: args[i + 1]) ?? .rocket }
       // Party Moon screenshots: -sleepy (goodnight sheet), -duocoach (iPhone Duo coach), -party small|medium|large.
       if args.contains("-demo") && args.contains("-sleepy") { Task { try? await Task.sleep(for: .seconds(1)); sleepy = true } }
-      if args.contains("-demo") && args.contains("-duocoach") { duoCoach = true }
-      // iPad screenshots: -orient landscape|portrait rotates the window scene (the simulator has no rotate command).
+      if args.contains("-demo") && args.contains("-duocoach") { Task { if args.contains("-orient") { try? await Task.sleep(for: .seconds(1.5)) }; duoCoach = true } } // after -orient has turned the window
+      // Screenshots: -orient landscape|landscapeLeft|portrait rotates the window scene (the simulator has no rotate command).
       if let i = args.firstIndex(of: "-orient"), i + 1 < args.count {
-        let mask: UIInterfaceOrientationMask = args[i + 1] == "landscape" ? .landscapeRight : .portrait
+        // On the iPhone Duo's outer display this really rotates: `landscape` puts the camera top-left, `landscapeLeft` bottom-right.
+        let mask: UIInterfaceOrientationMask = ["landscape": .landscapeRight, "landscapeLeft": .landscapeLeft][args[i + 1]] ?? .portrait
         (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
       }
       if args.contains("-demo"), let i = args.firstIndex(of: "-party"), i + 1 < args.count {
@@ -241,7 +258,12 @@ struct RootView: View {
     let dot = dotTab
     return TabView(selection: $tab) {
       ForEach(Tab.allCases) { t in
-        NavigationStack { screen(t).toolbar { topBar } }
+        NavigationStack {
+          screen(t).toolbar { topBar }
+          #if DEBUG
+            .overlay { if ProcessInfo.processInfo.arguments.contains("-safearea") { SafeAreaDebug(tag: "tab-\(t.rawValue)") } }
+          #endif
+        }
           .tabItem {
             // The tab holding the Start here step gets a small glowing dot drawn into its icon (TabIcon).
             if dot == t, tab != t {
@@ -322,13 +344,18 @@ struct GrownUpsButton: View {
   let action: () -> Void
   @Environment(\.toolbarVertical) private var vertical
   var body: some View {
-    Button(action: action) {
-      if vertical { Image(systemName: "lock.shield").font(.title3) }
-      else { Text("For grown-ups").font(.footnote.weight(.semibold)) }
+    if vertical {
+      // A plain system Label in a vertical bar, sized and drawn by the bar like its own items. The old fixed
+      // 44 pt frame + tinted image drew an empty capsule on iPhone Duo's outer display in landscape.
+      Button(action: action) { Label("For grown-ups", systemImage: "lock.shield") }
+        .labelStyle(.iconOnly)
+        .accessibilityLabel("For grown-ups")
+    } else {
+      Button(action: action) { Text("For grown-ups").font(.footnote.weight(.semibold)) }
+        .foregroundStyle(Palette.ink2)
+        .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel("For grown-ups")
     }
-    .foregroundStyle(Palette.ink2)
-    .frame(minWidth: 44, minHeight: 44)
-    .accessibilityLabel("For grown-ups")
   }
 }
 

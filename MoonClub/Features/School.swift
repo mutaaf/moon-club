@@ -269,7 +269,8 @@ struct LessonPlayer: View {
       if type >= .xxxLarge {
         ScrollView { stage.frame(minHeight: 640) }.scrollBounceBehavior(.basedOnSize)
       } else {
-        stage
+        // Sideways on iPhone Duo's outer display the stage is ~360 pt tall: the page scrolls there.
+        stage.scrollsWhenShort()
       }
     }
     .safeAreaInset(edge: .bottom) { actions }
