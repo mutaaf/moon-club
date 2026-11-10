@@ -114,6 +114,17 @@ struct TracksHinge: ViewModifier {
       content
         .onHingeChange(isEnabled: duo.pinned == nil) { _, new in duo.update(new.hinge.map(HingeReading.init)) }
         .environment(duo)
+        #if DEBUG
+        // -hingeNoise: plays a real sensor's stream (≈60 readings a second, jittering a fraction of a degree
+        // around 110°) so the open-Duo cost of hinge updates can be measured on a simulator that can't fold.
+        .task {
+          guard ProcessInfo.processInfo.arguments.contains("-hingeNoise") else { return }
+          while !Task.isCancelled {
+            duo.debugSet(.init(.partiallyOpen, degrees: 110 + Double.random(in: -0.4...0.4)))
+            try? await Task.sleep(for: .milliseconds(16))
+          }
+        }
+        #endif
     } else {
       content.environment(duo)
     }
@@ -134,6 +145,10 @@ extension EnvironmentValues {
 struct FoldInfo: Equatable {
   var width: CGFloat = 0
   var fold: CGRect?
+  /// A region snapped to whole points, so sub-point jitter never reads as a change.
+  static func whole(_ r: CGRect) -> CGRect {
+    CGRect(x: r.minX.rounded(), y: r.minY.rounded(), width: r.width.rounded(), height: r.height.rounded())
+  }
 }
 
 /// Measures the container and reads the fold's division region (active when partially open, inactive
@@ -142,10 +157,14 @@ struct FoldInfo: Equatable {
 private struct FoldProbe: ViewModifier {
   @Binding var info: FoldInfo
   @Environment(DuoModel.self) private var duo: DuoModel?
+  @Environment(\.windowSafeFrame) private var window
   func body(content: Content) -> some View {
     content.background {
       GeometryReader { proxy in
-        let i = FoldInfo(width: proxy.size.width, fold: fold(proxy))
+        // Whole points only. On the device the division region sits at fractional points, and a layout
+        // that splits around it (PageSplit scales widths) moves it by a hair each pass: comparing raw
+        // CGFloats then re-triggers forever (main thread stuck, watchdog kill) when an activity opens.
+        let i = FoldInfo(width: proxy.size.width.rounded(), fold: fold(proxy).map(FoldInfo.whole))
         Color.clear
           .onAppear { info = i }
           .onChange(of: i) { _, n in info = n }
@@ -159,8 +178,15 @@ private struct FoldProbe: ViewModifier {
       return r.frame
     }
     #if DEBUG
-    if let p = duo?.pinned, [.book, .flat, .tent].contains(p), proxy.size.width >= 560 {
-      return CGRect(x: proxy.size.width / 2 - 20, y: 0, width: 40, height: proxy.size.height)
+    if let p = duo?.pinned, [.book, .flat, .tent].contains(p) {
+      // Like the real region: a fixed band down the middle of the *window*, in this view's coordinates,
+      // so a view that slides (a navigation push) sees the fold move, as on the device.
+      if !window.isEmpty, window.width >= 560 {
+        let g = proxy.frame(in: .global)
+        let r = CGRect(x: window.midX - 20 - g.minX, y: window.minY - g.minY, width: 40, height: window.height)
+        return r.intersects(CGRect(origin: .zero, size: proxy.size)) ? r : nil
+      }
+      if proxy.size.width >= 560 { return CGRect(x: proxy.size.width / 2 - 20, y: 0, width: 40, height: proxy.size.height) }
     }
     #endif
     return nil
