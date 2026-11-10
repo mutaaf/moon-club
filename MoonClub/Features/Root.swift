@@ -37,7 +37,7 @@ struct RootView: View {
   /// A settings link (Family League code, lesson pack) waiting for the parental gate; shown in the grown-up corner.
   @State private var grownUpsLink: DeepLink?
   @State private var quest: String?
-  @State private var whatsNew: [ReleaseNews] = []
+  @State private var whatsNew: ReleaseNews?
   @State private var locker: LockerTab?
   @State private var lockerSlot: ShopSlot = .rocket
   @State private var ceremony: Int?
@@ -85,15 +85,15 @@ struct RootView: View {
     .task {
       while !Task.isCancelled {
         try? await Task.sleep(for: .seconds(30))
-        if bedtime.sleepy(), !PlayActivity.shared.playing, !sleepy, ceremony == nil, whatsNew.isEmpty { bedtime.lastAsked = Date(); sleepy = true }
+        if bedtime.sleepy(), !PlayActivity.shared.playing, !sleepy, ceremony == nil, whatsNew == nil { bedtime.lastAsked = Date(); sleepy = true }
       }
     }
     .onChange(of: phase) { old, new in if new == .active && old == .background { bedtime.newSession() } }
     .sheet(isPresented: $gate, onDismiss: { if !grownUps { grownUpsLink = nil } }) { ParentGate { gate = false; grownUps = true } }
     .fullScreenCover(isPresented: $grownUps, onDismiss: { grownUpsLink = nil; app.refreshBrain() }) { GrownUpsView(link: grownUpsLink).modifier(DebugWindow()) }
     .fullScreenCover(item: Binding(get: { quest.map(QuestRoute.init) }, set: { quest = $0?.id })) { r in QuestView(start: r.id) }
-    .fullScreenCover(isPresented: Binding(get: { !whatsNew.isEmpty }, set: { if !$0 { whatsNew = [] } })) {
-      WhatsNewModal(news: whatsNew) { whatsNew = [] }.readsCameraCorner()
+    .fullScreenCover(isPresented: Binding(get: { whatsNew != nil }, set: { if !$0 { whatsNew = nil } })) {
+      if let n = whatsNew { WhatsNewModal(news: n) { whatsNew = nil }.readsCameraCorner() }
     }
     .sheet(item: $locker) { t in MoonLocker(tab: t, slot: lockerSlot).presentationCornerRadius(32) }
     .fullScreenCover(item: Binding(get: { ceremony.map(RankRoute.init) }, set: { ceremony = $0?.id })) { r in
@@ -232,7 +232,7 @@ struct RootView: View {
 
   private func showDuoCoach(_ has: Bool) {
     guard has, !DuoCoachStore.seen, !ProcessInfo.processInfo.arguments.contains("-demo") else { return }
-    Task { try? await Task.sleep(for: .seconds(1.2)); if whatsNew.isEmpty, quest == nil { duoCoach = true } }
+    Task { try? await Task.sleep(for: .seconds(1.2)); if whatsNew == nil, quest == nil { duoCoach = true } }
   }
 
   /// A streak milestone (3, 7, 30 days…) gets its own party once on that day.
@@ -245,7 +245,7 @@ struct RootView: View {
   }
 
   private func showRank(_ r: Int?) {
-    guard let r, ceremony == nil, !PlayActivity.shared.playing, whatsNew.isEmpty, quest == nil else { return }
+    guard let r, ceremony == nil, !PlayActivity.shared.playing, whatsNew == nil, quest == nil else { return }
     Task { try? await Task.sleep(for: .milliseconds(700)); if !PlayActivity.shared.playing, app.pendingRank == r { ceremony = r } }
   }
 

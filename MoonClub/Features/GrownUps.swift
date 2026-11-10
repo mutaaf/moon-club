@@ -355,11 +355,18 @@ struct WhatsNewSection: View {
       }
     }
   }
+  /// Luna's news lines ("> headline", "- [art] **Title** line") read as plain text here.
+  static func plain(_ line: String) -> String {
+    var text = line.hasPrefix(">") ? String(line.dropFirst()).trimmingCharacters(in: .whitespaces) : line
+    if text.hasPrefix("- ["), let close = text.firstIndex(of: "]") { text = "- " + text[text.index(after: close)...].trimmingCharacters(in: .whitespaces) }
+    return text
+  }
   @ViewBuilder func row(_ line: String) -> some View {
     if line.hasPrefix("#") {
       Text(line.drop(while: { $0 == "#" || $0 == " " })).font(.subheadline.weight(.semibold)).padding(.top, 4)
     } else {
-      let body = line.hasPrefix("- ") ? "• " + line.dropFirst(2) : Substring(line)
+      let text = Self.plain(line)
+      let body = text.hasPrefix("- ") ? "• " + text.dropFirst(2) : Substring(text)
       Text((try? AttributedString(markdown: String(body))) ?? AttributedString(String(body))).font(.callout)
     }
   }
