@@ -664,24 +664,42 @@ struct BusyDayRound: View {
   let company: String, candles: [Candle]
   let answer: (RoundResult) -> Void; let answered: RoundResult?
   @State private var tapped: Int?
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  /// iPhone Duo, half open: the hinge is a slider across the days (`HingeDial`), like a dial on a radio.
+  private var hingeDay: Int? {
+    guard answered == nil, let r = duo?.reading, r.status == .partiallyOpen, candles.count > 1 else { return nil }
+    return HingeDial.value(r.degrees, in: 0...(candles.count - 1))
+  }
   var body: some View {
     let busiest = ChartMath.busiest(candles)
+    let dial = hingeDay
     VStack(spacing: 12) {
       ChartCard(caption: "\(company) · 20 days") {
         GeometryReader { geo in
-          CandleChart(candles: candles, volume: true, highlight: answered != nil ? busiest : tapped)
+          CandleChart(candles: candles, volume: true, highlight: answered != nil ? busiest : (dial ?? tapped))
             .contentShape(Rectangle())
             .onTapGesture { p in
-              guard answered == nil else { return }
-              let i = min(candles.count - 1, max(0, Int(p.x / geo.size.width * CGFloat(candles.count))))
-              tapped = i
-              let close = abs(i - busiest) <= 0 || candles[i].v >= candles[busiest].v * 0.92
-              answer(RoundResult(right: close, why: "The tallest volume bar is the busiest day. \(candles[busiest].changePct >= 0 ? "The price went up" : "The price went down") that day, and lots of people traded."))
+              pick(min(candles.count - 1, max(0, Int(p.x / geo.size.width * CGFloat(candles.count)))), busiest)
             }
         }
       }
+      if let d = dial {
+        let hint = DuoCallout(text: "Open or close me to slide. Day \(d + 1)", symbol: "slider.horizontal.below.rectangle")
+        let go = Button("Pick this day") { pick(d, busiest) }.buttonStyle(SoftButtonStyle(selected: true))
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 12) { hint.fixedSize(); Spacer(minLength: 8); go }
+          VStack(alignment: .leading, spacing: 8) { hint; go }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .sensoryFeedback(.selection, trigger: d)
+      }
       Text("Busy days often come with big news, like a report card.").font(.footnote).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
     }
+  }
+  private func pick(_ i: Int, _ busiest: Int) {
+    guard answered == nil else { return }
+    tapped = i
+    let close = abs(i - busiest) <= 0 || candles[i].v >= candles[busiest].v * 0.92
+    answer(RoundResult(right: close, why: "The tallest volume bar is the busiest day. \(candles[busiest].changePct >= 0 ? "The price went up" : "The price went down") that day, and lots of people traded."))
   }
 }
 
