@@ -167,7 +167,12 @@ private struct FoldProbe: ViewModifier {
         let i = FoldInfo(width: proxy.size.width.rounded(), fold: fold(proxy).map(FoldInfo.whole))
         Color.clear
           .onAppear { info = i }
-          .onChange(of: i) { _, n in info = n }
+          .onChange(of: i) { o, n in
+            #if DEBUG
+            FoldLog.change(o, n, proxy.frame(in: .global))
+            #endif
+            info = n
+          }
       }
     }
   }
@@ -192,6 +197,18 @@ private struct FoldProbe: ViewModifier {
     return nil
   }
 }
+#if DEBUG
+/// `-foldlog`: print every fold-probe change (device triage of the open-Duo freeze).
+enum FoldLog {
+  static let on = ProcessInfo.processInfo.arguments.contains("-foldlog")
+  nonisolated(unsafe) static var n = 0
+  static func change(_ o: FoldInfo, _ i: FoldInfo, _ g: CGRect) {
+    guard on else { return }
+    n += 1
+    print("FOLD #\(n) w \(o.width)->\(i.width) fold \(String(describing: o.fold))->\(String(describing: i.fold)) at \(g)")
+  }
+}
+#endif
 extension View { func foldProbe(_ info: Binding<FoldInfo>) -> some View { modifier(FoldProbe(info: info)) } }
 
 /// A storybook spread: two pages side by side, one on each side of the fold, when there's room;

@@ -113,7 +113,12 @@ struct RootView: View {
     .background(GeometryReader { g in
       Color.clear
         .onAppear { windowSafe = g.frame(in: .global) }
-        .onChange(of: g.frame(in: .global)) { _, f in windowSafe = f }
+        .onChange(of: g.frame(in: .global)) { _, f in
+          #if DEBUG
+          if FoldLog.on { print("WINDOW \(f)") }
+          #endif
+          windowSafe = f
+        }
     })
     // Where the camera is (occlusion regions): iPhone Duo's outer display has it top-trailing, beside a
     // trailing Skip. Sheets inherit this; full-screen covers (What's New) read their own.
