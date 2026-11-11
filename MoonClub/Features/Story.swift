@@ -203,7 +203,10 @@ extension StoryView {
                 }
                 .padding(.horizontal, 2)
                 .fixedSize(horizontal: false, vertical: true)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[p] = $0 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded() } action: { h in
+                  // Whole points, and only real changes: the pager's height follows this, never a loop.
+                  if abs((heights[p] ?? -1) - h) >= 1 { heights[p] = h }
+                }
                 .frame(maxHeight: .infinity, alignment: .top)
                 .containerRelativeFrame(.horizontal)
                 .id(p)

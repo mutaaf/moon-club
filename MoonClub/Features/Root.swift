@@ -65,7 +65,7 @@ struct RootView: View {
     // The App colors pick repaints everything that reads Palette.accent (sheets above keep their state).
     .id(app.themeHex)
     .modifier(PartyShake())
-    .overlay { FoldSeam() }
+    // No painted seam since 0.17.2: content crosses the fold now, and a shadow there darkened cards and text.
     .overlay { if pocket { LunaPocket { withAnimation(Motion.fade) { pocket = false } }.transition(.opacity) } }
     .onChange(of: duo.closedTick) { _, _ in if !PlayActivity.shared.playing, quest == nil { withAnimation(Motion.fade) { pocket = true } } }
     .onChange(of: duo.reading?.status) { _, s in if s != nil, s != .closed, duo.pinned == nil { withAnimation(Motion.fade) { pocket = false } } }        // iPhone Duo: the crease's soft shadow follows the hinge (0.14)
@@ -113,7 +113,12 @@ struct RootView: View {
     .background(GeometryReader { g in
       Color.clear
         .onAppear { windowSafe = g.frame(in: .global) }
-        .onChange(of: g.frame(in: .global)) { _, f in windowSafe = f }
+        .onChange(of: g.frame(in: .global)) { _, f in
+          #if DEBUG
+          if FoldLog.on { print("WINDOW \(f)") }
+          #endif
+          windowSafe = f
+        }
     })
     // Where the camera is (occlusion regions): iPhone Duo's outer display has it top-trailing, beside a
     // trailing Skip. Sheets inherit this; full-screen covers (What's New) read their own.
