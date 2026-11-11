@@ -158,4 +158,14 @@ final class DuoPlayTests: XCTestCase {
     var old = KidsState(); old.chests = (0..<20).map { "2025-01-\(String(format: "%02d", $0 + 1))" }
     XCTAssertFalse(Shop.owned(old).contains("rocket.twin"))
   }
+
+  func testFoldSealArmsOnlyWhenOpen() {
+    XCTAssertFalse(FoldSeal.armed(nil))
+    XCTAssertFalse(FoldSeal.armed(.init(.closed, degrees: 0)))
+    XCTAssertTrue(FoldSeal.armed(.init(.partiallyOpen, degrees: 110)))
+    XCTAssertTrue(FoldSeal.armed(.init(.fullyOpen, degrees: 180)))
+    XCTAssertEqual(FoldSeal.flap(.init(.fullyOpen, degrees: 180)), 0)
+    XCTAssertEqual(FoldSeal.flap(.init(.closed, degrees: 0)), 1)
+    XCTAssertGreaterThan(FoldSeal.flap(.init(.partiallyOpen, degrees: 20)), FoldSeal.flap(.init(.partiallyOpen, degrees: 60)))
+  }
 }
