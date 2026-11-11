@@ -124,6 +124,17 @@ struct TracksHinge: ViewModifier {
             try? await Task.sleep(for: .milliseconds(16))
           }
         }
+        // -flick: a real fold flick (120° → 92° → 116° in 0.3 s) every 4 s, to verify flick-to-turn.
+        .task {
+          guard ProcessInfo.processInfo.arguments.contains("-flick") else { return }
+          try? await Task.sleep(for: .seconds(3))
+          while !Task.isCancelled {
+            for d in [120.0, 110, 100, 92, 104, 116] {
+              duo.debugSet(.init(.partiallyOpen, degrees: d)); try? await Task.sleep(for: .milliseconds(50))
+            }
+            try? await Task.sleep(for: .seconds(4))
+          }
+        }
         #endif
     } else {
       content.environment(duo)

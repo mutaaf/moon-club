@@ -294,6 +294,11 @@ struct LessonPlayer: View {
     .onDisappear { if !done { LiveActivities.lessonLeft(lesson) } }
     .sensoryFeedback(.selection, trigger: step)
     .onChange(of: duo?.closedTick) { _, _ in if done { withAnimation(rm ? nil : .spring) { tucked = true } } }
+    // iPhone Duo: a quick fold flick does what the big button does (show the next line, or Next), never Back.
+    .onChange(of: duo?.flickTick ?? 0) { _, _ in
+      guard !done, !run.outOfFuel else { return }
+      if revealLabel != nil { reveal() } else if ready { go(1) }
+    }
     .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: tucked)
     .onChange(of: answers) { old, new in
       // Score the first pick on a check (later taps are locked).
