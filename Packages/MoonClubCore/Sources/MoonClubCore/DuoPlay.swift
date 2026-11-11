@@ -300,3 +300,17 @@ public enum FXLevel: Int, Comparable, Sendable {
     return .full
   }
 }
+
+// MARK: - Fold to seal (Guess the Report Card, 0.17.4)
+
+/// On an open iPhone Duo a guess goes in an envelope first; closing the phone seals it (the fold is the
+/// "send"), like fold-to-save in the garden. Anywhere else a tap saves at once, as before.
+public enum FoldSeal {
+  /// Picks wait for the fold only while there is a hinge and the phone is open.
+  public static func armed(_ h: HingeReading?) -> Bool {
+    guard let h else { return false }
+    return h.status != .closed
+  }
+  /// The envelope flap: open (0) while the phone is open, shutting (→ 1) as it closes. Same curve as the pot lid.
+  public static func flap(_ h: HingeReading?) -> Double { FoldSave.lid(h) }
+}

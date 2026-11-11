@@ -91,7 +91,8 @@ struct StoryView: View {
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .navigationDestination(item: $node) { NodePlayer(node: $0, regions: World.regions(app.content)) }
     .fullScreenCover(isPresented: $puppet) { PuppetShow() }
-    .onChange(of: duo?.isTent ?? false, initial: true) { _, tent in if tent, !puppet { puppet = true } }
+    // No auto-open from the hinge (0.17.3): a half-open phone in two hands read as a "tent" and popped the
+    // show up. The puppet show is a button the kid chooses.
     .refreshable { await app.loadMarket() }
     // The weekly recap counts as seen only once the kid opened Today's story.
     .onDisappear { if more, cards.contains(.recap), let r = app.recap { app.mutate { $0.closeRecap(r.from) } } }
@@ -148,9 +149,9 @@ extension StoryView {
     if more {
       VStack(alignment: .leading, spacing: 16) {
         if duo?.hasHinge == true {
-          // iPhone Duo: stand it up like a tent and Luna puts on a puppet show of this story (0.14).
+          // iPhone Duo: Luna puts on a puppet show of this story; stand it up like an open book facing the family.
           Button { puppet = true } label: {
-            DuoCallout(text: duo?.isTent == true ? "Tent mode! Start the puppet show" : "Stand me up like a tent for a puppet show", symbol: "theatermasks.fill")
+            DuoCallout(text: "Puppet show! Stand me up like a book for your family", symbol: "theatermasks.fill")
           }
           .buttonStyle(PressStyle())
         }
@@ -221,6 +222,8 @@ extension StoryView {
           .scrollClipDisabled()
           PageDots(count: pages.count, page: page) { p in withAnimation(Motion.page) { page = p } }
           .onChange(of: per) { old, new in page = page * old / new }
+          // iPhone Duo: a quick fold flick turns the story page, like the World atlas (0.17.3).
+          .onChange(of: duo?.flickTick ?? 0) { _, _ in withAnimation(Motion.safe(Motion.page, rm)) { page = (page + 1) % max(1, pages.count) } }
           .sensoryFeedback(.selection, trigger: page)
   }
 }

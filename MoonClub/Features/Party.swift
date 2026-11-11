@@ -48,8 +48,8 @@ struct DuoCoach: View {
   struct Pose { let title: String; let body: String; let art: Art }
   static let poses = [
     Pose(title: "Close me: Luna's pocket", body: "Luna naps on the little screen. Pick me up to see your missions and your garden.", art: .closed),
-    Pose(title: "Fold me like a book!", body: "Lessons become a storybook. The World becomes an atlas. Flick the fold to turn the page.", art: .book),
-    Pose(title: "Stand me up like a tent", body: "Luna puts on a puppet show of today's story for your family.", art: .tent),
+    Pose(title: "Fold me like a book!", body: "Flick the fold to turn the page: in lessons, in today's story and in the World atlas.", art: .book),
+    Pose(title: "Stand me up like a book", body: "Tap Puppet show. Luna tells today's story to your family.", art: .tent),
     Pose(title: "Set me down like a laptop", body: "Tabletop mode: the chart sits on top, and the bottom is your game pad.", art: .tabletop),
     Pose(title: "Lay me flat for a race!", body: "Market Race: one half each, and the track runs along the fold. Open me wide to launch chests too!", art: .flat),
     Pose(title: "Open me slowly", body: "Watch the sun rise over Market World and the fog part. Close me to plant in the Moon Garden.", art: .hinge),

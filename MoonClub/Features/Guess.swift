@@ -9,6 +9,10 @@ struct GuessView: View {
   @State private var word: String?
   @State private var gameNight = false
   @State private var showWords = false
+  /// iPhone Duo, open: picks waiting in their envelope until the phone closes (`FoldSeal`).
+  @State private var sealing: [String: Pick] = [:]
+  @Environment(DuoModel.self) private var duo: DuoModel?
+  @Environment(\.accessibilityReduceMotion) private var rm
 
   var body: some View {
     let _ = Perf.body("GuessView")
@@ -23,6 +27,7 @@ struct GuessView: View {
       .padding(20).readable()
       .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
     }
+    .defaultScrollAnchor(Self.startAtEnd ? .bottom : .top)
     } first: {
       BookPage(spacing: 22) { learnPage }
     } second: {
@@ -35,9 +40,26 @@ struct GuessView: View {
     .fullScreenCover(isPresented: $gameNight) { GameNightView() }
     // Deep link (moonclub://gamenight, mutaafaziz.com/metaphases/kids/gamenight).
     .onAppear { if app.pendingGameNight { app.pendingGameNight = false; gameNight = true } }
+    // Closing the phone seals every pick in its envelope.
+    .onChange(of: duo?.closedTick ?? 0) { _, _ in sealAll() }
+    .onDisappear { sealing = [:] }
     .onChange(of: app.pendingGameNight) { _, on in if on { app.pendingGameNight = false; gameNight = true } }
     #if DEBUG
     .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
+    .task { if ProcessInfo.processInfo.arguments.contains("-seal") {
+      try? await Task.sleep(for: .seconds(2))   // after the demo market loads
+      let guessed = Set(app.state.guesses.map { "\($0.s):\($0.d)" })
+      if let e = app.upcoming.filter({ !guessed.contains($0.id) }).prefix(8).last { sealing[e.id] = .beat }
+    } }   // screenshots: an envelope
+    #endif
+  }
+
+  /// Debug `-seal`: open scrolled to the end, where the envelope is (screenshots).
+  static var startAtEnd: Bool {
+    #if DEBUG
+    return ProcessInfo.processInfo.arguments.contains("-seal")
+    #else
+    return false
     #endif
   }
 
@@ -140,14 +162,62 @@ struct GuessView: View {
         pick("Beat 👍", Palette.mint, .beat, e, co)
         pick("Miss 👎", Palette.peach, .miss, e, co)
       }
+      if let p = sealing[e.id] { envelope(p, e) }
     }
   }
+
+  private var foldSeal: Bool { FoldSeal.armed(duo?.reading) }
+
+  /// The pick in its envelope: the flap follows the hinge, and closing the phone seals it. A tap works too.
+  private func envelope(_ p: Pick, _ e: EarningsEvent) -> some View {
+    let flap = FoldSeal.flap(duo?.reading)
+    return HStack(spacing: 12) {
+      Image(systemName: flap > 0.5 ? "envelope.fill" : "envelope.open.fill")
+        .font(.system(size: 30, weight: .semibold)).foregroundStyle(Palette.accent)
+        .scaleEffect(1 - 0.15 * flap)
+        .contentTransition(.symbolEffect(.replace))
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text("You picked \(p == .beat ? "Beat" : "Miss")").font(.kHeadline)
+        Text("Close me to lock it in").font(.caption).foregroundStyle(.secondary)
+      }
+      Spacer(minLength: 8)
+      Button("Lock it in") { seal(e.id) }.buttonStyle(SoftButtonStyle(selected: true))
+    }
+    .padding(12)
+    .background(Palette.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .transition(rm ? .opacity : .opacity.combined(with: .scale(scale: 0.95)))
+    .accessibilityElement(children: .combine)
+    .accessibilityAction(named: "Lock it in") { seal(e.id) }
+  }
+
+  private func save(_ id: String, _ p: Pick) {
+    guard let e = app.upcoming.first(where: { $0.id == id }) else { return }
+    app.mutate { $0.guess(Guess(s: e.s, d: e.d, pick: p, price: bonus[e.id], at: app.today)) }
+  }
+  private func seal(_ id: String) {
+    guard let p = sealing[id] else { return }
+    withAnimation(Motion.safe(Motion.card, rm)) { sealing[id] = nil; save(id, p) }
+  }
+  private func sealAll() {
+    guard !sealing.isEmpty else { return }
+    let all = sealing
+    withAnimation(Motion.safe(Motion.card, rm)) { sealing = [:]; for (id, p) in all { save(id, p) } }
+    app.mutate { $0.useDuo(.fold) }
+  }
   private func pick(_ label: String, _ bg: Color, _ p: Pick, _ e: EarningsEvent, _ co: KidCo) -> some View {
-    Button {
-      app.mutate { $0.guess(Guess(s: e.s, d: e.d, pick: p, price: bonus[e.id], at: app.today)) }
+    let chosen = sealing[e.id] == p
+    return Button {
+      if foldSeal {
+        // Open iPhone Duo: the pick waits in its envelope; tap it again to take it back.
+        withAnimation(Motion.safe(Motion.card, rm)) { sealing[e.id] = chosen ? nil : p }
+      } else {
+        app.mutate { $0.guess(Guess(s: e.s, d: e.d, pick: p, price: bonus[e.id], at: app.today)) }
+      }
     } label: {
       Text(label).font(.kTitle).foregroundStyle(Palette.midnight).frame(maxWidth: .infinity, minHeight: 64)
         .background(bg, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.accent, lineWidth: chosen ? 3 : 0))
     }
     .buttonStyle(.plain)
     .sensoryFeedback(.impact(weight: .medium), trigger: app.state.guesses.count)
