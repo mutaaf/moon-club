@@ -27,6 +27,7 @@ struct GuessView: View {
       .padding(20).readable()
       .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
     }
+    .defaultScrollAnchor(Self.startAtEnd ? .bottom : .top)
     } first: {
       BookPage(spacing: 22) { learnPage }
     } second: {
@@ -45,7 +46,20 @@ struct GuessView: View {
     .onChange(of: app.pendingGameNight) { _, on in if on { app.pendingGameNight = false; gameNight = true } }
     #if DEBUG
     .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
-    .onAppear { if ProcessInfo.processInfo.arguments.contains("-seal"), let e = app.upcoming.first { sealing[e.id] = .beat } }   // screenshots: an envelope
+    .task { if ProcessInfo.processInfo.arguments.contains("-seal") {
+      try? await Task.sleep(for: .seconds(2))   // after the demo market loads
+      let guessed = Set(app.state.guesses.map { "\($0.s):\($0.d)" })
+      if let e = app.upcoming.filter({ !guessed.contains($0.id) }).prefix(8).last { sealing[e.id] = .beat }
+    } }   // screenshots: an envelope
+    #endif
+  }
+
+  /// Debug `-seal`: open scrolled to the end, where the envelope is (screenshots).
+  static var startAtEnd: Bool {
+    #if DEBUG
+    return ProcessInfo.processInfo.arguments.contains("-seal")
+    #else
+    return false
     #endif
   }
 
