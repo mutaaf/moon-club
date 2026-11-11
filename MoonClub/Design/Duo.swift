@@ -158,6 +158,7 @@ private struct FoldProbe: ViewModifier {
   @Binding var info: FoldInfo
   @Environment(DuoModel.self) private var duo: DuoModel?
   @Environment(\.windowSafeFrame) private var window
+  @State private var gate = ProbeGate()
   func body(content: Content) -> some View {
     content.background {
       GeometryReader { proxy in
@@ -166,12 +167,27 @@ private struct FoldProbe: ViewModifier {
         // CGFloats then re-triggers forever (main thread stuck, watchdog kill) when an activity opens.
         let i = FoldInfo(width: proxy.size.width.rounded(), fold: fold(proxy).map(FoldInfo.whole))
         Color.clear
-          .onAppear { info = i }
+          .onAppear { gate.shown = true; info = i }
+          .onDisappear { gate.shown = false }
           .onChange(of: i) { o, n in
             #if DEBUG
             FoldLog.change(o, n, proxy.frame(in: .global))
             #endif
-            info = n
+            // A view pushed behind an activity keeps its last layout (it slides off screen, and its
+            // measurements must not re-lay it out from back there).
+            guard gate.shown else { return }
+            if gate.allow() { info = n } else {
+              // A burst means a layout is feeding its own measurement: hold the value and settle once.
+              gate.pending = n
+              guard !gate.waiting else { return }
+              gate.waiting = true
+              Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(400))
+                gate.waiting = false
+                if let p = gate.pending, gate.shown { info = p }
+                gate.pending = nil
+              }
+            }
           }
       }
     }
@@ -209,6 +225,18 @@ enum FoldLog {
   }
 }
 #endif
+/// Not observed (a plain class in @State): the probe's own bookkeeping never triggers a redraw.
+final class ProbeGate {
+  var shown = false, waiting = false
+  var pending: FoldInfo?
+  private var stamps: [CFTimeInterval] = []
+  /// At most 6 changes a second; a real fold or rotation needs 1–3.
+  func allow(now: CFTimeInterval = CACurrentMediaTime()) -> Bool {
+    stamps = stamps.filter { now - $0 < 1 }
+    guard stamps.count < 6 else { return false }
+    stamps.append(now); return true
+  }
+}
 extension View { func foldProbe(_ info: Binding<FoldInfo>) -> some View { modifier(FoldProbe(info: info)) } }
 
 /// A storybook spread: two pages side by side, one on each side of the fold, when there's room;
@@ -383,26 +411,15 @@ struct FoldColumns<Content: View>: View {
 /// it's `single`, exactly as before: there is no wide-window fallback. Pages fill the height; each page
 /// brings its own ScrollView (`BookPage`).
 struct FoldPages<Single: View, First: View, Second: View>: View {
+  // Retired in 0.17.2: the open Duo is one canvas, not two pages split by the fold (the split tab
+  // layouts were also where the open-Duo freeze lived: a measured split re-laid out the screen behind a
+  // pushed activity forever). Every tab shows its full-width layout; `first`/`second` are kept only until
+  // the call sites move to the hinge redesign.
   var minPage: CGFloat = 280
   @ViewBuilder var single: Single
   @ViewBuilder var first: First
   @ViewBuilder var second: Second
-  @State private var info = FoldInfo()
-  var body: some View {
-    let s = info.split(minPage: minPage, foldOnly: true)
-    Group {
-      if let s {
-        PageSplit(split: s, fill: true) {
-          first.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-          second.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-      } else {
-        single
-      }
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    .foldProbe($info)
-  }
+  var body: some View { single }
 }
 
 /// One page of a `FoldPages` spread: scrolls on its own, padded like the screen it came from. `center`
@@ -429,22 +446,8 @@ enum FoldPage { case first, second }
 /// sits under the hinge; anywhere else it's untouched. Laid out at the proposed width (`PageSplit`).
 private struct FoldSide: ViewModifier {
   let page: FoldPage
-  var minPage: CGFloat = 240
-  @State private var info = FoldInfo()
-  func body(content: Content) -> some View {
-    Group {
-      if let s = info.split(minPage: minPage, foldOnly: true) {
-        PageSplit(split: s) {
-          if page == .first { content } else { Color.clear.frame(height: 1).accessibilityHidden(true) }
-          if page == .second { content } else { Color.clear.frame(height: 1).accessibilityHidden(true) }
-        }
-      } else {
-        content
-      }
-    }
-    .frame(maxWidth: .infinity)
-    .foldProbe($info)
-  }
+  // Retired with `FoldPages` in 0.17.2 (bars span the whole canvas again).
+  func body(content: Content) -> some View { content }
 }
 extension View {
   /// On a fold, keep this on one page (see `FoldSide`).

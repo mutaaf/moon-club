@@ -115,7 +115,7 @@ final class AppModel {
   func checkIn() { mutate { $0.checkIn(today: today) } }
   var badges: Set<String> { Set(state.badges(content)) }
   var recap: Recap? { state.recap(content, today: today) }
-  var kidEvents: [EarningsEvent] { events.filter { companies[$0.s] != nil } }
+  var kidEvents: [EarningsEvent] { let cos = companies; return events.filter { cos[$0.s] != nil } }   // one table, not one per event
   var upcoming: [EarningsEvent] { kidEvents.filter { $0.d >= today }.sorted { ($0.d, $0.s) < ($1.d, $1.s) } }
   var chaptersDone: [String] { state.chapters(content) }
 

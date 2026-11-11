@@ -65,7 +65,7 @@ struct RootView: View {
     // The App colors pick repaints everything that reads Palette.accent (sheets above keep their state).
     .id(app.themeHex)
     .modifier(PartyShake())
-    .overlay { FoldSeam() }
+    // No painted seam since 0.17.2: content crosses the fold now, and a shadow there darkened cards and text.
     .overlay { if pocket { LunaPocket { withAnimation(Motion.fade) { pocket = false } }.transition(.opacity) } }
     .onChange(of: duo.closedTick) { _, _ in if !PlayActivity.shared.playing, quest == nil { withAnimation(Motion.fade) { pocket = true } } }
     .onChange(of: duo.reading?.status) { _, s in if s != nil, s != .closed, duo.pinned == nil { withAnimation(Motion.fade) { pocket = false } } }        // iPhone Duo: the crease's soft shadow follows the hinge (0.14)
