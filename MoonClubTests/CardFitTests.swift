@@ -76,6 +76,16 @@ final class CardFitTests: XCTestCase {
         let h = minHeight(NodePlayer(node: n, regions: regions), width: d.width, app: app); checked += 1
         if h > room { misfits.append("\(d.name) \(n.id): \(Int(h)) > \(Int(room))") }
       }
+      // Moon Tower: every game at its debut, the same game high in the tower (more answers, longer charts,
+      // bigger grids), and boss floors (every round's game in turn).
+      var tower = TowerGame.allCases.flatMap { g in [Tower.level(g.debut)] + (g.debut...200).lazy.map(Tower.level).filter { $0.lead == g && $0.tier >= 4 && !$0.isBoss }.prefix(1) }
+      tower += [Tower.level(10), Tower.level(100)]
+      for l in tower {
+        for i in 0..<(l.isBoss ? l.rounds : 1) {
+          let h = minHeight(TowerRoundProbe(level: l, index: i), width: d.width, app: app); checked += 1
+          if h > room { misfits.append("\(d.name) tower \(l.number) round \(i) (\(l.game(i))): \(Int(h)) > \(Int(room))") }
+        }
+      }
       for l in c.lessons {
         let h = minHeight(LessonPlayer(lesson: l), width: d.width, app: app); checked += 1
         if h > room { misfits.append("\(d.name) lesson \(l.id): \(Int(h)) > \(Int(room))") }
@@ -299,5 +309,21 @@ final class CardFitTests: XCTestCase {
     XCTAssertGreaterThanOrEqual(s.count, 5, "bundled candles load")
     let r = Rounds(series: Array(s.values), seed: 7)
     for t in Trend.allCases { XCTAssertNotEqual(r.window(0, length: 30, trend: t).0, "Practice", "a real \(t) window exists") }
+  }
+}
+
+/// A Moon Tower level laid out as `TowerPlayer` does, but showing round `index` first (GameShell always
+/// opens on round 0, and a boss floor's rounds are each a different game).
+struct TowerRoundProbe: View {
+  let level: TowerLevel
+  let index: Int
+  @Environment(AppModel.self) private var app
+  var body: some View {
+    let node = WorldNode(id: level.id, title: "Level \(level.number)", art: "👑", kind: .game(.readDay))
+    let g = level.game(index)
+    GameShell(node: node, rounds: level.rounds, intro: g.how, boss: level.isBoss ? BossInfo(name: "Floor guard", art: "👑") : nil,
+              hearts: level.hearts, roundTag: level.mixed ? { _ in "\(g.title): \(g.how)" } : nil, onFinish: { _ in }) { _, answer, answered in
+      TowerRound(level: level, index: index, rounds: Rounds(series: Array(app.candles.values), seed: level.seed), answer: answer, answered: answered)
+    }
   }
 }

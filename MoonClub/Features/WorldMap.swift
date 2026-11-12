@@ -16,6 +16,8 @@ struct WorldView: View {
   @State private var lesson: Lesson?
   /// Debug `-library`: open Moon School (the lesson list) for screenshots.
   @State private var library = false
+  /// Moon Tower (the header's tower chip; debug `-tower`).
+  @State private var tower = false
   /// The tapped stop zooms into its game (and back out to the stop).
   @Namespace private var stopNS
   @State private var zoom: CGFloat = 1
@@ -74,6 +76,7 @@ struct WorldView: View {
     .navigationDestination(item: $playing) { n in NodePlayer(node: n, regions: regions).zoomFrom(n.id, in: stopNS) }
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .navigationDestination(isPresented: $library) { SchoolView() }
+    .navigationDestination(isPresented: $tower) { TowerView() }
     .onAppear {
       conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
       atlasPage = cur.region
@@ -84,6 +87,11 @@ struct WorldView: View {
       if let i = a.firstIndex(of: "-play"), i + 1 < a.count, playing == nil, lesson == nil, let n = regions.flatMap(\.nodes).first(where: { $0.id == a[i + 1] }) { play(n) }
       #if DEBUG
       if a.contains("-library") { library = true }
+      // Moon Tower: -towerAt N climbs to level N (stars on every level below), -tower opens it.
+      if let i = a.firstIndex(of: "-towerAt"), i + 1 < a.count, let n = Int(a[i + 1]), Tower.current(app.state) < n {
+        app.mutate { s in for k in 1..<max(2, n) { s.earn(Tower.id(k), stars: 1 + (k * 7) % 3) } }
+      }
+      if a.contains("-tower") || a.contains("-towerPlay") || a.contains("-towerCard") { tower = true }
       // Screen recordings: -conquer wins the current land after a moment (fog lifts, flag, rocket flies on).
       if a.contains("-conquer") {
         Task {
@@ -722,6 +730,13 @@ struct WorldHeader: View {
       }
       .accessibilityLabel("Rocket hangar")
       .sheet(isPresented: $hangar) { Hangar().presentationDetents([.medium]).presentationCornerRadius(32) }
+      NavigationLink { TowerView() } label: {
+        Label("\(min(Tower.current(app.state), 999))", systemImage: "stairs").font(.subheadline.weight(.heavy)).monospacedDigit()
+          .foregroundStyle(.white).padding(.horizontal, 12).frame(height: 44)
+          .background(LinearGradient(colors: [Hue.grape.color, Palette.midnight], startPoint: .top, endPoint: .bottom), in: Capsule())
+          .fixedSize()
+      }
+      .accessibilityLabel("Moon Tower, level \(Tower.current(app.state))")
       NavigationLink { SchoolView() } label: {
         Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(chipFill, in: Circle())
       }
