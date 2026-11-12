@@ -25,6 +25,41 @@ final class SceneTests: XCTestCase {
     }
   }
 
+  /// Every picture after a lesson's first step (later say steps, worked examples, quiz stages) is a living scene:
+  /// its prop is the picture's own art (a real SF Symbol or one of our drawn marks, never the fallback), its act
+  /// draws that prop, and its still frame renders (the cached picture a settled stage shows).
+  func testEveryStepPictureIsALivingScene() throws {
+    let c = try content()
+    let all = c.with(packs: c.bundledPacks)
+    var stills = Set<String>()
+    for l in all.lessons {
+      for (i, pic, quiz) in Scenes.pictures(l) {
+        let scene = Scenes.step(l, at: i, picture: pic, quiz: quiz)
+        XCTAssertTrue(Scenes.propActs.contains(scene.act), "\(l.id)#\(i) \(pic): \(scene.act)")
+        let s = Art.spec(pic).symbol
+        if pic != "❓" && pic != "🤔" { XCTAssertNotEqual(Art.spec(pic), Art.fallback, "\(l.id)#\(i): no art for \(pic)") }
+        if s.hasPrefix("custom.") { XCTAssertTrue(["custom.piggy", "custom.lemon", "custom.candle"].contains(s), "\(l.id)#\(i): \(s)"); continue }
+        XCTAssertNotNil(UIImage(systemName: s), "\(l.id)#\(i): \(s)")
+        stills.insert("\(scene.act)|\(s)")
+      }
+    }
+    XCTAssertGreaterThan(stills.count, 50)
+    // A stage's still frame (what it shows at rest and what `prewarm` caches) renders, for a sample of each act.
+    var seen = Set<SceneAct>()
+    for l in c.lessons {
+      for (i, pic, quiz) in Scenes.pictures(l) {
+        let scene = Scenes.step(l, at: i, picture: pic, quiz: quiz)
+        guard seen.insert(scene.act).inserted else { continue }
+        let f = SceneStage.frame(scene, symbol: Art.spec(pic).symbol, side: 120, mood: quiz ? .thinking : nil, clock: nil)
+        XCTAssertNotNil(SceneStill.image(f, scale: 2), "\(scene.act) \(pic)")
+      }
+    }
+    XCTAssertTrue(seen.contains(.think))
+    // Stage sides come in 8 pt steps (so the next step's prewarmed still is a cache hit) and never exceed 260.
+    XCTAssertEqual(SceneStage.side(for: CGSize(width: 340, height: 203)), 200)
+    XCTAssertEqual(SceneStage.side(for: CGSize(width: 1000, height: 900)), 256)
+  }
+
   /// Renders one frame of every act, live and settled, and checks pixels came out (the shader and Canvas ran).
   func testEveryActRenders() throws {
     let c = try content()

@@ -222,8 +222,12 @@ struct SceneSky: View {
   static let t: Double = 23
   private static var cache: [String: UIImage] = [:]
   static func image(_ palette: ScenePalette, size: CGSize, glow: Double, scale: CGFloat) -> UIImage? {
-    let w = (size.width).rounded(), h = (size.height).rounded()
-    guard w > 0, h > 0 else { return nil }
+    let w0 = (size.width).rounded(), h0 = (size.height).rounded()
+    guard w0 > 0, h0 > 0 else { return nil }
+    // Big skies (a lesson's stage) come in 16 pt steps and are stretched the last few points, so one picture
+    // serves every step of a lesson even as the words below change the stage's height.
+    let big = w0 > 120 || h0 > 120
+    let w = big ? (w0 / 16).rounded(.up) * 16 : w0, h = big ? (h0 / 16).rounded(.up) * 16 : h0
     let key = "\(palette.rawValue)|\(Int(w))x\(Int(h))|\(Int(glow * 100))|\(Int(scale))"
     if let hit = cache[key] { return hit }
     let c = palette.ribbons
@@ -234,7 +238,7 @@ struct SceneSky: View {
     r.isOpaque = true
     guard let img = r.uiImage else { return nil }
     if cache.count > 48 { cache.removeAll() }
-    cache[key] = img
+    if ShaderWarmup.ready { cache[key] = img }
     return img
   }
 }
@@ -255,7 +259,7 @@ struct SceneSky: View {
     r.isOpaque = frame.showsSky
     guard let img = r.uiImage else { return nil }
     if cache.count > 160 { cache.removeAll() }
-    cache[key] = img
+    if ShaderWarmup.ready { cache[key] = img }
     return img
   }
   /// Draws the pictures for these cards a few per frame, so opening Moon School never stalls.
@@ -556,6 +560,63 @@ struct ActPainter {
           l.stroke(Path(ellipseIn: r), with: .color(Self.coinEdge), lineWidth: 0.016 * u)
         }
       }
+
+    // The gentle acts for a lesson's later pictures (MoonClubCore `Scenes.pictureActs` / `gentleActs`). Each one
+    // draws the step's own picture and reads at its still pose (p = 0.42).
+    case .float:
+      let w = 2 * Double.pi * p
+      prop(0.04 + 0.03 * sin(w * 0.5 + 1), 0.04 - 0.06 * sin(w), angle: 5 * sin(w + 0.8))
+      for (i, q) in [(-0.3, -0.24), (0.34, -0.2), (0.3, 0.26), (-0.28, 0.22)].enumerated() {
+        let tw = 0.5 + 0.5 * sin(w * 2 + Double(i) * 1.7)
+        symbol("sparkle", q.0, q.1, 0.06 + 0.05 * tw, i % 2 == 0 ? .white : Self.coin, opacity: 0.35 + 0.65 * tw)
+      }
+
+    case .orbit:
+      // Three coins circle the prop on a tilted ring: the back half behind it, the front half in front.
+      let coins = (0..<3).map { i -> (x: Double, y: Double, z: Double) in
+        let a = 2 * .pi * (p + Double(i) / 3)
+        return (0.04 + 0.36 * cos(a), 0.06 + 0.12 * sin(a), sin(a))
+      }
+      for q in coins where q.z < 0 { coin(q.x, q.y, 0.05 + 0.015 * q.z, opacity: 0.7) }
+      prop(0.04, 0.04, scale: 0.88)
+      for q in coins where q.z >= 0 { coin(q.x, q.y, 0.06 + 0.02 * q.z) }
+
+    case .bounce:
+      // Drops in from the top and bounces to a stop, squashing on each landing; a soft shadow under it.
+      let tt = min(1, p / 0.5)
+      let h = 0.44 * (1 - tt) * (1 - tt) * abs(cos(2.5 * .pi * tt))
+      let land = (1 - min(1, h / 0.04)) * (1 - tt)
+      let o = fade * min(1, p / 0.05 + 0.001)
+      g.fill(Path(ellipseIn: CGRect(x: c.x + (0.04 - 0.16 + 0.05 * h) * u, y: c.y + 0.27 * u, width: (0.32 - 0.1 * h) * u, height: 0.05 * u)),
+             with: .color(.black.opacity(0.22 * o)))
+      prop(0.04, 0.06 - h + 0.02 * land, scale: 1 - 0.08 * land, sx: 1 + 0.18 * land, opacity: o)
+      let s = bump(p, 0.48, 0.8)
+      symbol("sparkle", 0.3, -0.24, 0.12 * s, Self.coin)
+
+    case .sparkle:
+      let w = 2 * Double.pi * p
+      g.fill(circle(0.04, 0.04, 0.3), with: .radialGradient(Gradient(colors: [Self.coin.opacity(0.28 + 0.12 * sin(w)), Self.coin.opacity(0)]),
+                                                             center: pt(0.04, 0.04), startRadius: 0, endRadius: 0.3 * u))
+      prop(0.04, 0.04, scale: 1 + 0.04 * sin(w))
+      for (i, q) in [(-0.3, -0.26), (0.34, -0.28), (0.38, 0.12), (-0.34, 0.16), (0.04, -0.4)].enumerated() {
+        let tw = max(0, sin(2 * w + Double(i) * 1.3))
+        symbol("sparkle", q.0, q.1, 0.05 + 0.1 * tw, i % 2 == 0 ? Self.coin : .white, opacity: 0.25 + 0.75 * tw)
+      }
+
+    case .think:
+      // Luna's thinking (quiz steps): the picture tilts, thought dots rise, a "?" bubble pops up and wobbles.
+      let w = 2 * Double.pi * p
+      prop(0.12, 0.12, scale: 0.78, angle: 6 * sin(w))
+      for (i, d) in [(0.0, 0.0, 0.03), (-0.08, -0.1, 0.04)].enumerated() {
+        let o = ramp(p, 0.04 + Double(i) * 0.08, 0.14 + Double(i) * 0.08)
+        g.fill(circle(-0.04 + d.0, -0.06 + d.1, d.2), with: .color(.white.opacity(0.9 * o)))
+      }
+      let b = back(ramp(p, 0.18, 0.36))
+      if b > 0.01 {
+        let bx = -0.24, by = -0.3, r = 0.13 * b
+        g.fill(circle(bx, by, r), with: .color(.white))
+        symbol("questionmark", bx, by, 0.15 * b, sky, angle: 8 * sin(w * 2))
+      }
     }
   }
 
@@ -651,22 +712,30 @@ struct SceneFrame: View {
   var showsSky = true
   /// Small cards at rest show a cached picture of their still frame (`SceneStill`) instead of a Canvas.
   var rasterizesStill = false
-  /// Drawing that picture: everything vector, the sky shader at its still time.
+  /// Drawing that picture: everything vector, the sky shader at its still time (a shaded Luna stays a live view
+  /// over the picture, so she still blinks).
   fileprivate var forRaster = false
+  /// Luna's mood when she's a shaded `LunaView` (quiz stages: thinking); nil = idle, or happy when done.
+  var mood: Luna.Mood? = nil
   @Environment(\.displayScale) private var scale
 
   var body: some View {
     let _ = Perf.body("SceneFrame")
     let live = clock?.running == true
     if rasterizesStill && !live, let img = SceneStill.image(self, scale: scale) {
-      Image(uiImage: img).resizable().frame(width: side, height: side).transition(.opacity)
+      ZStack(alignment: lunaAt) {
+        Image(uiImage: img).resizable().frame(width: side, height: side)
+        if luna >= LunaView.shadedFrom { bigLuna(live: false, p: 0) }
+      }
+      .frame(width: side, height: side)
+      .transition(.opacity)
     } else {
       drawn(live: live)
     }
   }
 
   /// The key of this frame's still picture: neighbours with the same act, prop, palette and state share one.
-  var stillKey: String { "\(scene.act)|\(scene.palette)|\(symbol)|\(status)|\(Int(side * 4))|\(Int(glow * 100))|\(Int(luna * 4))|\(Int(actShift * 100))" }
+  var stillKey: String { "\(scene.act)|\(scene.palette)|\(symbol)|\(status)|\(Int(side * 4))|\(Int(glow * 100))|\(Int(luna * 4))|\(Int(actShift * 100))|\(mood.map { "\($0)" } ?? "-")" }
 
   @ViewBuilder private func drawn(live: Bool) -> some View {
     let t = clock.map { $0.t } ?? 0
@@ -692,13 +761,15 @@ struct SceneFrame: View {
           PropMark(symbol: symbol, side: stage * 0.42).tag(0)
         }
         .frame(width: side, height: side)
-        if luna >= LunaView.shadedFrom {
-          Luna(size: luna, mood: status == .done ? .happy : .idle)
-            .offset(y: live ? -luna * 0.06 * sin(p * 2 * .pi) : 0)
-            .padding(luna * 0.12)
-        }
+        if luna >= LunaView.shadedFrom && !forRaster { bigLuna(live: live, p: p) }
     }
     .frame(width: side, height: side)
+  }
+
+  private func bigLuna(live: Bool, p: Double) -> some View {
+    Luna(size: luna, mood: mood ?? (status == .done ? .happy : .idle))
+      .offset(y: live ? -luna * 0.06 * sin(p * 2 * .pi) : 0)
+      .padding(luna * 0.12)
   }
 }
 
@@ -822,32 +893,135 @@ struct HookBubble: View {
   }
 }
 
-/// The scene, big, at the top of a lesson's first step: card → lesson feels like one picture growing.
-/// Spare-room like `ArtPanel`: it grows up to `maxHeight` and hides when squeezed under 72 pt.
+/// The scene, big, in a lesson. On the first step it's the lesson's Moon School scene (card → lesson feels like one
+/// picture growing); on every later step it's that step's own picture acting in the unit's colors
+/// (`Scenes.step`, via `ArtPanel`), and on quiz steps Luna thinks it over. Spare-room sizing: it grows up to
+/// `maxHeight` and hides when squeezed under 72 pt.
+///
+/// The budget is the Moon School one: the shared `SceneClock.hero` (no display link or TimelineView of its own),
+/// held only while the stage is on screen; it runs ~14 s after the step appears, then the stage is two cached
+/// pictures (`SkyStill` + `SceneStill`, with a shaded Luna as a live view on top). Reduce Motion, Low Power Mode
+/// and a hot device get the still pictures straight away. The stage draws its own still once it has a size, and
+/// `prewarm` draws the next step's while the kid reads, so settling and turning the page only swap images.
 struct SceneStage: View {
-  let lesson: Lesson
+  let scene: LessonScene
+  let symbol: String
   var maxHeight: CGFloat = 420
   var minHeight: CGFloat = 150
+  /// Luna's mood (quiz stages: thinking).
+  var mood: Luna.Mood? = nil
   @Environment(\.accessibilityReduceMotion) private var rm
+  @Environment(\.displayScale) private var scale
   @State private var tooSmall = false
   @State private var onScreen = false
+  @State private var size: CGSize = .zero
+
+  init(lesson: Lesson, maxHeight: CGFloat = 420, minHeight: CGFloat = 150) {
+    let s = Scenes.scene(for: lesson)
+    self.init(scene: s, symbol: s.symbol(for: lesson), maxHeight: maxHeight, minHeight: minHeight)
+  }
+  init(scene: LessonScene, symbol: String, maxHeight: CGFloat = 420, minHeight: CGFloat = 150, mood: Luna.Mood? = nil) {
+    self.scene = scene; self.symbol = symbol; self.maxHeight = maxHeight; self.minHeight = minHeight; self.mood = mood
+  }
+
   var body: some View {
-    let scene = Scenes.scene(for: lesson)
     let live = !rm && onScreen
+    let clock = SceneClock.hero
     GeometryReader { geo in
-      let side = max(1, min(geo.size.height, geo.size.width * 0.62, 260))
+      let side = Self.side(for: geo.size)
       ZStack {
-        SceneSky(palette: scene.palette, t: (live ? SceneClock.hero.t : 0) + scene.seed * 97, glow: 1, live: live && SceneClock.hero.running)
-        SceneFrame(scene: scene, symbol: scene.symbol(for: lesson), side: side, status: .next, clock: live ? SceneClock.hero : nil, luna: side * 0.34, actShift: 0.06, showsSky: false)
+        SceneSky(palette: scene.palette, t: (live ? clock.t : 0) + scene.seed * 97, glow: 1, live: live && clock.running)
+        Self.frame(scene, symbol: symbol, side: side, mood: mood, clock: live ? clock : nil)
       }
       .frame(width: geo.size.width, height: geo.size.height)
     }
     .opacity(tooSmall ? 0 : 1)
     .frame(minHeight: min(minHeight, maxHeight), maxHeight: maxHeight)
-    .onGeometryChange(for: Bool.self) { $0.size.height < 72 } action: { tooSmall = $0 }
+    .onGeometryChange(for: CGSize.self) { $0.size } action: { s in
+      size = s
+      if (s.height < 72) != tooSmall { tooSmall = s.height < 72 }
+      if s.height >= 72 { Self.lastSize = s }
+    }
     .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-    .modifier(ClockHold(clock: SceneClock.hero, live: !rm, onScreen: $onScreen))
+    .modifier(ClockHold(clock: clock, live: !rm, onScreen: $onScreen))
+    // Draw this stage's still pictures early (off the settle moment), once it has a size.
+    .task(id: size) {
+      guard size.height >= 72 else { return }
+      try? await Task.sleep(for: .milliseconds(900))
+      guard !Task.isCancelled else { return }
+      Self.prewarm(scene, symbol: symbol, mood: mood, size: size, scale: scale)
+    }
     .accessibilityHidden(true)
+  }
+
+  /// The act's square: the stage's height (or 62% of its width), at most 260 pt, in 8 pt steps so the cached
+  /// still of one step fits the next step's stage too.
+  static func side(for size: CGSize) -> CGFloat {
+    let raw = min(size.height, size.width * 0.62, 260)
+    return raw >= 16 ? (raw / 8).rounded(.down) * 8 : max(1, raw)
+  }
+
+  static func frame(_ scene: LessonScene, symbol: String, side: CGFloat, mood: Luna.Mood?, clock: SceneClock?) -> SceneFrame {
+    SceneFrame(scene: scene, symbol: symbol, side: side, status: .next, clock: clock, luna: side * 0.34, actShift: 0.06,
+               showsSky: false, rasterizesStill: true, mood: mood)
+  }
+
+  /// The last size a stage had: the best guess for the next step's (the card keeps its width; heights move a little).
+  @MainActor static var lastSize: CGSize = .zero
+
+  /// Draws (and caches) a stage's still sky and still act, so showing it at rest is just two images.
+  @MainActor static func prewarm(_ scene: LessonScene, symbol: String, mood: Luna.Mood?, size: CGSize? = nil, scale: CGFloat) {
+    let s = size ?? lastSize
+    guard ShaderWarmup.ready, s.width > 0, s.height >= 72 else { return }
+    _ = SkyStill.image(scene.palette, size: s, glow: 1, scale: scale)
+    _ = SceneStill.image(frame(scene, symbol: symbol, side: side(for: s), mood: mood, clock: nil), scale: scale)
   }
 }
 
+/// Small pictures in a lesson (the worked example's icon, the sorting cards and their piles) get one native SF
+/// Symbol effect when they appear, and again when `trigger` changes (a line revealed). Never a loop; nothing
+/// under Reduce Motion, Low Power Mode or a hot device. Our drawn marks (piggy, lemon, candle) aren't symbols, so
+/// they get a one-shot spring in instead.
+struct GlyphPop: ViewModifier {
+  var key: String
+  var trigger = 0
+  /// iOS 18+: a wiggle instead of a bounce.
+  var wiggle = false
+  @State private var n = 0
+  @State private var shown = false
+  @Environment(\.accessibilityReduceMotion) private var rm
+
+  func body(content: Content) -> some View {
+    let off = rm || !Self.allowed
+    let drawn = Art.spec(key).symbol.hasPrefix("custom.")
+    effect(content, value: n + trigger)
+      .symbolEffectsRemoved(off)
+      .scaleEffect(drawn && !off && !shown ? 0.82 : 1)
+      .task {
+        guard !off else { shown = true; return }
+        try? await Task.sleep(for: .milliseconds(160))
+        withAnimation(Motion.celebrate) { shown = true }
+        n += 1
+      }
+  }
+
+  @ViewBuilder private func effect(_ content: Content, value: Int) -> some View {
+    if wiggle, #available(iOS 18, *) {
+      content.symbolEffect(.wiggle.byLayer, options: .nonRepeating, value: value)
+    } else {
+      content.symbolEffect(.bounce.byLayer, options: .nonRepeating, value: value)
+    }
+  }
+
+  @MainActor static var allowed: Bool {
+    if SceneClock.forced == "still" { return false }
+    return FX.shared.level(visible: true, active: true, reduceMotion: UIAccessibility.isReduceMotionEnabled) == .full
+  }
+}
+
+extension View {
+  /// One native symbol effect on appear / on `trigger` (see `GlyphPop`).
+  func glyphPop(_ key: String, trigger: Int = 0, wiggle: Bool = false) -> some View {
+    modifier(GlyphPop(key: key, trigger: trigger, wiggle: wiggle))
+  }
+}

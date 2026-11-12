@@ -61,4 +61,34 @@ final class ScenesTests: XCTestCase {
     XCTAssertEqual(Scenes.stableHash("money"), Scenes.stableHash("money"))
     XCTAssertNotEqual(Scenes.seed("money"), Scenes.seed("earn"))
   }
+
+  /// Every picture after a lesson's first step (later say steps, worked examples, quiz stages) gets a living scene
+  /// whose act draws that picture as its prop, in the lesson's unit palette.
+  func testEveryStepPictureGetsAPropAct() {
+    let all = c.with(packs: c.bundledPacks)
+    var count = 0
+    for l in all.lessons {
+      for (i, pic, quiz) in Scenes.pictures(l) {
+        let s = Scenes.step(l, at: i, picture: pic, quiz: quiz)
+        XCTAssertTrue(Scenes.propActs.contains(s.act), "\(l.id)#\(i) \(pic): \(s.act) doesn't draw the picture")
+        if quiz { XCTAssertEqual(s.act, .think, "\(l.id)#\(i)") }
+        if let u = Scenes.units[l.unit] { XCTAssertEqual(s.palette, u.0, "\(l.id)#\(i)") }
+        XCTAssertTrue((0..<1).contains(s.seed))
+        // Stable: the same step always gets the same scene.
+        XCTAssertEqual(Scenes.step(l, at: i, picture: pic, quiz: quiz).act, s.act)
+        count += 1
+      }
+    }
+    XCTAssertGreaterThan(count, 200)
+    for a in Scenes.pictureActs.values { XCTAssertTrue(Scenes.propActs.contains(a), "\(a)") }
+    for a in Scenes.gentleActs { XCTAssertTrue(Scenes.propActs.contains(a), "\(a)") }
+  }
+
+  func testStepScenesWithoutALessonStillResolve() {
+    let s = Scenes.step(nil, at: 3, picture: "🦄")
+    XCTAssertTrue(Scenes.gentleActs.contains(s.act))
+    XCTAssertEqual(s.palette, Scenes.fallbackPalette("🦄"))
+    XCTAssertEqual(Scenes.step(nil, at: 0, picture: "🏦").act, .drop)
+    XCTAssertEqual(Scenes.step(nil, at: 0, picture: "🏦", quiz: true).act, .think)
+  }
 }

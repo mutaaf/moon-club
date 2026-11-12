@@ -323,6 +323,9 @@ struct TiltLayer<Content: View>: View {
 /// map, boss or party never stalls on a compile. iOS 18+ precompiles SwiftUI shaders (`Shader.compile`);
 /// on iOS 17 they compile on first use (still once).
 enum ShaderWarmup {
+  /// True once the warm-up finished. Cached still pictures drawn before then (a slow cold launch) aren't kept:
+  /// a still rendered while the shaders were still compiling came out black and stayed black.
+  nonisolated(unsafe) static var ready = false
   nonisolated static func run() {
     Task.detached(priority: .utility) {
       let start = CFAbsoluteTimeGetCurrent()
@@ -341,6 +344,7 @@ enum ShaderWarmup {
         for sh in [lib.bloom(z, z), lib.timeWarp(z2, z, z)] { try? await sh.compile(as: .layerEffect) }
         try? await lib.shockwave(z2, z, z2).compile(as: .distortionEffect)
       }
+      ready = true
       #if DEBUG
       print(String(format: "FX warm-up %.0f ms (off the main thread)", (CFAbsoluteTimeGetCurrent() - start) * 1000)); fflush(stdout)
       #endif

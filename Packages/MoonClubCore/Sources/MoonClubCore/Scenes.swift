@@ -46,6 +46,16 @@ public enum SceneAct: String, CaseIterable, Sendable {
   case launch
   /// Coins stack up next to the prop.
   case stack
+  /// The prop floats on a soft breeze, with twinkles (a lesson's later pictures).
+  case float
+  /// Little coins circle the prop.
+  case orbit
+  /// The prop drops in and bounces to a stop.
+  case bounce
+  /// The prop glows while sparkles twinkle around it.
+  case sparkle
+  /// Luna is thinking: the prop tilts and a "?" thought bubble pops up (quiz steps).
+  case think
 }
 
 /// The aurora colors for a scene (the app maps each to three ribbon colors over a night sky).
@@ -127,8 +137,75 @@ public enum Scenes {
     .climb: "Follow the line up the hill!", .wiggle: "Wiggles are normal!", .slice: "Everyone gets a slice!",
     .slide: "Let's see how it works!", .scan: "Let's look for clues!", .flip: "Good things take time.",
     .wave: "Loud is not the same as true.", .tip: "Pick one, give up the other.", .launch: "Up, up and away!",
-    .stack: "Money in, money out!",
+    .stack: "Money in, money out!", .float: "Watch it float along!", .orbit: "Round and round it goes!",
+    .bounce: "Boing! Here it comes!", .sparkle: "Look how it shines!", .think: "Hmm, let's think it out!",
   ]
+  // MARK: Step pictures (every picture in a lesson after the first step)
+
+  /// Acts that draw the step's own picture as their prop (the others draw their own things: a cup, candles).
+  public static let propActs: Set<SceneAct> = [.drop, .flip, .inflate, .pop, .scan, .shield, .slide, .stack, .tip, .wave,
+                                               .float, .orbit, .bounce, .sparkle, .think]
+  /// The gentle acts a picture with no entry below gets (picked per step, so a lesson's pages don't all match).
+  public static let gentleActs: [SceneAct] = [.float, .bounce, .sparkle, .orbit]
+
+  /// A step picture (its emoji key, drawn by the app's `Art`) → the act that tells its story. Every act here is a
+  /// `propActs` act (ScenesTests). Pictures not listed get a gentle act.
+  public static let pictureActs: [String: SceneAct] = [
+    // Money going somewhere safe
+    "🏦": .drop, "🫙": .drop, "💰": .drop, "🐷": .drop, "🏫": .drop,
+    // Money and things that add up
+    "🪙": .orbit, "💵": .stack, "🏪": .stack, "🧱": .stack, "🤝": .orbit, "👥": .orbit, "🧺": .orbit, "🍕": .orbit,
+    // Looking for clues
+    "🔍": .scan, "🕵️": .scan, "🔭": .scan, "👀": .scan, "🧾": .scan, "📋": .scan, "📝": .scan, "📊": .scan, "📏": .scan,
+    // Time
+    "📅": .flip, "⏳": .flip, "🌙": .flip, "🔁": .flip, "🎭": .flip, "🌦️": .flip,
+    // Prices and tags
+    "🏷️": .inflate, "🛒": .slide, "💳": .slide, "🚲": .slide, "🐢": .slide, "🛤️": .slide,
+    // Staying safe
+    "🛡️": .shield, "⛑️": .shield, "☔": .shield, "🚩": .shield,
+    // Loud things
+    "📣": .wave, "🔔": .wave,
+    // Surprises and treats
+    "🎁": .pop, "✨": .sparkle, "🎯": .pop, "🍋": .pop, "🍰": .pop, "🍎": .pop, "🥚": .pop, "😮": .pop, "🎓": .sparkle,
+    // Thinking it through
+    "🤔": .think, "🧠": .think, "❓": .think, "🤷": .think, "🔮": .think, "🧩": .think,
+    // Ups and downs, wiggles and rides
+    "📈": .bounce, "📉": .float, "🎢": .float, "〰️": .float, "🌳": .sparkle, "🌱": .sparkle, "🙋": .bounce, "🤞": .sparkle,
+    "🎮": .bounce, "🧸": .bounce, "⛄": .bounce, "🐶": .bounce,
+  ]
+
+  /// The scene for a picture at step `index` of `lesson` (nil: no lesson, e.g. a measuring test): the unit's
+  /// palette, an act that fits the picture (quiz steps: Luna `think`s), a seed per step. The prop is nil: the
+  /// app draws the picture from its own `Art` table.
+  public static func step(_ lesson: Lesson?, at index: Int, picture: String, quiz: Bool = false) -> LessonScene {
+    let palette = lesson.map { units[$0.unit]?.0 ?? fallbackPalette($0.unit) } ?? fallbackPalette(picture)
+    let key = "\(lesson?.id ?? "-")#\(index)#\(picture)"
+    let act = quiz ? .think : pictureAct(picture, key: key)
+    return LessonScene(act: act, palette: palette, prop: nil, hook: hooks[act] ?? "", seed: seed(key))
+  }
+
+  /// The act for a picture: the table's, else a gentle act picked from `key`.
+  public static func pictureAct(_ picture: String, key: String) -> SceneAct {
+    pictureActs[picture] ?? gentleActs[Int(stableHash(key) % UInt64(gentleActs.count))]
+  }
+
+  /// Every picture a lesson shows after its first step (step index, emoji key, is it a quiz), as the player shows
+  /// them: say and example steps their own picture, quiz steps the last thing Luna said ("❓"/"🤔" before any).
+  public static func pictures(_ lesson: Lesson) -> [(index: Int, picture: String, quiz: Bool)] {
+    var out: [(Int, String, Bool)] = []
+    var lastSay: String?
+    for (i, s) in lesson.steps.enumerated() {
+      switch s {
+      case let .say(e, _): if i > 0 { out.append((i, e, false)) }; lastSay = e
+      case let .example(x): out.append((i, x.emoji, false))
+      case .check: out.append((i, lastSay ?? "❓", true))
+      case .sort: out.append((i, lastSay ?? "🤔", true))
+      case .grow: break
+      }
+    }
+    return out
+  }
+
   /// The bubble holds about this many characters on the smallest phone.
   public static let hookLimit = 44
 
