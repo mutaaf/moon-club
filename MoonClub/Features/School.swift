@@ -225,6 +225,7 @@ struct LessonPlayer: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.accessibilityReduceMotion) private var rm
   @Environment(\.dynamicTypeSize) private var type
+  @Environment(\.displayScale) private var displayScale
   /// A short room (sideways on iPhone Duo's outer display, ~430 pt): the picture shrinks so the words and
   /// answers stay in view above the buttons instead of a full-size picture filling the page.
   @State private var shortRoom = false
@@ -291,6 +292,7 @@ struct LessonPlayer: View {
     }
     #endif
     .onAppear { LiveActivities.lesson(lesson, step: step) }
+    .task(id: step) { await prewarmNext() }
     .onDisappear { if !done { LiveActivities.lessonLeft(lesson) } }
     .sensoryFeedback(.selection, trigger: step)
     .onChange(of: duo?.closedTick) { _, _ in if done { withAnimation(rm ? nil : .spring) { tucked = true } } }
@@ -410,15 +412,14 @@ struct LessonPlayer: View {
       } else if step == 0, case .say = lesson.steps[step] {
         SceneStage(lesson: lesson, maxHeight: 300, minHeight: 200)
       } else if case let .say(emoji, _) = lesson.steps[step] {
-        Glyph(emoji, size: 156, style: .halo).enterOnce("say-\(lesson.id)-\(step)")
-        Luna(size: 64, wave: true)
+        // Every later picture is a living scene too: the step's own picture acting in the unit's colors.
+        ArtPanel(key: emoji, maxHeight: 300, minHeight: 200, lesson: lesson, index: step)
       } else if case let .example(x) = lesson.steps[step] {
         Eyebrow(text: "Let's work it out")
-        Glyph(x.emoji, size: 120, style: .halo)
-        Luna(size: 64, wave: true, mood: .thinking)
+        ArtPanel(key: x.emoji, maxHeight: 260, minHeight: 170, lesson: lesson, index: step)
       } else if let said = lastSay {
         Eyebrow(text: "Luna said")
-        Glyph(said.emoji, size: 84, style: .halo)
+        ArtPanel(key: said.emoji, maxHeight: 200, minHeight: 120, mood: .thinking, lesson: lesson, index: step)
         Text(said.text).font(.kRead).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
       } else {
         Luna(size: 96, wave: true)
@@ -464,7 +465,16 @@ struct LessonPlayer: View {
                 picked: Binding(get: { answers[step] }, set: { if answers[step] == nil { answers[step] = $0 } }),
                 picks: Binding(get: { sorts[step] ?? [:] }, set: { sorts[step] = $0 }), artMax: shortRoom ? 110 : 420,
                 stageKey: lastSay?.emoji, quizArtMax: shortRoom ? 0 : 360,
-                progress: reveals[step] ?? 0, advance: { reveal() }, intro: step == 0 ? lesson : nil)
+                progress: reveals[step] ?? 0, advance: { reveal() }, intro: step == 0 ? lesson : nil, lesson: lesson, index: step)
+  }
+
+  /// While the kid reads, draw the next step's still scene (sky + act) so turning the page and settling are
+  /// image swaps. Skipped when the stage can't animate anyway (it draws its still on first show then).
+  func prewarmNext() async {
+    try? await Task.sleep(for: .milliseconds(1200))
+    guard !Task.isCancelled, let next = Scenes.pictures(lesson).first(where: { $0.index == step + 1 }) else { return }
+    let scene = Scenes.step(lesson, at: next.index, picture: next.picture, quiz: next.quiz)
+    SceneStage.prewarm(scene, symbol: Art.spec(next.picture).symbol, mood: next.quiz ? .thinking : nil, scale: displayScale)
   }
 }
 
@@ -490,11 +500,14 @@ struct StepContent: View {
   /// The lesson's first step: its Moon School scene, big, in place of the picture (card → lesson feels like
   /// one picture growing). Same spare-room sizing as the art panel.
   var intro: Lesson? = nil
+  /// The lesson and step this is (later pictures act in the lesson's unit colors; nil in measuring tests).
+  var lesson: Lesson? = nil
+  var index = 0
   var body: some View {
     switch step {
     case let .say(emoji, text):
       VStack(spacing: 18) {
-        if art { if let intro { SceneStage(lesson: intro, maxHeight: artMax) } else { ArtPanel(key: emoji, maxHeight: artMax) } }
+        if art { if let intro { SceneStage(lesson: intro, maxHeight: artMax) } else { ArtPanel(key: emoji, maxHeight: artMax, lesson: lesson, index: index) } }
         Text(text).font(.system(.title2, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         ReadAloud(source: .appCopy(text))
       }
@@ -503,12 +516,12 @@ struct StepContent: View {
     // The stage is spare-room only: it collapses to nothing when big text needs the space.
     case let .check(c):
       VStack(spacing: 0) {
-        if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "❓", maxHeight: quizArtMax, minHeight: 0, mood: .thinking).padding(.bottom, 16) }
+        if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "❓", maxHeight: quizArtMax, minHeight: 0, mood: .thinking, lesson: lesson, index: index).padding(.bottom, 16) }
         CheckView(check: c, seed: seed, picked: $picked)
       }
     case let .sort(q, buckets, items, why):
       VStack(spacing: 0) {
-        if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "🤔", maxHeight: quizArtMax, minHeight: 0, mood: .thinking).padding(.bottom, 16) }
+        if art && quizArtMax > 0 { ArtPanel(key: stageKey ?? "🤔", maxHeight: quizArtMax, minHeight: 0, mood: .thinking, lesson: lesson, index: index).padding(.bottom, 16) }
         SortView(q: q, buckets: buckets, items: items, why: why, picks: $picks)
       }
     case let .example(x):
@@ -530,7 +543,7 @@ struct ExampleView: View {
     VStack(spacing: 10) {
       // The picture rides next to the eyebrow (a full art stage made the card too tall on iPhone SE).
       HStack(spacing: 10) {
-        if art { Glyph(example.emoji, size: 40) }
+        if art { Glyph(example.emoji, size: 40).glyphPop(example.emoji, trigger: shown, wiggle: true) }
         Eyebrow(text: "Let's work it out")
       }
       Text(example.text).font(.system(.title3, design: .rounded).weight(.bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
@@ -616,48 +629,23 @@ struct GrowView: View {
 }
 
 
-/// The picture at the top of a lesson card: the art on a soft color stage, with Luna peeking in. It takes
-/// the room the words leave (between a minimum and a maximum), so the card always looks composed.
+/// The picture at the top of a lesson card, after the first step: a living scene (`SceneStage`) where the step's
+/// own picture acts in the lesson's unit colors (MoonClubCore `Scenes.step`), with Luna in the corner; on quiz
+/// steps (`mood: .thinking`) Luna thinks it over and a "?" bubble pops up. It takes the room the words leave
+/// (between a minimum and a maximum) and hides under 72 pt, so the card always looks composed. It shares the
+/// hero `SceneClock`, settles into cached stills, and is still under Reduce Motion / Low Power / a hot device.
 struct ArtPanel: View {
   let key: String
   var maxHeight: CGFloat = 420
   var minHeight: CGFloat = 150
   var mood: Luna.Mood = .happy
-  @Environment(\.accessibilityReduceMotion) private var rm
-  @State private var float = false
-  /// Squeezed below this, the stage hides instead of showing a sliver.
-  @State private var tooSmall = false
+  /// The lesson and step (nil in measuring tests: a palette picked from the picture).
+  var lesson: Lesson? = nil
+  var index = 0
   var body: some View {
-    let spec = Art.spec(key)
-    ZStack(alignment: .bottomTrailing) {
-      RoundedRectangle(cornerRadius: 26, style: .continuous)
-        .fill(LinearGradient(colors: [spec.hue.light.opacity(0.55), spec.hue.light.opacity(0.18)], startPoint: .top, endPoint: .bottom))
-      // A few soft dots so the stage isn't flat.
-      Canvas { g, sz in
-        for i in 0..<7 {
-          let fi = CGFloat(i)
-          let x = (fi * 0.17 + 0.07).truncatingRemainder(dividingBy: 1) * sz.width
-          let y = (fi * 0.29 + 0.12).truncatingRemainder(dividingBy: 1) * sz.height
-          let r = 4 + (fi * 3).truncatingRemainder(dividingBy: 7)
-          g.fill(Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)), with: .color(spec.hue.color.opacity(0.18)))
-        }
-      }
-      // The picture scales with its stage: big on a roomy card, smaller on a short one.
-      ViewThatFits(in: .vertical) {
-        Glyph(key, size: 132, style: .halo).frame(height: 190)
-        Glyph(key, size: 96, style: .halo).frame(height: 140)
-        Glyph(key, size: 56, style: .halo).frame(height: 80)
-      }
-      .offset(y: float && !rm ? -6 : 0)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      Luna(size: 46, wave: true, mood: mood).padding(12)
-    }
-    .opacity(tooSmall ? 0 : 1)
-    .frame(minHeight: min(minHeight, maxHeight), maxHeight: maxHeight)
-    .onGeometryChange(for: Bool.self) { $0.size.height < 72 } action: { tooSmall = $0 }
-    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-    .accessibilityHidden(true)
-    .task { guard !rm else { return }; withAnimation(Motion.gentle.repeatForever()) { float = true } }
+    let quiz = mood == .thinking
+    SceneStage(scene: Scenes.step(lesson, at: index, picture: key, quiz: quiz), symbol: Art.spec(key).symbol,
+               maxHeight: maxHeight, minHeight: minHeight, mood: quiz ? .thinking : nil)
   }
 }
 
@@ -730,7 +718,7 @@ struct SortView: View {
       ZStack {
         if let i = next {
           HStack(spacing: 12) {
-            Glyph(items[i].emoji, size: 48)
+            Glyph(items[i].emoji, size: 48).glyphPop(items[i].emoji)
             Text(items[i].text).font(.kTitle).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Text("\(i + 1)/\(items.count)").font(.caption.monospacedDigit().weight(.semibold)).foregroundStyle(.secondary)
@@ -755,7 +743,7 @@ struct SortView: View {
             VStack(spacing: 6) {
               Text(buckets[b]).font(.kHeadline)
               HStack(spacing: 3) {
-                ForEach(pile, id: \.self) { i in Glyph(items[i].emoji, size: 18, style: .plain).opacity(items[i].b == b ? 1 : 0.45) }
+                ForEach(pile, id: \.self) { i in Glyph(items[i].emoji, size: 18, style: .plain).glyphPop(items[i].emoji).opacity(items[i].b == b ? 1 : 0.45) }
               }
               .frame(minHeight: 18)
               if done && wrong > 0 { Text("\(wrong) belong\(wrong == 1 ? "s" : "") in the other one").font(.caption2.weight(.semibold)).foregroundStyle(Palette.badInk) }
