@@ -170,6 +170,7 @@ struct AtlasPage: View {
   var body: some View {
     let r = regions[safe: page]
     VStack(alignment: .leading, spacing: 14) {
+      WorldHeader(regions: regions, chipsOnly: true)
       DuoCallout(text: "Atlas: swipe or flick the fold to turn", symbol: "book.pages.fill")
       if let r {
         let p = Atlas.page(r)
