@@ -158,7 +158,7 @@ struct LevelDrill: View {
     let floor = level.chapter == 3 ? true : level.chapter == 4 ? false : round.seed % 2 == 0
     let (cs, target) = LineLab.levelChart(floor: floor, seed: round.seed, days: level.days, noise: Double(level.tier) / 5)
     let range = PlotMap.range(cs)
-    let cur = price ?? (range.lowerBound + range.upperBound) / 2
+    let cur = price ?? AverageDotDrill.start(range, truth: target)
     DrillStage(caption: floor ? "Find the floor" : "Find the ceiling") {
       ask(floor ? "Drag the line to the **floor**: where buyers keep showing up." : "Drag the line to the **ceiling**: where sellers keep showing up.")
       LabTip(text: floor ? "Find the low spot the price bounced up from again and again." : "Find the high spot the price kept stopping at.", scaffold: level.scaffold, answered: answered != nil)
@@ -305,7 +305,7 @@ enum EasyCloses {
     var g = Seeded(seed)
     var px = Double(Int.random(in: 10...14, using: &g))
     return (0..<days).map { i in
-      let c = max(4, min(22, px + Double(Int.random(in: -2...2, using: &g))))
+      let c = max(4, min(22, px + Double([-2, -1, 1, 2].randomElement(using: &g) ?? 1)))
       let o = px
       let k = Candle(d: "p\(i)", o: o, h: max(o, c) + 0.6, l: min(o, c) - 0.6, c: c, v: Double(Int.random(in: 40...90, using: &g)))
       px = c
@@ -325,7 +325,7 @@ struct AverageDotDrill: View {
     let last = cs.count - 1
     let truth = cs.suffix(window).map(\.c).reduce(0, +) / Double(window)
     let range = PlotMap.range(cs)
-    let cur = price ?? (range.lowerBound + range.upperBound) / 2
+    let cur = price ?? Self.start(range, truth: truth)
     let ends = cs.suffix(window).map { coins($0.c) }.joined(separator: ", ")
     DrillStage(caption: "Average of the last \(window) days") {
       ask("Drag the dot to the **average** of the last **\(window)** days' ends.")
@@ -355,6 +355,14 @@ struct AverageDotDrill: View {
       .buttonStyle(ChunkyPrimary()).disabled(answered != nil || price == nil)
     }
     .hingeKnob(answered == nil) { f in price = range.lowerBound + f * (range.upperBound - range.lowerBound) }
+  }
+}
+
+extension AverageDotDrill {
+  /// Where the dot waits before you drag it: a quarter of the way up or down, far from the answer.
+  static func start(_ r: ClosedRange<Double>, truth: Double) -> Double {
+    let a = r.lowerBound + (r.upperBound - r.lowerBound) * 0.15, b = r.lowerBound + (r.upperBound - r.lowerBound) * 0.85
+    return abs(a - truth) > abs(b - truth) ? a : b
   }
 }
 
@@ -532,6 +540,7 @@ struct ThinDrill: View {
         HStack(alignment: .top, spacing: 10) { books(a, b, correct) }
         VStack(spacing: 8) { books(a, b, correct) }
       }
+      Spacer(minLength: 0)
       Choices(options: ["Market A", "Market B"], correct: correct, answered: answered, picked: picked) { i in
         picked = i
         answer(RoundResult(right: i == correct, why: "In a quiet market there are few traders, so a big order might move the price on you. Busy markets are easier to trade."))
@@ -559,6 +568,7 @@ struct FillDrill: View {
       ask("You want **\(q)** pretend shares. They come from the sellers' top 3 rows. About what's the **average** price?")
       LabTip(text: "The cheapest row runs out first, then you pay the next price up.", scaffold: level.scaffold, answered: answered != nil)
       BookView(book: book, title: "A quiet market", highlight: answered != nil)
+      Spacer(minLength: 0)
       Choices(options: opts.map { String(format: "$%.2f", $0) }, correct: correct, answered: answered, picked: picked) { i in
         picked = i
         answer(RoundResult(right: i == correct, why: "About \(String(format: "$%.2f", avg)): more than the best price \(String(format: "$%.2f", book.bestAsk)), because the cheap shares ran out. That's slipping."))

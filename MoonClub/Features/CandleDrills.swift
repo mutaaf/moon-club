@@ -221,7 +221,7 @@ struct StoryDrill: View {
             picked = i
             answer(RoundResult(right: i == correct, why: "Start $\(t.o), end $\(t.c): that's the body. High $\(t.h) and low $\(t.l) are the wick tips."))
           } content: {
-            MiniCandles(candles: [s.options[i].candle], range: -0.5...12.5)
+            MiniCandles(candles: [s.options[i].candle], range: -0.5...12.5, grid: true)
           }
           .accessibilityLabel("Candle \(i + 1): started \(s.options[i].o), high \(s.options[i].h), low \(s.options[i].l), ended \(s.options[i].c)")
         }

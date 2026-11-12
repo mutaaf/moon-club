@@ -320,9 +320,18 @@ struct LabTip: View {
 struct MiniCandles: View {
   let candles: [Candle]
   var range: ClosedRange<Double>? = nil
+  /// A whole-dollar grid with labels every $2 (Story to candle reads prices off it).
+  var grid = false
   var body: some View {
     Canvas { g, size in
       let m = PlotMap(size: size, count: candles.count, range: range ?? PlotMap.range(candles))
+      if grid {
+        for k in stride(from: Int(m.lo.rounded(.up)), through: Int(m.hi), by: 2) {
+          let y = m.y(Double(k))
+          g.stroke(Path { $0.move(to: .init(x: 22, y: y)); $0.addLine(to: .init(x: size.width, y: y)) }, with: .color(Palette.line), style: .init(lineWidth: 0.7, dash: [3, 3]))
+          g.draw(g.resolve(Text("$\(k)").font(.system(size: 10, weight: .semibold).monospacedDigit()).foregroundColor(Palette.ink2)), at: CGPoint(x: 10, y: y))
+        }
+      }
       for (i, k) in candles.enumerated() {
         CandleInk.draw(g, x: m.x(i), high: m.y(k.h), low: m.y(k.l), top: m.y(k.bodyTop), bottom: m.y(k.bodyBottom), width: min(m.step * 0.62, 34), up: k.up, big: candles.count == 1 && size.height > 120)
       }
