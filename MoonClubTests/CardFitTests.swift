@@ -327,3 +327,49 @@ struct TowerRoundProbe: View {
     }
   }
 }
+
+/// A Chart Academy level laid out as `AcademyPlayer` does, showing round `index` first.
+struct AcademyRoundProbe: View {
+  let level: AcademyLevel
+  let index: Int
+  var body: some View {
+    let node = WorldNode(id: level.id, title: "Level \(level.number)", art: "👑", kind: .game(.readDay))
+    let r = level.rounds[index % level.rounds.count]
+    GameShell(node: node, rounds: level.rounds.count, intro: r.drill.how, boss: level.isBoss ? BossInfo(name: "Chapter boss", art: "👑") : nil,
+              hearts: level.hearts, roundTag: level.mixed ? { _ in "\(r.drill.title): \(r.drill.how)" } : nil, onFinish: { _ in }) { _, answer, answered in
+      if level.track == .candles { CandleDrill(level: level, round: r, answer: answer, answered: answered) }
+      else { LineDrill(level: level, round: r, answer: answer, answered: answered) }
+    }
+  }
+}
+
+final class AcademyFitTests: XCTestCase {
+  /// Every Chart Academy drill fits without scrolling on iPhone SE and 17, at its first level (tips on)
+  /// and high up, plus every round of a chapter boss in each track.
+  @MainActor func testEveryAcademyDrillFitsWithoutScrolling() throws {
+    let c = try CardFitTests().content(), app = CardFitTests().model(c)
+    var misfits: [String] = [], checked = 0
+    var probes: [(AcademyLevel, Int)] = []
+    for t in AcademyTrack.allCases {
+      var seen = Set<String>()
+      for n in 1...t.mainLevels {
+        let l = Academy.level(t, n)
+        for (i, r) in l.rounds.enumerated() {
+          let key = "\(r.drill)-\(l.scaffold > 0)-\(l.tier >= 3)"
+          if !seen.contains(key) { seen.insert(key); probes.append((l, i)) }
+        }
+      }
+      let boss = Academy.level(t, 100)
+      probes += boss.rounds.indices.map { (boss, $0) }
+    }
+    for d in CardFitTests.screens {
+      let room = d.height - d.chrome
+      for (l, i) in probes {
+        let h = CardFitTests().minHeight(AcademyRoundProbe(level: l, index: i), width: d.width, app: app); checked += 1
+        if h > room { misfits.append("\(d.name) \(l.id) round \(i) (\(l.rounds[i].drill)): \(Int(h)) > \(Int(room))") }
+      }
+    }
+    XCTAssertGreaterThan(checked, 60)
+    XCTAssertTrue(misfits.isEmpty, "Academy drills that would need scrolling:\n" + misfits.joined(separator: "\n"))
+  }
+}
