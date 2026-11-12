@@ -50,7 +50,7 @@ struct WorldView: View {
         if let side, atlas {
           PageSplit(split: side, fill: true) {
             AtlasPage(regions: regions, page: $atlasPage, current: cur, play: play)
-            map(regions, current: cur, width: side.trail)
+            map(regions, current: cur, width: side.trail, header: false)
           }
         } else if let side {
           PageSplit(split: side, fill: true) {
@@ -138,7 +138,8 @@ struct WorldView: View {
     return nil
   }
 
-  private func map(_ regions: [Region], current: (region: Int, node: Int), width: CGFloat) -> some View {
+  /// `header: false` on the open Duo's atlas: the map keeps its whole page (the chips sit on the atlas page).
+  private func map(_ regions: [Region], current: (region: Int, node: Int), width: CGFloat, header: Bool = true) -> some View {
     let z = min(1.7, max(1, zoom * pinch))
     let layout = MapLayout(regions: regions, width: width * z)
     let mysteryID = Mystery.claimed(app.state, today: app.today) ? nil : Mystery.node(app.state, app.content, today: app.today)?.id
@@ -227,7 +228,7 @@ struct WorldView: View {
         withAnimation(Motion.safe(Motion.page, rm)) { proxy.scrollTo(id, anchor: UnitPoint(x: 0.5, y: 0.8)) }
       }
       .simultaneousGesture(MagnifyGesture().updating($pinch) { v, s, _ in s = v.magnification }.onEnded { v in zoom = min(1.7, max(1, zoom * v.magnification)) })
-      .safeAreaInset(edge: .top) { WorldHeader(regions: regions) }
+      .safeAreaInset(edge: .top) { if header { WorldHeader(regions: regions) } }
       .onChange(of: burst) { _, _ in
         // A land was just won: once the flag is planted, the camera follows Luna's rocket to the next land.
         guard let n = regions[safe: current.region]?.nodes[safe: current.node] else { return }
@@ -653,10 +654,20 @@ struct Clouds: View {
 
 struct WorldHeader: View {
   let regions: [Region]
+  /// Just the chips, no title or backdrop (the open Duo's atlas page, which names the land itself).
+  var chipsOnly = false
   @Environment(AppModel.self) private var app
   @State private var hangar = false
   var body: some View {
     let _ = Perf.body("WorldHeader")
+    if chipsOnly {
+      HStack(spacing: 8) { chipsRow(streak: Streak.play(app.state, today: app.today), stars: World.totalStars(app.state, app.content).have); Spacer(minLength: 0) }
+    } else {
+      full
+    }
+  }
+
+  @ViewBuilder private var full: some View {
     let t = World.totalStars(app.state, app.content)
     let won = regions.filter { World.conquered($0, app.state, app.content) }.count
     let streak = Streak.play(app.state, today: app.today)
@@ -695,23 +706,24 @@ struct WorldHeader: View {
     }
   }
 
+  private var chipFill: Color { chipsOnly ? Palette.accent.opacity(0.1) : .white.opacity(0.9) }
   @ViewBuilder private func chipsRow(streak: Int, stars t: Int) -> some View {
       Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
+        .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(chipFill, in: Capsule())
         .fixedSize()  // the count never wraps
         .accessibilityLabel("\(streak) day streak")
       Label("\(t)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.9), in: Capsule())
+        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).background(chipFill, in: Capsule())
         .contentTransition(.numericText(value: Double(t)))
         .fixedSize()
         .accessibilityLabel("\(t) stars")
       Button { hangar = true } label: {
-        RocketMark(skin: Skins.current(app.state), size: 30).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
+        RocketMark(skin: Skins.current(app.state), size: 30).frame(width: 44, height: 44).background(chipFill, in: Circle())
       }
       .accessibilityLabel("Rocket hangar")
       .sheet(isPresented: $hangar) { Hangar().presentationDetents([.medium]).presentationCornerRadius(32) }
       NavigationLink { SchoolView() } label: {
-        Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(.white.opacity(0.9), in: Circle())
+        Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(chipFill, in: Circle())
       }
       .accessibilityLabel("All lessons")
   }
