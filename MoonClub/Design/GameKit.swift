@@ -32,6 +32,8 @@ enum GameSound {
 /// One run of a lesson, game, boss or quest: hearts, combo, coins, accuracy and Luna's mood.
 @MainActor @Observable final class RunModel {
   static let maxHearts = 3
+  /// Hearts this run starts with (Moon Tower's Glass rocket and boss floors start with fewer).
+  var heartCap = RunModel.maxHearts
   var hearts = RunModel.maxHearts
   var combo = 0
   var bestCombo = 0
@@ -103,7 +105,7 @@ enum GameSound {
   }
   func nextRound() { roundStart = Date(); if mood == .oops { mood = .thinking } }
   func reset() {
-    hearts = Self.maxHearts; combo = 0; bestCombo = 0; coins = 0; right = 0; answered = 0; startPoints = nil
+    hearts = heartCap; combo = 0; bestCombo = 0; coins = 0; right = 0; answered = 0; startPoints = nil
     mood = .happy; bossHP = 1; roundStart = Date(); started = false; say = nil; missedBefore = false
   }
 }
@@ -172,6 +174,8 @@ struct GameHUD: View {
   /// Seconds for the speed ring (nil = no ring: lessons, quests, relaxed mode).
   var speed: Double? = nil
   var dark = false
+  /// Stars for (right, total) when a mode scores differently (Moon Tower's high zones).
+  var starRule: ((Int, Int) -> Int)? = nil
   let onClose: () -> Void
 
   @Environment(\.accessibilityReduceMotion) private var rm
@@ -194,7 +198,7 @@ struct GameHUD: View {
           Button("Keep playing", role: .cancel) {}
         }
         SegmentBar(done: done, total: total, dark: dark)
-        Hearts(hearts: run.hearts, crack: run.crackTick)
+        Hearts(hearts: run.hearts, crack: run.crackTick, cap: run.heartCap)
       }
       HStack(spacing: 10) {
         Luna(size: 30, mood: run.mood)
@@ -210,7 +214,7 @@ struct GameHUD: View {
         ComboFlame(combo: run.combo, multiplier: run.multiplier, dark: dark)
         Spacer(minLength: 4)
         if let speed { SpeedRing(start: run.roundStart, seconds: speed) }
-        StarMeter(stars: World.starsFor(right: run.right, of: max(total, 1)), live: run.answered > 0, dark: dark)
+        StarMeter(stars: starRule?(run.right, max(total, 1)) ?? World.starsFor(right: run.right, of: max(total, 1)), live: run.answered > 0, dark: dark)
         CoinCounter(coins: run.coins, tick: run.coinTick, dark: dark)
           .background(GeometryReader { g in Color.clear.onAppear { run.coinTarget = CGPoint(x: g.frame(in: .global).midX, y: g.frame(in: .global).midY) }
             .onChange(of: g.frame(in: .global)) { _, f in run.coinTarget = CGPoint(x: f.midX, y: f.midY) } })
@@ -247,10 +251,11 @@ struct SegmentBar: View {
 struct Hearts: View {
   let hearts: Int
   let crack: Int
+  var cap = RunModel.maxHearts
   @Environment(\.accessibilityReduceMotion) private var rm
   var body: some View {
     HStack(spacing: 2) {
-      ForEach(0..<RunModel.maxHearts, id: \.self) { i in
+      ForEach(0..<max(1, cap), id: \.self) { i in
         Image(systemName: i < hearts ? "heart.fill" : "heart.slash.fill")
           .font(.system(size: 18, weight: .bold))
           .foregroundStyle(i < hearts ? Hue.coral.color : Palette.line)
@@ -577,6 +582,8 @@ struct RunResults: View {
   let stars: Int
   let run: RunModel
   var boss = false
+  /// The big line when a boss falls (Moon Tower: "Floor 3 cleared!").
+  var bossWin = "Land conquered!"
   var subtitle: String? = nil
   /// Where the run's Moon points are banked (shown under the stats, with a way to the Moon Shop).
   var source: PointSource = .game
@@ -600,7 +607,7 @@ struct RunResults: View {
             .rotationEffect(.degrees(flag ? 0 : -25), anchor: .bottom)
         }
       }
-      Text(boss ? "Land conquered!" : stars == 3 ? "Perfect!" : stars == 2 ? "Great job!" : "You did it!")
+      Text(boss ? bossWin : stars == 3 ? "Perfect!" : stars == 2 ? "Great job!" : "You did it!")
         .font(.system(.largeTitle, design: .rounded).weight(.black)).multilineTextAlignment(.center)
       HStack(spacing: 14) {
         ForEach(0..<3, id: \.self) { i in

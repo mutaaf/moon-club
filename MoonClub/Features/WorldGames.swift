@@ -18,6 +18,12 @@ struct GameShell<Round: View>: View {
   var timed = true
   /// Quiz bosses show the boss big above a compact question card (the chart bosses' chart fills instead).
   var arena = false
+  /// Hearts the run starts with, and how a run turns into stars (Moon Tower sets both).
+  var hearts = RunModel.maxHearts
+  var starRule: ((Int, Int) -> Int)? = nil
+  /// A small line over each round (Moon Tower's mixed boss floors name the round's game).
+  var roundTag: ((Int) -> String?)? = nil
+  var bossWin = "Land conquered!"
   var onFinish: (Int) -> Void
   @ViewBuilder let round: (_ index: Int, _ answer: @escaping (RoundResult) -> Void, _ answered: RoundResult?) -> Round
 
@@ -37,14 +43,14 @@ struct GameShell<Round: View>: View {
     let dark = boss != nil
     VStack(spacing: 12) {
       GameHUD(run: run, title: node.title, done: finished ? rounds : index + (result == nil ? 0 : 1), total: rounds,
-              boss: boss, speed: timed && !relaxed && !finished && result == nil && !run.outOfFuel ? Self.speedSeconds : nil, dark: dark) { dismiss() }
+              boss: boss, speed: timed && !relaxed && !finished && result == nil && !run.outOfFuel ? Self.speedSeconds : nil, dark: dark, starRule: starRule) { dismiss() }
       if !finished && !run.outOfFuel {
-        Text(intro).font(.subheadline.weight(.semibold)).foregroundStyle(dark ? Color.white.opacity(0.85) : Palette.ink2)
+        Text(roundTag?(index) ?? intro).font(.subheadline.weight(.semibold)).foregroundStyle(dark ? Color.white.opacity(0.85) : Palette.ink2)
           .frame(maxWidth: .infinity, alignment: .leading).lineLimit(2).minimumScaleFactor(0.85)
       }
       ZStack {
         if finished {
-          RunResults(stars: stars, run: run, boss: boss != nil, source: boss != nil ? .boss : .game, earnId: node.id, node: node, again: again, map: { dismiss() })
+          RunResults(stars: stars, run: run, boss: boss != nil, bossWin: bossWin, source: boss != nil ? .boss : .game, earnId: node.id, node: node, again: again, map: { dismiss() })
             .padding(20)
             .background(Palette.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 32, style: .continuous))
             .transition(.scale(scale: 0.92).combined(with: .opacity))
@@ -90,7 +96,10 @@ struct GameShell<Round: View>: View {
     .glassStage()
     .playChrome()
     .sensoryFeedback(trigger: result) { _, n in n.map { $0.right ? .success : .error } }
-    .onAppear { run.nextRound() }
+    .onAppear {
+      if run.heartCap != hearts { run.heartCap = hearts; run.hearts = hearts }
+      run.nextRound()
+    }
   }
 
   private func answer(_ r: RoundResult) {
@@ -115,7 +124,7 @@ struct GameShell<Round: View>: View {
     }
   }
 
-  private var stars: Int { World.starsFor(right: run.right, of: rounds) }
+  private var stars: Int { starRule?(run.right, rounds) ?? World.starsFor(right: run.right, of: rounds) }
 
   private func again() {
     withAnimation(Motion.safe(Motion.card, rm)) { run.reset(); index = 0; result = nil; finished = false; attempt += 1 }
@@ -674,7 +683,7 @@ struct BusyDayRound: View {
     let busiest = ChartMath.busiest(candles)
     let dial = hingeDay
     VStack(spacing: 12) {
-      ChartCard(caption: "\(company) · 20 days") {
+      ChartCard(caption: "\(company) · \(candles.count) days") {
         GeometryReader { geo in
           CandleChart(candles: candles, volume: true, highlight: answered != nil ? busiest : (dial ?? tapped))
             .contentShape(Rectangle())
