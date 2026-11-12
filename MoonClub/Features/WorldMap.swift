@@ -694,14 +694,19 @@ struct WorldHeader: View {
         Spacer(minLength: 8)
         chipsRow(streak: streak, stars: t.have)
       }
+      // Stacked: the tower door rides up beside the land's name, so the chip row fits a 320 pt column.
       VStack(alignment: .leading, spacing: 6) {
-        VStack(alignment: .leading, spacing: 0) {
-          Text(here?.name ?? "Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
-          Label("\(won) of \(regions.count) lands won", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
-            .lineLimit(1).minimumScaleFactor(0.8)
+        HStack(alignment: .center, spacing: 8) {
+          VStack(alignment: .leading, spacing: 0) {
+            Text(here?.name ?? "Market World").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.7)
+            Label("\(won) of \(regions.count) lands won", systemImage: "flag.fill").font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
+              .lineLimit(1).minimumScaleFactor(0.8)
+          }
+          .accessibilityElement(children: .combine)
+          Spacer(minLength: 4)
+          towerChip
         }
-        .accessibilityElement(children: .combine)
-        HStack(spacing: 8) { chipsRow(streak: streak, stars: t.have); Spacer(minLength: 0) }
+        HStack(spacing: 8) { chipsRow(streak: streak, stars: t.have, tower: false); Spacer(minLength: 0) }
       }
     }
     .padding(.horizontal, 16).padding(.vertical, 8)
@@ -715,7 +720,18 @@ struct WorldHeader: View {
   }
 
   private var chipFill: Color { chipsOnly ? Palette.accent.opacity(0.1) : .white.opacity(0.9) }
-  @ViewBuilder private func chipsRow(streak: Int, stars t: Int) -> some View {
+  /// Moon Tower's door: a purple pill with the level you're on.
+  private var towerChip: some View {
+    NavigationLink { TowerView() } label: {
+      Label("\(min(Tower.current(app.state), 999))", systemImage: "stairs").font(.subheadline.weight(.heavy)).monospacedDigit()
+        .foregroundStyle(.white).padding(.horizontal, 12).frame(height: 44)
+        .background(LinearGradient(colors: [Hue.grape.color, Palette.midnight], startPoint: .top, endPoint: .bottom), in: Capsule())
+        .fixedSize()
+    }
+    .accessibilityLabel("Moon Tower, level \(Tower.current(app.state))")
+  }
+
+  @ViewBuilder private func chipsRow(streak: Int, stars t: Int, tower: Bool = true) -> some View {
       Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
         .foregroundStyle(streak > 0 ? Hue.orange.color : Palette.ink2).padding(.horizontal, 10).padding(.vertical, 6).background(chipFill, in: Capsule())
         .fixedSize()  // the count never wraps
@@ -730,13 +746,7 @@ struct WorldHeader: View {
       }
       .accessibilityLabel("Rocket hangar")
       .sheet(isPresented: $hangar) { Hangar().presentationDetents([.medium]).presentationCornerRadius(32) }
-      NavigationLink { TowerView() } label: {
-        Label("\(min(Tower.current(app.state), 999))", systemImage: "stairs").font(.subheadline.weight(.heavy)).monospacedDigit()
-          .foregroundStyle(.white).padding(.horizontal, 12).frame(height: 44)
-          .background(LinearGradient(colors: [Hue.grape.color, Palette.midnight], startPoint: .top, endPoint: .bottom), in: Capsule())
-          .fixedSize()
-      }
-      .accessibilityLabel("Moon Tower, level \(Tower.current(app.state))")
+      if tower { towerChip }
       NavigationLink { SchoolView() } label: {
         Image(systemName: "books.vertical.fill").font(.headline).frame(width: 44, height: 44).background(chipFill, in: Circle())
       }
