@@ -16,8 +16,9 @@ struct WorldView: View {
   @State private var lesson: Lesson?
   /// Debug `-library`: open Moon School (the lesson list) for screenshots.
   @State private var library = false
-  /// Moon Tower (the header's tower chip; debug `-tower`).
+  /// Moon Tower (debug `-tower`) and the Moon Arcade (the header's purple chip; debug `-arcade`).
   @State private var tower = false
+  @State private var arcade = false
   /// The tapped stop zooms into its game (and back out to the stop).
   @Namespace private var stopNS
   @State private var zoom: CGFloat = 1
@@ -77,6 +78,7 @@ struct WorldView: View {
     .navigationDestination(item: $lesson) { LessonPlayer(lesson: $0) }
     .navigationDestination(isPresented: $library) { SchoolView() }
     .navigationDestination(isPresented: $tower) { TowerView() }
+    .navigationDestination(isPresented: $arcade) { ArcadeHub() }
     .onAppear {
       conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
       atlasPage = cur.region
@@ -92,6 +94,12 @@ struct WorldView: View {
         app.mutate { s in for k in 1..<max(2, n) { s.earn(Tower.id(k), stars: 1 + (k * 7) % 3) } }
       }
       if a.contains("-tower") || a.contains("-towerPlay") || a.contains("-towerCard") { tower = true }
+      // Chart Academy: -academyAt N (stars on 1…N-1 of the -academy track), -arcade or -academy candles|lines opens it.
+      if let i = a.firstIndex(of: "-academyAt"), i + 1 < a.count, let n = Int(a[i + 1]) {
+        let t = a.firstIndex(of: "-academy").flatMap { $0 + 1 < a.count ? AcademyTrack(rawValue: a[$0 + 1]) : nil } ?? .candles
+        if Academy.current(t, app.state) < n { app.mutate { s in for k in 1..<max(2, n) { s.earn(Academy.id(t, k), stars: 1 + (k * 7) % 3) } } }
+      }
+      if a.contains("-arcade") || a.contains("-academy") { arcade = true }
       // Screen recordings: -conquer wins the current land after a moment (fog lifts, flag, rocket flies on).
       if a.contains("-conquer") {
         Task {
@@ -720,15 +728,15 @@ struct WorldHeader: View {
   }
 
   private var chipFill: Color { chipsOnly ? Palette.accent.opacity(0.1) : .white.opacity(0.9) }
-  /// Moon Tower's door: a purple pill with the level you're on.
+  /// The Moon Arcade's door (Candle Academy, Line Lab, Moon Tower): a purple pill.
   private var towerChip: some View {
-    NavigationLink { TowerView() } label: {
-      Label("\(min(Tower.current(app.state), 999))", systemImage: "stairs").font(.subheadline.weight(.heavy)).monospacedDigit()
+    NavigationLink { ArcadeHub() } label: {
+      Label("Arcade", systemImage: "gamecontroller.fill").font(.subheadline.weight(.heavy))
         .foregroundStyle(.white).padding(.horizontal, 12).frame(height: 44)
         .background(LinearGradient(colors: [Hue.grape.color, Palette.midnight], startPoint: .top, endPoint: .bottom), in: Capsule())
         .fixedSize()
     }
-    .accessibilityLabel("Moon Tower, level \(Tower.current(app.state))")
+    .accessibilityLabel("Moon Arcade: Candle Academy, Line Lab and Moon Tower")
   }
 
   @ViewBuilder private func chipsRow(streak: Int, stars t: Int, tower: Bool = true) -> some View {
