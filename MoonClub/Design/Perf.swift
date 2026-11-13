@@ -124,20 +124,23 @@ enum Ready {
 /// screen. The simulator can't rotate or resize from the command line, so this is how landscape, Split View
 /// and Stage Manager sizes are checked and captured. Width ≥ 600 gets the regular size class (split view), like iPad Split View and an open iPhone Duo.
 struct DebugWindow: ViewModifier {
-  let size: CGSize?
+  let sizes: [CGSize]
+  @State private var at = 0
   init() {
     #if DEBUG
+    // -window WxH, or -windowCycle WxH,WxH,… (a new size every 1.5 s: the open Duo's snapshot / rotation resizes).
     let a = ProcessInfo.processInfo.arguments
-    if let i = a.firstIndex(of: "-window"), i + 1 < a.count {
-      let p = a[i + 1].split(separator: "x").compactMap { Double($0) }
-      size = p.count == 2 ? CGSize(width: p[0], height: p[1]) : nil
-    } else { size = nil }
+    func parse(_ t: Substring) -> CGSize? { let p = t.split(separator: "x").compactMap { Double($0) }; return p.count == 2 ? CGSize(width: p[0], height: p[1]) : nil }
+    if let i = a.firstIndex(of: "-windowCycle"), i + 1 < a.count { sizes = a[i + 1].split(separator: ",").compactMap(parse) }
+    else if let i = a.firstIndex(of: "-window"), i + 1 < a.count { sizes = parse(Substring(a[i + 1])).map { [$0] } ?? [] }
+    else { sizes = [] }
     #else
-    size = nil
+    sizes = []
     #endif
   }
   func body(content: Content) -> some View {
-    if let size {
+    if !sizes.isEmpty {
+      let size = sizes[at % sizes.count]
       GeometryReader { geo in
         let k = min(1, geo.size.width / size.width, geo.size.height / size.height)
         content
@@ -148,6 +151,14 @@ struct DebugWindow: ViewModifier {
           .frame(width: geo.size.width, height: geo.size.height)
       }
       .background(Color(white: 0.12).ignoresSafeArea())
+      .task {
+        guard sizes.count > 1 else { return }
+        while !Task.isCancelled {
+          try? await Task.sleep(for: .seconds(1.5))
+          at += 1
+          print("WINDOWCYCLE \(sizes[at % sizes.count]) t=\(Date().timeIntervalSince1970)")
+        }
+      }
     } else { content }
   }
 }
