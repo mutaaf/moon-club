@@ -67,7 +67,7 @@ async function api(method, path, body) {
   const text = await r.text();
   const json = text ? JSON.parse(text) : {};
   if (!r.ok) {
-    const why = (json.errors ?? []).map((x) => `${x.title}: ${x.detail}`).join("; ") || text;
+    const why = (json.errors ?? []).map((x) => `${x.title}: ${x.detail}${x.meta ? " " + JSON.stringify(x.meta) : ""}`).join("; ") || text;
     const err = new Error(`${method} ${path} → ${r.status} ${why}`);
     err.status = r.status; err.body = json;
     throw err;
@@ -740,6 +740,19 @@ async function submit() {
   const items = (await api("GET", `/v1/reviewSubmissions/${subm.id}/items?include=appStoreVersion`)).data;
   if (!items.some((i) => i.relationships?.appStoreVersion?.data?.id === sv.id))
     await api("POST", "/v1/reviewSubmissionItems", { data: { type: "reviewSubmissionItems", relationships: { reviewSubmission: { data: { type: "reviewSubmissions", id: subm.id } }, appStoreVersion: { data: { type: "appStoreVersions", id: sv.id } } } } });
+  // Subscriptions that are ready (Moon Club Pass) go to review with this version (a first subscription must).
+  for (const g of (await api("GET", `/v1/apps/${a.id}/subscriptionGroups?include=subscriptions&limit=50`)).included ?? []) {
+    if (g.type !== "subscriptions" || g.attributes.state !== "READY_TO_SUBMIT") continue;
+    try {
+      await api("POST", "/v1/subscriptionSubmissions", { data: { type: "subscriptionSubmissions", relationships: { subscription: { data: { type: "subscriptions", id: g.id } } } } });
+    } catch (e) {
+      // The API can't attach an app's FIRST subscription to a version (STATE_ERROR.FIRST_SUBSCRIPTION_MUST_BE_SUBMITTED_ON_VERSION):
+      // App Store Connect web → the version → "In-App Purchases and Subscriptions" → select it, then "Add for Review".
+      if (/FIRST_SUBSCRIPTION_MUST_BE_SUBMITTED_ON_VERSION/.test(e.message)) throw new Error(`${g.attributes.productId} is the app's first subscription: attach it on the version page in App Store Connect (In-App Purchases and Subscriptions), then submit there. The draft review submission ${subm.id} already holds the version.`);
+      throw e;
+    }
+    console.log(`✓ subscription ${g.attributes.productId} submitted with this version`);
+  }
   await api("PATCH", `/v1/reviewSubmissions/${subm.id}`, { data: { type: "reviewSubmissions", id: subm.id, attributes: { submitted: true } } });
   console.log(`✓ Moon Club ${sv.attributes.versionString} submitted for App Review (submission ${subm.id}). It releases automatically once approved.`);
 }
