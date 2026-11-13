@@ -1,7 +1,8 @@
 #!/bin/sh
 # Kids-safety rules that are easiest to enforce on the source (run by `make test` and CI):
 #  1. No links out of the app, or openURL, anywhere except the Grown-up corner (behind the parental gate).
-#  2. No third-party SDKs, analytics or ads: the only package dependency is our own MoonClubCore.
+#  2. No third-party SDKs, analytics or ad networks: the only package dependency is our own MoonClubCore. Breaks between
+#     Arcade levels come from our own server (App/Pass.swift SponsorFeed), never an ad SDK.
 #  3. Keys and Luna (also unit-tested in MoonClubCore/BrainTests):
 #     a. the free brain's request (Requests.luna) never attaches any key;
 #     b. a provider key header is set ONLY in Requests.byok (gated on consent for that provider), Requests.models
@@ -58,5 +59,8 @@ grep -qE '(option|tile)\(\.byok' MoonClub/Features/BrainPicker.swift && ! grep -
 pp=$(grep -rnE 'Partners\.(list|shown)|PartnerPicks\(' MoonClub MoonClubWidgets Shared --include=*.swift | grep -v '^MoonClub/Features/GrownUps.swift' || true)
 [ -z "$pp" ] || { echo "✗ partner (affiliate) links outside the grown-up corner:"; echo "$pp"; fail=1; }
 grep -rnE 'import (Impact|Branch|Adjust|Kochava|AppsFlyerLib|Singular)' MoonClub MoonClubWidgets Shared Packages && { echo "✗ attribution SDK import"; fail=1; } || true
+# 8. Moon Club Pass is bought only in the grown-up corner (behind the gate): StoreKit purchase UI lives in GrownUps.swift.
+sk=$(grep -rnE 'SubscriptionStoreView|ProductView\(|StoreView\(|\.purchase\(' MoonClub MoonClubWidgets Shared --include=*.swift | grep -v '^MoonClub/Features/GrownUps.swift' || true)
+[ -z "$sk" ] || { echo "✗ purchase UI outside the grown-up corner:"; echo "$sk"; fail=1; }
 [ $fail -eq 0 ] && echo "✓ kids-safety rules hold"
 exit $fail

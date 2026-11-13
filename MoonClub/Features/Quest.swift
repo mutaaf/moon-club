@@ -97,7 +97,7 @@ struct QuestView: View {
     HStack(spacing: 10) {
       Glyph(meta?.emoji ?? "🍋", size: 36)
       VStack(alignment: .leading, spacing: 0) {
-        Text("Chapter \((chapters.firstIndex { $0.id == chapter } ?? 0) + 1)".uppercased()).font(.kEyebrow).foregroundStyle(Palette.accent)
+        Text("Chapter \((chapters.firstIndex { $0.id == chapter } ?? 0) + 1)".uppercased()).font(.kEyebrow).foregroundStyle(Palette.accentInk)
         Text(meta?.title ?? "").font(.system(.title3, design: .rounded).weight(.heavy)).lineLimit(1).minimumScaleFactor(0.75)
       }
     }
@@ -238,7 +238,7 @@ struct CompanyStage: View {
             // The 3D edge is a circle drawn behind the face. A zero-blur .shadow on the whole stack also copied
             // the lemon and the "Sell a cup" text 7 pt lower, so the label looked doubled (seen on a phone, 0.11.0).
             .background(Circle().fill(Palette.midnight).offset(y: 7))
-          Text("+$1").font(.kTitle).foregroundStyle(Palette.good).keyframeAnimator(initialValue: 0.0, trigger: pop) { v, y in v.offset(y: -y * 60).opacity(pop == 0 ? 0 : 1 - y) } keyframes: { _ in LinearKeyframe(0, duration: 0); LinearKeyframe(1, duration: 0.8) }
+          Text("+$1").font(.kTitle).foregroundStyle(Palette.goodInk).keyframeAnimator(initialValue: 0.0, trigger: pop) { v, y in v.offset(y: -y * 60).opacity(pop == 0 ? 0 : 1 - y) } keyframes: { _ in LinearKeyframe(0, duration: 0); LinearKeyframe(1, duration: 0.8) }
         }
       }
       .buttonStyle(.plain).foregroundStyle(Palette.midnight)
@@ -323,7 +323,7 @@ struct PriceStage: View {
         .foregroundStyle(hist.count > 1 ? (price >= hist[hist.count - 2] ? Palette.good : Palette.bad) : Palette.ink)
     }.frame(maxWidth: .infinity)
     Chart {
-      ForEach(Array(hist.enumerated()), id: \.offset) { i, v in LineMark(x: .value("t", i), y: .value("$", v)).interpolationMethod(.monotone).foregroundStyle(Palette.accent).lineStyle(.init(lineWidth: 4, lineCap: .round)) }
+      ForEach(Array(hist.enumerated()), id: \.offset) { i, v in LineMark(x: .value("t", i), y: .value("$", v)).interpolationMethod(.monotone).foregroundStyle(Palette.accentInk).lineStyle(.init(lineWidth: 4, lineCap: .round)) }
       RuleMark(y: .value("goal", 8)).foregroundStyle(Palette.line).lineStyle(.init(dash: [6, 6]))
       RuleMark(y: .value("goal", 4)).foregroundStyle(Palette.line).lineStyle(.init(dash: [6, 6]))
     }
@@ -395,10 +395,10 @@ struct GrowStage: View {
       if tree { box("🌳 Tree", (treeP.last ?? 0), lastDown ? Palette.peach : Palette.mint) }
     }
     Chart {
-      ForEach(Array(jar.enumerated()), id: \.offset) { i, v in LineMark(x: .value("Year", i), y: .value("$", v), series: .value("k", "Jar")).foregroundStyle(Palette.accent) }
-      if tree { ForEach(Array(treePart(treeP).enumerated()), id: \.offset) { i, v in LineMark(x: .value("Year", i), y: .value("$", v), series: .value("k", "Tree")).foregroundStyle(Palette.good) } }
-      PointMark(x: .value("Year", years), y: .value("$", (jar.last ?? 0))).foregroundStyle(Palette.accent).symbolSize(70)
-      if tree { PointMark(x: .value("Year", years), y: .value("$", (treeP.last ?? 0))).foregroundStyle(Palette.good).symbolSize(70) }
+      ForEach(Array(jar.enumerated()), id: \.offset) { i, v in LineMark(x: .value("Year", i), y: .value("$", v), series: .value("k", "Jar")).foregroundStyle(Palette.accentInk) }
+      if tree { ForEach(Array(treePart(treeP).enumerated()), id: \.offset) { i, v in LineMark(x: .value("Year", i), y: .value("$", v), series: .value("k", "Tree")).foregroundStyle(Palette.goodInk) } }
+      PointMark(x: .value("Year", years), y: .value("$", (jar.last ?? 0))).foregroundStyle(Palette.accentInk).symbolSize(70)
+      if tree { PointMark(x: .value("Year", years), y: .value("$", (treeP.last ?? 0))).foregroundStyle(Palette.goodInk).symbolSize(70) }
     }
     .chartYAxis(.hidden)
     .chartXAxis { AxisMarks(values: .stride(by: tree ? 5 : 1)) { v in AxisValueLabel { Text("Year \(v.as(Int.self) ?? 0)").font(.caption2) } } }

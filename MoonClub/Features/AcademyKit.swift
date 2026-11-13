@@ -302,7 +302,7 @@ struct LabTip: View {
   @State private var open = false
   var body: some View {
     if scaffold >= 2 || open {
-      Label { Text(text).font(.callout.weight(.semibold)) } icon: { Image(systemName: "lightbulb.fill").foregroundStyle(Hue.gold.color) }
+      Label { Text(text).font(.callout.weight(.semibold)) } icon: { Image(systemName: "lightbulb.fill").foregroundStyle(Hue.gold.text) }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(Hue.gold.color.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))

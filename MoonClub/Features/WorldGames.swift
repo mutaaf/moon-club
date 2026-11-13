@@ -179,7 +179,7 @@ struct ChartCard<C: View>: View {
   @Environment(\.chartBloom) private var bloom
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      if let caption { Text(caption).font(.kEyebrow).tracking(1.2).foregroundStyle(Palette.accent).textCase(.uppercase) }
+      if let caption { Text(caption).font(.kEyebrow).tracking(1.2).foregroundStyle(Palette.accentInk).textCase(.uppercase) }
       content.frame(maxWidth: .infinity, maxHeight: .infinity).candleBloom(trigger: bloom)
     }
     .padding(16)

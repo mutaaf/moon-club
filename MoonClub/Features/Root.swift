@@ -163,7 +163,7 @@ struct RootView: View {
     // Universal links (mutaafaziz.com/metaphases/kids/…) and moonclub:// both arrive here (docs/LINKS.md).
     .onOpenURL { url in follow(url) }
     .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { a in if let url = a.webpageURL { follow(url) } }
-    .tint(Palette.accent)
+    .tint(Palette.accentInk)
     .modifier(TracksHinge(duo: duo))
   }
 
@@ -413,7 +413,7 @@ struct LevelRow: View {
       Luna(size: 48, wave: true)
       VStack(alignment: .leading, spacing: 6) {
         Text(l.name).font(.kHeadline)
-        ProgressView(value: l.progress).tint(Palette.accent)
+        ProgressView(value: l.progress).tint(Palette.accentInk)
         Text(l.next.map { "\($0 - app.points) points to \(app.nextRankName ?? "the next moon")" } ?? "The biggest moon of all!").font(.caption).foregroundStyle(.secondary)
       }
     }.padding(.vertical, 6)

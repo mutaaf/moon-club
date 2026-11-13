@@ -79,6 +79,7 @@ struct MoonClubApp: App {
       if !args.contains("-demo") {
         model.candleLoader = { await LiveMarketData.kidsCandles(Array(AppModel.bundledCandles.keys)) }
         Task { await model.refreshCandles() }
+        model.pass.start()
       }
       app = model
     } catch {

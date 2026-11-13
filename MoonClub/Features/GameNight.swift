@@ -175,7 +175,7 @@ struct GameNightView: View {
         Text(app.content.players[players[w]]).font(.system(size: 90))
         Text("\(app.content.playerNames[players[w]]) wins!").font(.kHero).lineLimit(2).minimumScaleFactor(0.6)
       } else {
-        Image(systemName: "hands.clap.fill").font(.system(size: 80, weight: .bold)).foregroundStyle(Hue.gold.color)
+        Image(systemName: "hands.clap.fill").font(.system(size: 80, weight: .bold)).foregroundStyle(Hue.gold.text)
         Text("It's a tie!").font(.kHero).lineLimit(1).minimumScaleFactor(0.6)
       }
       Text("\(g.scores[0]) to \(g.scores[1]). Even experts miss a lot, so everyone did great.").font(.kRead).multilineTextAlignment(.center)

@@ -58,7 +58,7 @@ struct ArcadeHub: View {
             .frame(width: 60, height: 60).background(.white.opacity(0.22), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
           Spacer()
           Label("\(stars)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-            .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 5).background(.white, in: Capsule())
+            .foregroundStyle(Hue.gold.text).padding(.horizontal, 10).padding(.vertical, 5).background(.white, in: Capsule())
         }
         Text(title).font(.system(.title2, design: .rounded).weight(.heavy)).foregroundStyle(.white)
         Text(blurb).font(.callout.weight(.medium)).foregroundStyle(.white.opacity(0.92)).fixedSize(horizontal: false, vertical: true)
@@ -145,7 +145,7 @@ struct AcademyPath: View {
       }
       Spacer(minLength: 6)
       Label("\(total)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).moonGlass(Capsule(), weight: .thin)
+        .foregroundStyle(Hue.gold.text).padding(.horizontal, 10).padding(.vertical, 6).moonGlass(Capsule(), weight: .thin)
         .accessibilityLabel("\(total) stars")
     }
     .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 8)
@@ -173,12 +173,12 @@ struct ChapterBlock: View, Equatable {
         Image(systemName: info?.symbol ?? "infinity").font(.title2.weight(.heavy)).foregroundStyle(.white)
           .frame(width: 50, height: 50).background(LinearGradient(colors: hues.map(\.color), startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
         VStack(alignment: .leading, spacing: 1) {
-          Text(info == nil ? "Endless mix" : "Chapter \(chapter + 1)").font(.kEyebrow).foregroundStyle(Palette.accent).textCase(.uppercase)
+          Text(info == nil ? "Endless mix" : "Chapter \(chapter + 1)").font(.kEyebrow).foregroundStyle(Palette.accentInk).textCase(.uppercase)
           Text(info?.name ?? "Every drill, all mixed").font(.kHeadline)
           Text(info?.line ?? "It never ends. How far can you go?").font(.caption).foregroundStyle(Palette.ink2)
         }
         Spacer(minLength: 4)
-        Label("\(got)/60", systemImage: "star.fill").font(.caption.weight(.heavy)).monospacedDigit().foregroundStyle(Hue.gold.color)
+        Label("\(got)/60", systemImage: "star.fill").font(.caption.weight(.heavy)).monospacedDigit().foregroundStyle(Hue.gold.text)
       }
       if let info, !info.patterns.isEmpty {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -316,7 +316,8 @@ struct AcademyLevelCard: View {
       }
       Spacer(minLength: 0)
       if open {
-        Button(stars > 0 ? "Play again" : level.isBoss ? "Take on the boss" : "Play level \(level.number)") { play() }.buttonStyle(ChunkyPrimary())
+        PassPlayButton(title: stars > 0 ? "Play again" : level.isBoss ? "Take on the boss" : "Play level \(level.number)",
+                       climb: level.track == .candles ? .candles : .lines, number: level.number, id: level.id, won: stars > 0, play: play)
       } else {
         Label("Win level \(level.number - 1) to open this one", systemImage: "lock.fill").font(.callout.weight(.bold)).foregroundStyle(Palette.ink2).frame(maxWidth: .infinity)
       }

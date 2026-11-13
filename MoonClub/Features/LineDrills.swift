@@ -503,7 +503,7 @@ struct BookView: View {
         Image(systemName: "arrow.up.and.down").font(.caption2.weight(.bold))
         Text("Gap \(String(format: "$%.2f", book.spread))").font(.caption.weight(.heavy))
       }
-      .foregroundStyle(Palette.accent).padding(.vertical, 2)
+      .foregroundStyle(Palette.accentInk).padding(.vertical, 2)
       ForEach(Array(book.bids.prefix(3).enumerated()), id: \.offset) { _, s in row(s, ask: false, max: maxShares) }
     }
     .padding(12)

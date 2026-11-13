@@ -67,7 +67,7 @@ struct MissionStrip: View {
       .accessibilityLabel("\(done) of \(total) missions done")
       if streak > 0 {
         Label("\(streak)", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-          .foregroundStyle(Hue.orange.color)
+          .foregroundStyle(Hue.orange.text)
           .accessibilityLabel("\(streak) day streak")
       }
     }

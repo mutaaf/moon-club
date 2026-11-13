@@ -96,7 +96,7 @@ struct WhyCard: View {
               Text(c.line).font(.callout).fixedSize(horizontal: false, vertical: true)
               if let id = c.learn, let l = app.content.lessons.first(where: { $0.id == id }) {
                 Button { learning = l } label: { Label("Learn it: \(l.title)", systemImage: "graduationcap.fill").font(.footnote.weight(.semibold)) }
-                  .buttonStyle(.borderless).tint(Palette.accent).padding(.top, 2)
+                  .buttonStyle(.borderless).tint(Palette.accentInk).padding(.top, 2)
                   .accessibilityLabel("Learn this clue: \(l.title)")
               }
             }
@@ -139,12 +139,12 @@ struct CourseCard: View {
         HStack(spacing: 14) {
           Glyph(l.emoji, size: 50)
           VStack(alignment: .leading, spacing: 3) {
-            Text("\(kind == .guess ? "GUESS SCHOOL" : kind == .garden ? "GARDEN SCHOOL" : "PIGGY SCHOOL") · STEP \(next.index + 1) OF \(next.of)").font(.kEyebrow).foregroundStyle(Palette.accent)
+            Text("\(kind == .guess ? "GUESS SCHOOL" : kind == .garden ? "GARDEN SCHOOL" : "PIGGY SCHOOL") · STEP \(next.index + 1) OF \(next.of)").font(.kEyebrow).foregroundStyle(Palette.accentInk)
             Text(l.title).font(.kTitle).foregroundStyle(Palette.ink)
             if kind == .guess, let tip = app.content.guessCourse?.tips[l.id] { Text(tip).font(.callout).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true) }
           }
           Spacer(minLength: 0)
-          Image(systemName: "play.circle.fill").font(.title).foregroundStyle(Palette.accent)
+          Image(systemName: "play.circle.fill").font(.title).foregroundStyle(Palette.accentInk)
         }
         .padding(16)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -229,7 +229,7 @@ struct LearningReport: View {
       if let talk = u.talk, !talk.isEmpty {
         DisclosureGroup(isExpanded: Binding(get: { open || opened.contains(u.id) }, set: { v in if v { opened.insert(u.id) } else { opened.remove(u.id); open = false } })) {
           VStack(alignment: .leading, spacing: 6) {
-            Text("Dinner table talk").font(.caption.weight(.bold)).foregroundStyle(Palette.accent)
+            Text("Dinner table talk").font(.caption.weight(.bold)).foregroundStyle(Palette.accentInk)
             ForEach(talk, id: \.self) { t in Text("“\(t)”").font(.callout).fixedSize(horizontal: false, vertical: true) }
           }
           .padding(.vertical, 4)
@@ -257,8 +257,8 @@ struct RefreshCard: View {
     if let first = again.first {
       VStack(alignment: .leading, spacing: 10) {
         HStack(spacing: 10) {
-          Image(systemName: "arrow.triangle.2.circlepath").font(.headline.weight(.bold)).foregroundStyle(Palette.accent)
-          Text("LUNA'S REFRESH").font(.kEyebrow).foregroundStyle(Palette.accent)
+          Image(systemName: "arrow.triangle.2.circlepath").font(.headline.weight(.bold)).foregroundStyle(Palette.accentInk)
+          Text("LUNA'S REFRESH").font(.kEyebrow).foregroundStyle(Palette.accentInk)
         }
         Text("Some questions slipped away. That's normal! A quick replay helps them stick.").font(.callout).foregroundStyle(Palette.ink2).fixedSize(horizontal: false, vertical: true)
         ForEach(again) { l in
@@ -267,7 +267,7 @@ struct RefreshCard: View {
               Glyph(l.emoji, size: 40)
               Text(l.title).font(.kHeadline).foregroundStyle(Palette.ink)
               Spacer(minLength: 0)
-              Image(systemName: "play.circle.fill").font(.title2).foregroundStyle(Palette.accent)
+              Image(systemName: "play.circle.fill").font(.title2).foregroundStyle(Palette.accentInk)
             }
           }
           .buttonStyle(.plain)

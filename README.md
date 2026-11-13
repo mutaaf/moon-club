@@ -2,7 +2,7 @@
 
 **Metaphases Kids as a native iPhone + iPad app.** Kids (about 8–12) learn how money and the stock market *work* with pretend money that follows real prices. They play Luna's quests (Lemonade Stand, Save or Grow?, Your Slice Pays You), take one-minute Moon School lessons, guess company report cards, run a pretend piggy bank and ask Luna, a kid-safe AI helper.
 
-No accounts, no ads, no analytics, no third-party SDKs. Progress lives only on the device.
+No accounts, no analytics, no third-party SDKs or ad networks (optional Moon Club Pass; breaks come from our own server). Progress lives only on the device.
 
 The web version lives at <https://mutaafaziz.com/metaphases/kids>; its content is this app's single source of truth (see *Content* below).
 

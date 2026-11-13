@@ -173,7 +173,7 @@ struct GuessView: View {
     let flap = FoldSeal.flap(duo?.reading)
     return HStack(spacing: 12) {
       Image(systemName: flap > 0.5 ? "envelope.fill" : "envelope.open.fill")
-        .font(.system(size: 30, weight: .semibold)).foregroundStyle(Palette.accent)
+        .font(.system(size: 30, weight: .semibold)).foregroundStyle(Palette.accentInk)
         .scaleEffect(1 - 0.15 * flap)
         .contentTransition(.symbolEffect(.replace))
         .accessibilityHidden(true)
@@ -253,7 +253,7 @@ struct RevealRow: View {
               Text(Coach.reveal(course, eA: e.eA, eE: e.eE, move: m)).font(.subheadline)
               if let id = Coach.learn(course, eA: e.eA, eE: e.eE, move: m), let l = app.content.lessons.first(where: { $0.id == id }) {
                 Button { learning = l } label: { Label("Learn why: \(l.title)", systemImage: "graduationcap.fill").font(.subheadline.weight(.semibold)) }
-                  .buttonStyle(.borderless).tint(Palette.accent)
+                  .buttonStyle(.borderless).tint(Palette.accentInk)
               }
             }
             if result == .wrong { Text(app.content.guessCourse?.reveal.tryAgain ?? "Even grown-up experts guess wrong a lot.").font(.caption).foregroundStyle(.secondary) }
