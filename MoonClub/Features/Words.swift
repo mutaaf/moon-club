@@ -53,7 +53,7 @@ struct WordChips: View {
         ForEach(keys, id: \.self) { k in
           if let t = app.content.terms[k] {
             Button { open = k } label: {
-              HStack(spacing: 6) { Glyph(t.emoji, size: 22); Text(t.word).font(.subheadline.weight(.semibold)); Image(systemName: "questionmark.circle.fill").foregroundStyle(Palette.accent) }
+              HStack(spacing: 6) { Glyph(t.emoji, size: 22); Text(t.word).font(.subheadline.weight(.semibold)); Image(systemName: "questionmark.circle.fill").foregroundStyle(Palette.accentInk) }
                 .padding(.horizontal, 12).frame(minHeight: 40)
                 .moonGlass(Capsule(), interactive: true, weight: .thin)
             }

@@ -357,7 +357,8 @@ THE MOON LOCKER
 Earn Moon points by playing, collect badges, climb from New Moon to Supermoon, and spend points in the Moon Shop on hats, rocket skins and trails for Luna.
 
 SIMPLE AND SAFE
-- No ads, no accounts, no in-app purchases, no tracking
+- No accounts, no tracking, no ad networks
+- Free to play every day; Moon Club Pass (a yearly subscription, behind the grown-up gate) opens every Arcade level with no breaks
 - Settings and links sit behind a math gate
 - Optional sync across your devices through your own iCloud
 - Widgets and Live Activities for streaks and missions
@@ -373,7 +374,7 @@ Moon Club teaches how markets work. It is for learning and fun, not investment a
   secondarySubcategories: ["GAMES_FAMILY", "GAMES_TRIVIA"], // Apple has no Games › Educational subcategory (GET /v1/appCategories/GAMES/subcategories)
   // Market prices and company names come from public market data (via mutaafaziz.com/metaphases).
   contentRights: "USES_THIRD_PARTY_CONTENT",
-  reviewNotes: `Moon Club teaches beginners of any age how money and markets work, as a game. It is a general-audience education app (not submitted to the Kids category). No sign-in, no accounts, no ads, no analytics, no in-app purchases. Everything works offline; when online it refreshes read-only market prices from our own server (mutaafaziz.com).
+  reviewNotes: `Moon Club teaches beginners of any age how money and markets work, as a game. It is a general-audience education app (not submitted to the Kids category). No sign-in, no accounts, no analytics, no ad networks or ad SDKs. Everything works offline; when online it refreshes read-only market prices from our own server (mutaafaziz.com).
 
 GROWN-UP GATE: "For grown-ups" (the lock button at the top right, or in the More/sidebar menu) asks a multiplication question before showing settings. The only links out of the app are inside that gated area.
 
@@ -382,6 +383,8 @@ PRETEND MONEY: the Piggy Bank follows real prices with pretend dollars. Moon poi
 ICLOUD SYNC: optional and off by default. A grown-up turns it on behind the gate; progress then syncs through the family's own iCloud key-value storage. We never receive it.
 
 ASK LUNA (AI helper): on devices with Apple Intelligence, answers are generated on the device with Apple's Foundation Models framework and nothing leaves the device. Otherwise the question (max 200 characters, no name, account or device identifier) goes to our own free family-safe model on mutaafaziz.com, which answers in real time and does not store it. Every answer uses the same family-safe instructions plus an on-device check; Luna only discusses money topics, never gives advice and asks players not to type personal details. This App Store build contains no third-party AI provider, API key or voice service.
+
+MOON CLUB PASS (auto-renewable subscription, com.mutaafaziz.moonclub.pass.yearly, 1 year): the Arcade climbs (World tab > purple Arcade button > Candle Academy, Line Lab, Moon Tower) are free for their first chapter, then open 3 new levels a day. A 15-second break opens 3 more (up to 3 a day): it shows a kid-safe sponsor image or video from our own server (mutaafaziz.com/ads), with no ad SDK, no identifiers and nothing to tap, or, when there is no sponsor, a chart fact. The subscription is offered only after the grown-up gate: from "Ask a grown-up" on the daily-limit screen, or For grown-ups > Moon Club Pass, using StoreKit's subscription view (price, terms, privacy policy, restore). Lessons, the map, Guess, Piggy Bank and Ask Luna stay free.
 
 To try everything quickly: World tab (map) > tap a glowing stop; Story tab > today's missions; Ask Luna tab > tap a suggested question.`,
 };

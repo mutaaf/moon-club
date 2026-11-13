@@ -310,7 +310,7 @@ struct MemoryRound: View {
           .fill(shown ? AnyShapeStyle(matched.contains(c.id) ? Palette.good.opacity(0.16) : Palette.card) : AnyShapeStyle(LinearGradient(colors: [Hue.grape.color, Palette.midnight], startPoint: .top, endPoint: .bottom)))
           .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(matched.contains(c.id) ? Palette.good : Palette.line, lineWidth: matched.contains(c.id) ? 2.5 : 1))
         if shown { face(c).padding(6).rotation3DEffect(.degrees(rm ? 0 : 0), axis: (x: 0, y: 1, z: 0)) }
-        else { Image(systemName: "moon.stars.fill").font(.title2).foregroundStyle(Hue.lemon.color.opacity(0.9)) }
+        else { Image(systemName: "moon.stars.fill").font(.title2).foregroundStyle(Hue.lemon.text.opacity(0.9)) }
       }
       .rotation3DEffect(.degrees(shown || rm ? 0 : 180), axis: (x: 0, y: 1, z: 0))
       .animation(Motion.safe(Motion.card, rm), value: shown)

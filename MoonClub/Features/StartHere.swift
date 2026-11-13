@@ -105,7 +105,7 @@ struct StartHereHero: View {
   private var playDisc: some View {
       Image(systemName: step.target == .chest ? "gift.fill" : "play.fill")
         .font(.system(size: 24, weight: .black))
-        .foregroundStyle(Palette.accent)
+        .foregroundStyle(Palette.accentInk)
         .frame(width: 58, height: 58)
         .background(.white, in: Circle())
         .shadow(color: .black.opacity(0.18), radius: 8, y: 3)

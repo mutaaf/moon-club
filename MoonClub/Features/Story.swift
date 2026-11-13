@@ -336,7 +336,7 @@ struct WeatherArt: View {
         cloud.offset(x: drift ? -50 : -40, y: 28)
         cloud.scaleEffect(0.8).offset(x: drift ? 62 : 50, y: -26)
       }
-      if icon == "storm" { Image(systemName: "cloud.rain.fill").font(.system(size: 34)).foregroundStyle(Palette.accent).offset(x: 34, y: 40) }
+      if icon == "storm" { Image(systemName: "cloud.rain.fill").font(.system(size: 34)).foregroundStyle(Palette.accentInk).offset(x: 34, y: 40) }
     }
     .frame(height: 170)
     .onAppear { guard !rm else { return }; withAnimation(.easeInOut(duration: 3.2).repeatForever()) { drift = true } }
@@ -373,7 +373,7 @@ struct WordOfDay: View {
   var body: some View {
     let w = ofTheDay(app.content.words, today: app.today)
     Eyebrow(text: "Big word of the day")
-    Text(w.word).font(.system(size: 54, weight: .heavy, design: .rounded)).lineLimit(1).minimumScaleFactor(0.4).foregroundStyle(Palette.accent)
+    Text(w.word).font(.system(size: 54, weight: .heavy, design: .rounded)).lineLimit(1).minimumScaleFactor(0.4).foregroundStyle(Palette.accentInk)
     Text(w.means).font(.kRead)
     Text("Example: \(w.example)").font(.system(.title3, design: .serif).italic()).foregroundStyle(Palette.ink2)
     FlowLayout(spacing: 8) { ReadAloud(source: .appCopy("\(w.word). \(w.means) For example: \(w.example)")); ExplainMore(question: LunaPrompts.explain(word: w.word)) }

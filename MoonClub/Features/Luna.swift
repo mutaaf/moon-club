@@ -96,7 +96,7 @@ struct AskLunaView: View {
               VStack(alignment: .leading, spacing: 10) {
                 if !answer.isEmpty { Text(LocalizedStringKey(answer)).font(.kRead).textSelection(.enabled).animation(.easeOut(duration: 0.15), value: answer) }
                 else if err == nil { HStack(spacing: 6) { Text("Luna is thinking"); ProgressView() }.foregroundStyle(.secondary) }
-                if let err { Text(err).foregroundStyle(Palette.bad) }
+                if let err { Text(err).foregroundStyle(Palette.badInk) }
                 if !answer.isEmpty && !busy { ReadAloud(source: .luna(answer: answer, kidTyped: typedQuestion), label: "Read Luna's answer") }
               }
             }
@@ -178,7 +178,7 @@ struct ExplainSheet: View {
         HStack { Luna(size: 44); BrainBadge(); Spacer() }
         if !answer.isEmpty { Text(LocalizedStringKey(answer)).font(.kRead).animation(.easeOut(duration: 0.15), value: answer) }
         else if err == nil { HStack(spacing: 6) { Text("Luna is thinking"); ProgressView() }.foregroundStyle(.secondary) }
-        if let err { Text(err).foregroundStyle(Palette.bad) }
+        if let err { Text(err).foregroundStyle(Palette.badInk) }
         if !answer.isEmpty { ReadAloud(source: .luna(answer: answer, kidTyped: nil), label: "Read it to me") }
       }.padding(24)
     }

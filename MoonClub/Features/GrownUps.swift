@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import MoonClubCore
 
 // The ONLY module allowed to hold links out of the app or settings (scripts/check-rules.sh enforces it).
@@ -14,7 +15,7 @@ struct ParentGate: View {
   @FocusState private var focus: Bool
   var body: some View {
     VStack(spacing: 18) {
-      Image(systemName: "lock.shield").font(.system(size: 44)).foregroundStyle(Palette.accent)
+      Image(systemName: "lock.shield").font(.system(size: 44)).foregroundStyle(Palette.accentInk)
       Text("For grown-ups").font(.kHero).lineLimit(1).minimumScaleFactor(0.6)
       Text("Please answer to continue:").foregroundStyle(.secondary)
       Text("What is \(a) × \(b)?").font(.kTitle).accessibilityIdentifier("gate-question")
@@ -22,7 +23,7 @@ struct ParentGate: View {
         .frame(height: 64).moonGlass(radius: 18, weight: .thin).focused($focus)
         .accessibilityLabel("Answer").accessibilityIdentifier("gate-answer")
         .onChange(of: v) { _, x in v = String(x.filter(\.isNumber).prefix(3)) }
-      if wrong { Text("That's not it. Ask a grown-up for help!").foregroundStyle(Palette.bad) }
+      if wrong { Text("That's not it. Ask a grown-up for help!").foregroundStyle(Palette.badInk) }
       HStack(spacing: 12) {
         Button("Back to kids") { dismiss() }.buttonStyle(SoftButtonStyle())
         Button("Continue") {
@@ -65,6 +66,7 @@ struct GrownUpsView: View {
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollShare") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("share", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPlay") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("play", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollLearn") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("learn", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPass") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("pass", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
       #endif
       }
@@ -83,8 +85,8 @@ extension GrownUpsView {
         }
         Section {
           TileGrid {
-            GlanceTile(symbol: "banknote.fill", hue: .mint, title: "Pretend money only", detail: "Nothing to buy, sell or pay for.", glow: [.teal, .lemon], seed: 1)
-            GlanceTile(symbol: "lock.shield.fill", hue: .sky, title: "Nothing leaves this device", detail: "No accounts, no ads, no tracking.", glow: [.grape, .mint], seed: 2)
+            GlanceTile(symbol: "banknote.fill", hue: .mint, title: "Pretend money only", detail: "Coins in the games are pretend.", glow: [.teal, .lemon], seed: 1)
+            GlanceTile(symbol: "lock.shield.fill", hue: .sky, title: "Nothing leaves this device", detail: "No accounts, no tracking. Breaks never link out.", glow: [.grape, .mint], seed: 2)
             GlanceTile(symbol: "moon.stars.fill", hue: .grape, title: "Luna plays it safe", detail: "Simple words, money topics, every answer checked.", glow: [.berry, .sky], seed: 3)
             GlanceTile(symbol: "hand.raised.fill", hue: .coral, title: "Never advice", detail: "Learning and play only.", glow: [.orange, .lemon], seed: 4)
           }
@@ -148,6 +150,10 @@ extension GrownUpsView {
 
   /// Every setting: packs, Luna's brain and voice, the garden limit, games, league, sync, share, more.
   @ViewBuilder var settings: some View {
+        Section { PassSettings() } header: { Text("Moon Club Pass") } footer: {
+          Text("Every Arcade level, no breaks. \(PlayPlan.dailyFree) new levels a day stay free, plus short breaks for more.")
+        }
+        .id("pass")
         Section {
           PackSettings()
           About {
@@ -403,15 +409,15 @@ struct LinkOffer: View {
             }
           }
           if p.emoji == app.state.me {
-            Text("That's this device's own player. Each player needs a different emoji.").font(.callout).foregroundStyle(Palette.bad)
+            Text("That's this device's own player. Each player needs a different emoji.").font(.callout).foregroundStyle(Palette.badInk)
           } else if let done {
-            Text(done).font(.callout).foregroundStyle(Palette.good)
+            Text(done).font(.callout).foregroundStyle(Palette.goodInk)
           } else {
             Button("Add to our family league") { app.mutate { $0.addPlayer(p) }; done = "\(name) joined. Their guesses show on Guess." }
               .accessibilityIdentifier("link-league-add")
           }
         case let .failure(e):
-          Text(e.message).font(.callout).foregroundStyle(Palette.bad)
+          Text(e.message).font(.callout).foregroundStyle(Palette.badInk)
         }
       } header: { Text("From a link: family league") }
     case .pack(let id):
@@ -423,7 +429,7 @@ struct LinkOffer: View {
             Text("Adds \(p.lessonCount) lessons and a new island on the map. Every pack is checked by a teacher and a markets expert.").font(.caption).foregroundStyle(.secondary)
           }
           if app.packOn(id) {
-            Text(done ?? "This pack is on.").font(.callout).foregroundStyle(Palette.good)
+            Text(done ?? "This pack is on.").font(.callout).foregroundStyle(Palette.goodInk)
           } else {
             Button("Turn on this pack") { app.setPack(id, on: true); done = "Turned on. Look for its island on the World map." }
               .accessibilityIdentifier("link-pack-on")
@@ -483,5 +489,68 @@ struct PartnerPicks: View {
         }
       }
     }
+  }
+}
+
+
+// MARK: Moon Club Pass (0.20): the only place it can be bought, behind the gate.
+
+/// The grown-up corner's Pass section: status, start it, restore, manage.
+struct PassSettings: View {
+  @Environment(AppModel.self) private var app
+  @State private var manage = false
+  @State private var offer = false
+  var body: some View {
+    let today = app.today
+    if app.pass.active {
+      Label("Moon Club Pass is on: every level, no breaks.", systemImage: "checkmark.seal.fill").foregroundStyle(Palette.goodInk)
+      Button("Manage your subscription") { manage = true }
+    } else {
+      LabeledContent("New levels left today", value: "\(app.pass.left(today: today))")
+      Button { offer = true } label: { Label("Get Moon Club Pass", systemImage: "star.circle.fill") }
+        .accessibilityIdentifier("get-pass")
+    }
+    Button("Restore purchases") { Task { await app.pass.restore() } }
+    About {
+      Point("**Free forever:** the first chapter of Candle Academy and Line Lab and the first floor of Moon Tower, plus every lesson, the World map, Guess, Piggy Bank and Luna.", hue: .mint)
+      Point("**Every day:** \(PlayPlan.dailyFree) new Arcade levels. A short break (\(PlayPlan.breakSeconds) seconds) opens \(PlayPlan.perBreak) more, up to \(PlayPlan.breaksPerDay) breaks a day. Replaying a level your child has won is always free.", hue: .sky)
+      Point("**Breaks** show a kid-safe sponsor's picture or video from our own ad server, or Luna with a chart fact. No ad network, no tracking, no identifiers, nothing to tap out to.", hue: .grape)
+      Point("**Moon Club Pass** opens every level with no breaks, for a year. It renews each year until you cancel in Settings. Family Sharing is on.", hue: .lemon)
+    }
+    .manageSubscriptionsSheet(isPresented: $manage)
+    .sheet(isPresented: $offer) { PassOffer() }
+    #if DEBUG
+    .onAppear { if ProcessInfo.processInfo.arguments.contains("-passOffer") { offer = true } }
+    #endif
+  }
+}
+
+/// The subscription sheet (StoreKit's own: price, terms, restore, its own close button). Always a sheet. Reached only from the grown-up corner or
+/// from `PlayLimitSheet` after the parental gate.
+struct PassOffer: View {
+  @Environment(AppModel.self) private var app
+  @Environment(\.dismiss) private var dismiss
+  var body: some View {
+    SubscriptionStoreView(productIDs: [PlayPlan.productID]) {
+      VStack(spacing: 14) {
+        Luna(size: 96, mood: .cheering)
+        Text("Moon Club Pass").font(.kHero)
+        VStack(alignment: .leading, spacing: 8) {
+          Label("All \(AcademyTrack.candles.mainLevels) Candle Academy levels", systemImage: "chart.bar.xaxis")
+          Label("All \(AcademyTrack.lines.mainLevels) Line Lab levels", systemImage: "chart.line.uptrend.xyaxis")
+          Label("Every Moon Tower floor", systemImage: "building.2.fill")
+          Label("No breaks between levels", systemImage: "forward.fill")
+        }
+        .font(.callout.weight(.semibold))
+        Text("Pretend money in the games, always. Nothing about your child leaves this device.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+      }
+      .padding(.horizontal, 20).padding(.top, 12)
+    }
+    .subscriptionStoreControlStyle(.prominentPicker)
+    .storeButton(.visible, for: .restorePurchases)
+    .subscriptionStorePolicyDestination(url: URL(string: "https://mutaafaziz.com/metaphases/kids/privacy")!, for: .privacyPolicy)
+    .subscriptionStorePolicyDestination(url: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!, for: .termsOfService)
+    .storeButton(.visible, for: .cancellation)
+    .onInAppPurchaseCompletion { _, _ in await app.pass.refresh(); if app.pass.active { dismiss() } }
   }
 }

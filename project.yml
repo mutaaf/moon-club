@@ -10,7 +10,7 @@ settings:
     DEVELOPMENT_TEAM: Z73865R687
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.19.0"
+    MARKETING_VERSION: "0.20.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   MoonClub:
@@ -100,3 +100,5 @@ schemes:
   MoonClub:
     build: { targets: { MoonClub: all, MoonClubTests: [test] } }
     test: { targets: [MoonClubTests, { package: MoonClubCore/MoonClubCoreTests }] }
+    # Local StoreKit testing (Xcode / simulator runs only; TestFlight and the App Store use the real products).
+    run: { storeKitConfiguration: StoreKit/MoonClub.storekit }

@@ -63,7 +63,7 @@ struct PuppetShow: View {
       HStack(spacing: 0) { Curtain(); Spacer(minLength: 0); Curtain().scaleEffect(x: -1) }
       RadialGradient(colors: [Hue.lemon.color.opacity(0.35), .clear], center: .init(x: 0.5, y: 0.45), startRadius: 10, endRadius: 220)
       VStack(spacing: compact ? 8 : 16) {
-        Text("LUNA'S PUPPET SHOW").font(.kEyebrow).tracking(1.4).foregroundStyle(Hue.lemon.color)
+        Text("LUNA'S PUPPET SHOW").font(.kEyebrow).tracking(1.4).foregroundStyle(Hue.lemon.text)
         Luna(size: compact ? 84 : 150, wave: true, mood: mood)
           .modifier(LunaBounce(tick: line))
         Text(ls[safe: line] ?? "").font(.system(.title3, design: .rounded).weight(.bold)).foregroundStyle(.white)
@@ -232,7 +232,7 @@ struct LunaPocket: View {
           Circle().stroke(.white.opacity(0.15), lineWidth: 7)
           Circle().trim(from: 0, to: progress).stroke(hue.color, style: .init(lineWidth: 7, lineCap: .round)).rotationEffect(.degrees(-90))
         }
-        Image(systemName: symbol).font(.title2.weight(.heavy)).foregroundStyle(hue.color)
+        Image(systemName: symbol).font(.title2.weight(.heavy)).foregroundStyle(hue.text)
       }
       .frame(width: 58, height: 58)
       Text(value).font(.system(size: 26, weight: .heavy, design: .rounded)).monospacedDigit().foregroundStyle(.white)

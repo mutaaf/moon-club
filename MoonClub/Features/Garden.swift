@@ -186,7 +186,7 @@ struct TipCard: View {
   let symbol: String, hue: Hue, title: String, text: String
   var body: some View {
     HStack(alignment: .top, spacing: 12) {
-      Image(systemName: symbol).font(.title2).foregroundStyle(hue.color).frame(width: 34)
+      Image(systemName: symbol).font(.title2).foregroundStyle(hue.text).frame(width: 34)
       VStack(alignment: .leading, spacing: 3) { Text(title).font(.kHeadline); Text(text).font(.callout).fixedSize(horizontal: false, vertical: true) }
       Spacer(minLength: 0)
     }

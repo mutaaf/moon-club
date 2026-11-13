@@ -146,7 +146,7 @@ struct PoseArt: View {
       case .hinge:
         ZStack {
           FoldArt(angle: 40)
-          Image(systemName: "sun.max.fill").font(.system(size: 34, weight: .bold)).foregroundStyle(Hue.lemon.color)
+          Image(systemName: "sun.max.fill").font(.system(size: 34, weight: .bold)).foregroundStyle(Hue.lemon.text)
             .offset(x: 0, y: on && !rm ? -70 : -20).opacity(on || rm ? 1 : 0.4)
         }
       }

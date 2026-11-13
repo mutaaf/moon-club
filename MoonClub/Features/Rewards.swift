@@ -83,7 +83,7 @@ struct RankBadge: View {
         .stroke(Hue.gold.color, style: .init(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90))
       MoonPhase(phase: min(index, 4), size: size - 8)
       if index > 4 {
-        Image(systemName: "sparkle").font(.system(size: size * 0.3, weight: .black)).foregroundStyle(Hue.gold.color)
+        Image(systemName: "sparkle").font(.system(size: size * 0.3, weight: .black)).foregroundStyle(Hue.gold.text)
           .offset(x: size * 0.36, y: -size * 0.36)
       }
     }
@@ -226,7 +226,7 @@ struct TrophyShelf: View {
         VStack(alignment: .leading, spacing: 4) {
           Text("\(p.trophy.name) · \(p.tierName)").font(.kHeadline)
           Text(p.tier == 0 ? p.trophy.hint : p.progressLine).font(.callout).foregroundStyle(Palette.ink2)
-          if p.tier < 3 { Text("Next tier is worth \(Rewards.tierPoints[p.tier]) Moon points.").font(.caption.weight(.semibold)).foregroundStyle(Hue.gold.color) }
+          if p.tier < 3 { Text("Next tier is worth \(Rewards.tierPoints[p.tier]) Moon points.").font(.caption.weight(.semibold)).foregroundStyle(Hue.gold.text) }
         }
       } else {
         Text("Tap a badge to see how to earn its next tier. Each tier is worth Moon points.").font(.callout).foregroundStyle(Palette.ink2)
@@ -474,12 +474,12 @@ struct PointsBook: View {
       HStack(alignment: .top) {
         PointsLedger()
         Spacer(minLength: 8)
-        Label("\(Streak.play(app.state, today: app.today)) days", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).foregroundStyle(Hue.orange.color)
+        Label("\(Streak.play(app.state, today: app.today)) days", systemImage: "flame.fill").font(.subheadline.weight(.heavy)).foregroundStyle(Hue.orange.text)
       }
       VStack(spacing: 0) {
         ForEach(lines) { l in
           HStack(spacing: 10) {
-            Image(systemName: l.source.symbol).font(.system(size: 15, weight: .bold)).foregroundStyle(Palette.accent).frame(width: 26)
+            Image(systemName: l.source.symbol).font(.system(size: 15, weight: .bold)).foregroundStyle(Palette.accentInk).frame(width: 26)
             Text(l.source.label).font(.subheadline.weight(.semibold))
             Spacer()
             Text("+\(l.points)").font(.subheadline.weight(.heavy)).monospacedDigit()
@@ -553,7 +553,7 @@ struct RankCeremony: View {
           .offset(x: 58, y: 56)
           .scaleEffect(grow ? 1 : 0.1)
       }
-      Text("NEW RANK").font(.kEyebrow).tracking(2).foregroundStyle(Hue.lemon.color)
+      Text("NEW RANK").font(.kEyebrow).tracking(2).foregroundStyle(Hue.lemon.text)
       Text("You're a \(name)!").font(.system(.largeTitle, design: .rounded).weight(.black)).multilineTextAlignment(.center).foregroundStyle(.white)
         .lineLimit(2).minimumScaleFactor(0.7).fixedSize(horizontal: false, vertical: true)
       if !unlocks.isEmpty {

@@ -107,8 +107,8 @@ struct LunaView: View {
   @ViewBuilder private func extras(_ s: CGFloat) -> some View {
     switch mood {
     case .cheering:
-      Image(systemName: "sparkle").font(.system(size: 12 * s, weight: .bold)).foregroundStyle(Hue.gold.color).offset(x: 30 * s, y: -26 * s)
-      Image(systemName: "sparkle").font(.system(size: 8 * s, weight: .bold)).foregroundStyle(Hue.berry.color).offset(x: -31 * s, y: -20 * s)
+      Image(systemName: "sparkle").font(.system(size: 12 * s, weight: .bold)).foregroundStyle(Hue.gold.text).offset(x: 30 * s, y: -26 * s)
+      Image(systemName: "sparkle").font(.system(size: 8 * s, weight: .bold)).foregroundStyle(Hue.berry.text).offset(x: -31 * s, y: -20 * s)
     case .thinking:
       HStack(spacing: 2 * s) { ForEach(0..<3) { _ in Circle().fill(Palette.ink2.opacity(0.6)).frame(width: 3.4 * s) } }.offset(x: 30 * s, y: -28 * s)
     case .sleepy:
@@ -250,7 +250,7 @@ struct Hero: View {
       }
       VStack(alignment: .leading, spacing: 4) {
         Eyebrow(text: eyebrow)
-        (Text(title) + Text(accent.map { " " + $0 } ?? "").foregroundColor(Palette.accent))
+        (Text(title) + Text(accent.map { " " + $0 } ?? "").foregroundColor(Palette.accentInk))
           .font(.kHero).foregroundStyle(Palette.ink).minimumScaleFactor(0.7).lineLimit(2)
       }
     }

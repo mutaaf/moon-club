@@ -602,7 +602,7 @@ struct RunResults: View {
       ZStack(alignment: .bottom) {
         Luna(size: 92, wave: true, mood: stars >= 2 ? .cheering : .happy)
         if boss {
-          Image(systemName: "flag.fill").font(.system(size: 44, weight: .heavy)).foregroundStyle(Hue.coral.color)
+          Image(systemName: "flag.fill").font(.system(size: 44, weight: .heavy)).foregroundStyle(Hue.coral.text)
             .offset(x: 62, y: flag ? 0 : -260).opacity(flag ? 1 : 0)
             .rotationEffect(.degrees(flag ? 0 : -25), anchor: .bottom)
         }
@@ -654,7 +654,7 @@ struct RunResults: View {
   }
   private func stat(_ v: String, _ label: String, _ icon: String, _ hue: Hue) -> some View {
     VStack(spacing: 2) {
-      Image(systemName: icon).font(.system(size: 15, weight: .bold)).foregroundStyle(hue.color)
+      Image(systemName: icon).font(.system(size: 15, weight: .bold)).foregroundStyle(hue.text)
       Text(v).font(.system(.title2, design: .rounded).weight(.black)).monospacedDigit()
       Text(label).font(.caption.weight(.semibold)).foregroundStyle(Palette.ink2)
     }

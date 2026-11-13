@@ -19,7 +19,7 @@ struct SyncSections: View {
         Label { VStack(alignment: .leading, spacing: 2) {
           Text("Sync with iCloud").font(.body.weight(.semibold))
           Text(status).font(.caption).foregroundStyle(.secondary)
-        } } icon: { Image(systemName: "icloud").foregroundStyle(Palette.accent) }
+        } } icon: { Image(systemName: "icloud").foregroundStyle(Palette.accentInk) }
       }
       .disabled(!app.sync.isAvailable && !app.syncOn)
       .accessibilityIdentifier("sync-toggle")

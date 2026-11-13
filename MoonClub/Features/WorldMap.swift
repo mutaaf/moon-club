@@ -465,7 +465,7 @@ struct RegionBanner: View, Equatable {
         Text(region.name).font(.subheadline.weight(.heavy)).lineLimit(1)
         Text(open ? region.blurb : "Win the land below to open it").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
       }
-      if conquered { Image(systemName: "flag.checkered").font(.caption.weight(.bold)).foregroundStyle(Palette.good) }
+      if conquered { Image(systemName: "flag.checkered").font(.caption.weight(.bold)).foregroundStyle(Palette.goodInk) }
     }
     .padding(.horizontal, 12).padding(.vertical, 7)
     .moonGlass(Capsule(), interactive: true)
@@ -511,7 +511,7 @@ struct NodeButton: View, Equatable {
             Image(systemName: "lock.fill").font(.system(size: d * 0.3, weight: .bold)).foregroundStyle(Palette.ink2.opacity(0.5))
           }
           if node.isBoss && stars > 0 {
-            Image(systemName: "flag.fill").font(.system(size: 22, weight: .bold)).foregroundStyle(hue.color).offset(x: d * 0.42, y: -d * 0.46)
+            Image(systemName: "flag.fill").font(.system(size: 22, weight: .bold)).foregroundStyle(hue.text).offset(x: d * 0.42, y: -d * 0.46)
               .transition(.move(edge: .top).combined(with: .scale))
           }
       }
@@ -745,7 +745,7 @@ struct WorldHeader: View {
         .fixedSize()  // the count never wraps
         .accessibilityLabel("\(streak) day streak")
       Label("\(t)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6).background(chipFill, in: Capsule())
+        .foregroundStyle(Hue.gold.text).padding(.horizontal, 10).padding(.vertical, 6).background(chipFill, in: Capsule())
         .contentTransition(.numericText(value: Double(t)))
         .fixedSize()
         .accessibilityLabel("\(t) stars")

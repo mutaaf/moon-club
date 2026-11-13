@@ -112,7 +112,7 @@ struct BrainPicker: View {
   /// Which brain answers right now (a choice that isn't ready yet falls back, and says so).
   private var nowPill: some View {
     HStack(spacing: 8) {
-      Image(systemName: active.symbol).foregroundStyle(Palette.accent)
+      Image(systemName: active.symbol).foregroundStyle(Palette.accentInk)
       // One Text so the hint wraps as a sentence instead of a squeezed second column.
       (Text("Right now: **\(active.badge)**").foregroundColor(Palette.ink)
         + Text(s.choice == .byok && active != .byok ? " · finish the steps below to switch" : "").foregroundColor(Palette.ink2))

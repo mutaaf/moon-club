@@ -120,7 +120,7 @@ struct PiggySetup: View {
         Text("\(Image(systemName: "basket.fill")) \(basketTip(picks.count))").font(.callout).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Palette.moon.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
         Button(busy ? "Filling your piggy bank…" : "Start my pretend piggy bank 🐷") { Task { await start() } }
           .buttonStyle(PrimaryButtonStyle()).disabled(left != 0 || busy)
-        if let err { Text(err).font(.callout).foregroundStyle(Palette.bad) }
+        if let err { Text(err).font(.callout).foregroundStyle(Palette.badInk) }
       }
       .transition(.move(edge: .bottom).combined(with: .opacity))
     }
@@ -178,8 +178,8 @@ struct PiggyBank: View {
       }
       if hist.count >= 2 {
         Chart(Array(hist.enumerated()), id: \.offset) { i, e in
-          LineMark(x: .value("Day", i), y: .value("Coins", e.value)).interpolationMethod(.catmullRom).foregroundStyle(Palette.accent).lineStyle(.init(lineWidth: 3, lineCap: .round))
-          PointMark(x: .value("Day", i), y: .value("Coins", e.value)).foregroundStyle(Palette.accent).symbolSize(i == hist.count - 1 ? 60 : 0)
+          LineMark(x: .value("Day", i), y: .value("Coins", e.value)).interpolationMethod(.catmullRom).foregroundStyle(Palette.accentInk).lineStyle(.init(lineWidth: 3, lineCap: .round))
+          PointMark(x: .value("Day", i), y: .value("Coins", e.value)).foregroundStyle(Palette.accentInk).symbolSize(i == hist.count - 1 ? 60 : 0)
         }
         .chartXAxis(.hidden).chartYAxis(.hidden).chartYScale(domain: .automatic(includesZero: false)).frame(height: 90)
         .accessibilityLabel("Your pretend money over \(hist.count) days")

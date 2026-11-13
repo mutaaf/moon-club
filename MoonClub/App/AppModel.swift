@@ -27,6 +27,8 @@ final class AppModel {
   private let store: ProgressStore
   private let clock: Clock
   let sync: SyncService
+  /// Moon Club Pass + today's new-level ledger (device only; see App/Pass.swift).
+  let pass = PassModel()
   /// Mirrors `sync.isOn` / `sync.lastSynced` so SwiftUI updates when they change.
   private(set) var syncOn = false
   private(set) var lastSynced: Date?

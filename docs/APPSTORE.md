@@ -86,7 +86,7 @@ Every content descriptor is **None**: no violence, fear, mature themes, profanit
 | Unrestricted web access | No | The only links sit behind the grown-up gate and go to fixed pages. |
 | User-generated content | No | Nothing a kid types is shown to anyone else. |
 | Messaging and chat | No | Ask Luna is an AI helper, not person-to-person chat. Its answers follow the kid-safe prompt plus the on-device `LunaGuard`, so they stay inside these descriptors. |
-| Advertising | No | No ads. |
+| Advertising | No | Arcade breaks show first-party sponsor creatives from our own server with no identifiers or tracking (0.20); nothing is collected for advertising. Re-check if a sponsor ever needs reporting beyond aggregate counts. |
 | Parental controls | **Yes** | A multiplication gate guards settings, sync, Luna's brain and every link. |
 | Age assurance | No | We don't verify age. |
 | Health or wellness, social media | No | |

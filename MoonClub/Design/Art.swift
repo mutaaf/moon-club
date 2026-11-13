@@ -8,22 +8,25 @@ import SwiftUI
 
 enum Hue: CaseIterable {
   case lemon, orange, coral, berry, grape, sky, teal, mint, gold, slate, choco, ink
-  var color: Color {
+  var hex: UInt32 {
     switch self {
-    case .lemon: return Color(hex: 0xF2BE2E)
-    case .orange: return Color(hex: 0xF0893E)
-    case .coral: return Color(hex: 0xEC6461)
-    case .berry: return Color(hex: 0xD2508F)
-    case .grape: return Color(hex: 0x7E62EE)
-    case .sky: return Color(hex: 0x3F82EE)
-    case .teal: return Color(hex: 0x1FA99A)
-    case .mint: return Color(hex: 0x3DB97F)
-    case .gold: return Color(hex: 0xD99A1E)
-    case .slate: return Color(hex: 0x66708C)
-    case .choco: return Color(hex: 0x8A5636)
-    case .ink: return Color(hex: 0x2346D8)
+    case .lemon: return 0xF2BE2E
+    case .orange: return 0xF0893E
+    case .coral: return 0xEC6461
+    case .berry: return 0xD2508F
+    case .grape: return 0x7E62EE
+    case .sky: return 0x3F82EE
+    case .teal: return 0x1FA99A
+    case .mint: return 0x3DB97F
+    case .gold: return 0xD99A1E
+    case .slate: return 0x66708C
+    case .choco: return 0x8A5636
+    case .ink: return 0x2346D8
     }
   }
+  var color: Color { Color(hex: hex) }
+  /// For text and icons drawn in this hue: lifted in dark mode so it reads on the night paper and cards.
+  var text: Color { Color(light: hex, dark: Palette.lift(hex, 0.45)) }
   /// Lighter partner for gradients.
   var light: Color { color.blend(with: .white, by: 0.45) }
 }

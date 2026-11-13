@@ -100,7 +100,7 @@ struct TowerView: View {
       }
       Spacer(minLength: 6)
       Label("\(total)", systemImage: "star.fill").font(.subheadline.weight(.heavy)).monospacedDigit()
-        .foregroundStyle(Hue.gold.color).padding(.horizontal, 10).padding(.vertical, 6)
+        .foregroundStyle(Hue.gold.text).padding(.horizontal, 10).padding(.vertical, 6)
         .moonGlass(Capsule(), weight: .thin, dark: dark)
         .accessibilityLabel("\(total) tower stars")
     }
@@ -270,12 +270,12 @@ struct TowerPad: View, Equatable {
             Image(systemName: "lock.fill").font(.headline).foregroundStyle(Palette.ink2)
           }
           if open && !level.isBoss {
-            Image(systemName: level.lead.symbol).font(.system(size: 11, weight: .heavy)).foregroundStyle(hue.color)
+            Image(systemName: level.lead.symbol).font(.system(size: 11, weight: .heavy)).foregroundStyle(hue.text)
               .frame(width: 24, height: 24).background(.white, in: Circle())
               .offset(x: d / 2 - 6, y: d / 2 - 8)
           }
           if level.twist != nil && open {
-            Image(systemName: "bolt.fill").font(.system(size: 11, weight: .heavy)).foregroundStyle(Hue.gold.color)
+            Image(systemName: "bolt.fill").font(.system(size: 11, weight: .heavy)).foregroundStyle(Hue.gold.text)
               .frame(width: 22, height: 22).background(Palette.midnight, in: Circle())
               .offset(x: -d / 2 + 6, y: -d / 2 + 8)
           }
@@ -342,7 +342,7 @@ struct TowerLevelCard: View {
       }
       if let t = level.twist {
         HStack(spacing: 10) {
-          Image(systemName: t.symbol).font(.title3).foregroundStyle(Hue.gold.color)
+          Image(systemName: t.symbol).font(.title3).foregroundStyle(Hue.gold.text)
           VStack(alignment: .leading, spacing: 0) {
             Text("Twist: \(t.title)").font(.subheadline.weight(.heavy))
             Text(t.line).font(.caption)
@@ -353,7 +353,8 @@ struct TowerLevelCard: View {
       }
       Spacer(minLength: 0)
       if open {
-        Button(stars > 0 ? "Play again" : level.isBoss ? "Take on the boss" : "Play level \(level.number)") { play() }.buttonStyle(ChunkyPrimary())
+        PassPlayButton(title: stars > 0 ? "Play again" : level.isBoss ? "Take on the boss" : "Play level \(level.number)",
+                       climb: .tower, number: level.number, id: Tower.id(level.number), won: stars > 0, play: play)
       } else {
         Label("Win level \(level.number - 1) to open this one", systemImage: "lock.fill").font(.callout.weight(.bold)).foregroundStyle(Palette.ink2)
           .frame(maxWidth: .infinity)

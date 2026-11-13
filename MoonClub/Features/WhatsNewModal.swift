@@ -95,7 +95,7 @@ struct WhatsNewModal: View {
   private var hero: some View {
     VStack(spacing: 12) {
       Text("New in \(news.version)")
-        .font(.kEyebrow).foregroundStyle(Palette.accent)
+        .font(.kEyebrow).foregroundStyle(Palette.accentInk)
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .padding(.horizontal, 12).padding(.vertical, 6).background(Palette.accent.opacity(0.12), in: Capsule())
         .accessibilityLabel("New in version \(news.version)")

@@ -1,0 +1,44 @@
+{
+  "identifier" : "4D1A7C2B",
+  "nonRenewingSubscriptions" : [ ],
+  "products" : [ ],
+  "settings" : {
+    "_applicationInternalID" : "6829860949",
+    "_developerTeamID" : "Z73865R687",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [ ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "22574317",
+      "localizations" : [ ],
+      "name" : "Moon Club Pass",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [ ],
+          "codeOffers" : [ ],
+          "displayPrice" : "1.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "6834194930",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Every level in every climb, no sponsor breaks.",
+              "displayName" : "Moon Club Pass",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mutaafaziz.moonclub.pass.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Moon Club Pass (1 year)",
+          "subscriptionGroupID" : "22574317",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : { "major" : 4, "minor" : 0 }
+}
