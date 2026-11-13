@@ -12,6 +12,7 @@ struct ArcadeHub: View {
   @State private var tower = false
 
   var body: some View {
+    let _ = Perf.body("ArcadeHub")
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         HStack(spacing: 10) {
@@ -93,6 +94,7 @@ struct AcademyPath: View {
   @State private var playing: AcademyLevel?
 
   var body: some View {
+    let _ = Perf.body("AcademyPath")
     let cur = Academy.current(track, app.state)
     let chapters = Academy.shown(track, app.state) / Academy.chapterSize
     ScrollViewReader { proxy in
@@ -166,6 +168,7 @@ struct ChapterBlock: View, Equatable {
   var stars: [Int] { (first..<(first + Academy.chapterSize)).map { Academy.stars(track, $0, state) } }
 
   var body: some View {
+    let _ = Perf.body("ChapterBlock")
     let info = track.chapters.indices.contains(chapter) ? track.chapters[chapter] : nil
     let got = stars.reduce(0, +)
     VStack(alignment: .leading, spacing: 12) {
@@ -354,6 +357,7 @@ struct AcademyPlayer: View {
   let level: AcademyLevel
   @Environment(AppModel.self) private var app
   var body: some View {
+    let _ = Perf.body("AcademyPlayer")
     let name = level.kind == .boss ? "\(Academy.chapterName(level.track, level.chapter)) boss" : "Level \(level.number)"
     let node = WorldNode(id: level.id, title: name, art: "👑", kind: .game(.readDay))
     let finish: (Int) -> Void = { s in
@@ -389,6 +393,7 @@ struct ArcadeShelf: View {
   enum Door: CaseIterable { case candles, lines, tower }
 
   var body: some View {
+    let _ = Perf.body("ArcadeShelf")
     VStack(alignment: .leading, spacing: 10) {
       Button { hub = true } label: {
         HStack(spacing: 8) {

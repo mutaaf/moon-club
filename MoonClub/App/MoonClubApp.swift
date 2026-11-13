@@ -14,7 +14,7 @@ struct MoonClubApp: App {
   @State private var loadError: String?
   @Environment(\.scenePhase) private var phase
 
-  init() { ShaderWarmup.run() }   // compile every Metal effect off the main thread (0.14)
+  init() { ShaderWarmup.run(); HangTrace.start() }   // compile every Metal effect off the main thread (0.14)
 
   var body: some Scene {
     WindowGroup {

@@ -114,8 +114,9 @@ struct RootView: View {
       Color.clear
         .onAppear { windowSafe = g.frame(in: .global) }
         .onChange(of: g.frame(in: .global)) { _, f in
+          HangTrace.mark("w:windowSafe")
           #if DEBUG
-          if FoldLog.on { print("WINDOW \(f)") }
+          if FoldLog.on { HangTrace.say("WINDOW \(f)") }
           #endif
           windowSafe = f
         }

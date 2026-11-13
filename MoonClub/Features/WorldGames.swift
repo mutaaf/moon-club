@@ -40,6 +40,7 @@ struct GameShell<Round: View>: View {
   static var speedSeconds: Double { 20 }
 
   var body: some View {
+    let _ = Perf.body("GameShell")
     let dark = boss != nil
     VStack(spacing: 12) {
       GameHUD(run: run, title: node.title, done: finished ? rounds : index + (result == nil ? 0 : 1), total: rounds,
@@ -178,6 +179,7 @@ struct ChartCard<C: View>: View {
   /// Right answers so far on this play screen: the candles bloom (Metal) each time it goes up (0.14).
   @Environment(\.chartBloom) private var bloom
   var body: some View {
+    let _ = Perf.body("ChartCard")
     VStack(alignment: .leading, spacing: 8) {
       if let caption { Text(caption).font(.kEyebrow).tracking(1.2).foregroundStyle(Palette.accentInk).textCase(.uppercase) }
       content.frame(maxWidth: .infinity, maxHeight: .infinity).candleBloom(trigger: bloom)

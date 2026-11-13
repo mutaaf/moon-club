@@ -15,6 +15,7 @@ struct PassPlayButton: View {
   @State private var limit = false
 
   var body: some View {
+    let _ = Perf.body("PassPlayButton")
     let d = app.pass.decision(climb, number: number, id: id, won: won, today: app.today)
     VStack(spacing: 6) {
       Button(title) {
