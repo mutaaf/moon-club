@@ -110,6 +110,7 @@ extension HingeReading {
 struct TracksHinge: ViewModifier {
   let duo: DuoModel
   func body(content: Content) -> some View {
+    let _ = Perf.body("TracksHinge")
     if #available(iOS 27.1, *) {
       content
         .onHingeChange(isEnabled: duo.pinned == nil) { _, new in duo.update(new.hinge.map(HingeReading.init)) }
@@ -171,6 +172,7 @@ private struct FoldProbe: ViewModifier {
   @Environment(\.windowSafeFrame) private var window
   @State private var gate = ProbeGate()
   func body(content: Content) -> some View {
+    let _ = Perf.body("FoldProbe")
     content.background {
       GeometryReader { proxy in
         // Whole points only. On the device the division region sits at fractional points, and a layout
@@ -181,6 +183,7 @@ private struct FoldProbe: ViewModifier {
           .onAppear { gate.shown = true; info = i }
           .onDisappear { gate.shown = false }
           .onChange(of: i) { o, n in
+            HangTrace.mark("w:FoldProbe")
             #if DEBUG
             FoldLog.change(o, n, proxy.frame(in: .global))
             #endif
@@ -227,12 +230,12 @@ private struct FoldProbe: ViewModifier {
 #if DEBUG
 /// `-foldlog`: print every fold-probe change (device triage of the open-Duo freeze).
 enum FoldLog {
-  static let on = ProcessInfo.processInfo.arguments.contains("-foldlog")
+  static let on = ProcessInfo.processInfo.arguments.contains("-foldlog") || HangTrace.on
   nonisolated(unsafe) static var n = 0
   static func change(_ o: FoldInfo, _ i: FoldInfo, _ g: CGRect) {
     guard on else { return }
     n += 1
-    print("FOLD #\(n) w \(o.width)->\(i.width) fold \(String(describing: o.fold))->\(String(describing: i.fold)) at \(g)")
+    HangTrace.say("FOLD #\(n) w \(o.width)->\(i.width) fold \(String(describing: o.fold))->\(String(describing: i.fold)) at \(g)")
   }
 }
 #endif
@@ -359,6 +362,7 @@ struct TabletopStage<Top: View, Bottom: View>: View {
   @Environment(\.accessibilityReduceMotion) private var rm
 
   var body: some View {
+    let _ = Perf.body("TabletopStage")
     GeometryReader { g in
       let f = horizontalFold(g)
       Group {

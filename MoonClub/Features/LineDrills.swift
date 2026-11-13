@@ -12,6 +12,7 @@ struct LineDrill: View {
   let answered: RoundResult?
 
   var body: some View {
+    let _ = Perf.body("LineDrill")
     switch round.drill {
     case .trendWay: TrendWayDrill(level: level, round: round, answer: answer, answered: answered)
     case .trendLine: TrendLineDrill(level: level, round: round, answer: answer, answered: answered)

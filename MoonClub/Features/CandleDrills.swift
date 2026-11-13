@@ -12,6 +12,7 @@ struct CandleDrill: View {
   let answered: RoundResult?
 
   var body: some View {
+    let _ = Perf.body("CandleDrill")
     let p = round.pattern
     switch round.drill {
     case .tug: TugDrill(level: level, round: round, answer: answer, answered: answered)
@@ -289,6 +290,7 @@ struct CandleBuilder: View {
   @Environment(\.accessibilityReduceMotion) private var rm
 
   var body: some View {
+    let _ = Perf.body("CandleBuilder")
     GeometryReader { geo in
       let h = geo.size.height, w = geo.size.width
       let y: (Int) -> CGFloat = { p in h - 18 - CGFloat(p) / 12 * (h - 36) }

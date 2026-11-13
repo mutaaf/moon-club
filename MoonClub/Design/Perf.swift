@@ -1,5 +1,6 @@
 import SwiftUI
 import QuartzCore
+import os
 
 /// Debug-only performance probes (free in release builds):
 ///  • `Perf.body("Name")` counts body re-evaluations per view (call it as `let _ = Perf.body("Name")`).
@@ -23,6 +24,7 @@ import QuartzCore
   #endif
   @discardableResult static func body(_ name: String) -> Int {
     #if DEBUG
+    if HangTrace.on { HangTrace.mark(name) }
     guard on else { return 0 }
     counts[name, default: 0] += 1
     #endif
@@ -162,3 +164,53 @@ struct DebugWindow: ViewModifier {
     } else { content }
   }
 }
+
+#if DEBUG
+/// Debug `-hangtrace`: finds a view stuck re-rendering (the open-Duo background freeze). `Perf.body` and the
+/// geometry → @State writers call `mark`; a background thread prints, to stderr (so `devicectl … --console`
+/// shows it even while the main thread is stuck), the busiest names every half second when they run hot,
+/// and "HANG" lines while the main thread doesn't answer.
+enum HangTrace {
+  /// On in every debug build (the freeze needs the real hinge, so it has to be caught during normal play).
+  static let on = !ProcessInfo.processInfo.arguments.contains("-nohangtrace")
+  /// Documents/hangtrace.log, pulled with `devicectl device copy from --domain-type appDataContainer`.
+  nonisolated(unsafe) private static var file: FileHandle? = {
+    guard let d = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+    let u = d.appendingPathComponent("hangtrace.log")
+    if let a = try? FileManager.default.attributesOfItem(atPath: u.path), (a[.size] as? Int ?? 0) > 2_000_000 { try? FileManager.default.removeItem(at: u) }
+    if !FileManager.default.fileExists(atPath: u.path) { FileManager.default.createFile(atPath: u.path, contents: nil) }
+    let h = try? FileHandle(forWritingTo: u); h?.seekToEndOfFile(); return h
+  }()
+  private static let fileLock = OSAllocatedUnfairLock()
+  private static let counts = OSAllocatedUnfairLock(initialState: [String: Int]())
+  private static let pong = OSAllocatedUnfairLock(initialState: CACurrentMediaTime())
+  nonisolated static func mark(_ name: String) { counts.withLock { $0[name, default: 0] += 1 } }
+  nonisolated static func say(_ s: String) {
+    let line = Data(("HT \(Date().formatted(.iso8601.time(includingFractionalSeconds: true))) " + s + "\n").utf8)
+    FileHandle.standardError.write(line)
+    fileLock.withLock { file?.write(line); try? file?.synchronize() }
+  }
+  static func start() {
+    guard on else { return }
+    say("start")
+    for (n, label) in [(UIApplication.willResignActiveNotification, "resign"), (UIApplication.didEnterBackgroundNotification, "background"),
+                       (UIApplication.willEnterForegroundNotification, "foreground"), (UIApplication.didBecomeActiveNotification, "active")] {
+      NotificationCenter.default.addObserver(forName: n, object: nil, queue: nil) { _ in say("PHASE \(label)") }
+    }
+    Thread.detachNewThread {
+      while true {
+        Thread.sleep(forTimeInterval: 0.5)
+        DispatchQueue.main.async { pong.withLock { $0 = CACurrentMediaTime() } }
+        let snap = counts.withLock { c -> [String: Int] in let s = c; c = [:]; return s }
+        let lag = CACurrentMediaTime() - pong.withLock { $0 }
+        let total = snap.values.reduce(0, +)
+        let top = snap.sorted { $0.value > $1.value }.prefix(12).map { "\($0.key)=\($0.value)" }.joined(separator: " ")
+        if lag > 1 { say(String(format: "HANG main silent %.1fs, last 0.5s: %d %@", lag, total, top)) }
+        else if total > 80 { say("HOT \(total) \(top)") }
+      }
+    }
+  }
+}
+#else
+enum HangTrace { static let on = false; static func mark(_ name: String) {}; static func start() {} }
+#endif

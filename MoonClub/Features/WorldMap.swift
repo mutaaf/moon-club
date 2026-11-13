@@ -815,6 +815,7 @@ struct NodePlayer: View {
   let regions: [Region]
   @Environment(AppModel.self) private var app
   var body: some View {
+    let _ = Perf.body("NodePlayer")
     let kind = node.isBoss ? "boss" : { if case .game = node.kind { return "game" }; return "node" }()
     let finish: (Int) -> Void = { s in
       let mystery = Mystery.node(app.state, app.content, today: app.today)?.id == node.id && !Mystery.claimed(app.state, today: app.today)

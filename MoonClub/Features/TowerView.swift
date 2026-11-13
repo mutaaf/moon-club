@@ -32,6 +32,7 @@ struct TowerView: View {
   static let step: CGFloat = 96
 
   var body: some View {
+    let _ = Perf.body("TowerView")
     let cur = Tower.current(app.state)
     let floors = Tower.shown(app.state) / Tower.floorSize
     GeometryReader { geo in
@@ -149,6 +150,7 @@ struct TowerFloor: View, Equatable {
   }
 
   var body: some View {
+    let _ = Perf.body("TowerFloor")
     let first = (floor - 1) * Tower.floorSize + 1
     let levels = Array(first...(first + Tower.floorSize - 1))
     let lo = TowerSky.height(Double(first - 1)), hi = TowerSky.height(Double(first + Tower.floorSize - 1))
@@ -298,6 +300,7 @@ struct TowerLevelCard: View {
   @Environment(\.dismiss) private var dismiss
 
   var body: some View {
+    let _ = Perf.body("TowerLevelCard")
     let open = Tower.open(level.number, app.state)
     let stars = Tower.stars(level.number, app.state)
     VStack(alignment: .leading, spacing: 14) {
@@ -375,6 +378,7 @@ struct TowerPlayer: View {
   let level: TowerLevel
   @Environment(AppModel.self) private var app
   var body: some View {
+    let _ = Perf.body("TowerPlayer")
     let node = WorldNode(id: level.id, title: level.isBoss ? "Floor \(level.floor) boss" : "Level \(level.number)", art: "👑", kind: .game(.readDay))
     let rounds = Rounds(series: Array(app.candles.values).sorted { $0.s < $1.s }, seed: level.seed)
     let finish: (Int) -> Void = { s in

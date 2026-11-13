@@ -184,6 +184,7 @@ struct GameHUD: View {
   @State private var confirm = false
 
   var body: some View {
+    let _ = Perf.body("GameHUD")
     VStack(spacing: 8) {
       HStack(spacing: 12) {
         Button { if run.midRun { confirm = true } else { onClose() } } label: {
@@ -217,7 +218,7 @@ struct GameHUD: View {
         StarMeter(stars: starRule?(run.right, max(total, 1)) ?? World.starsFor(right: run.right, of: max(total, 1)), live: run.answered > 0, dark: dark)
         CoinCounter(coins: run.coins, tick: run.coinTick, dark: dark)
           .background(GeometryReader { g in Color.clear.onAppear { run.coinTarget = CGPoint(x: g.frame(in: .global).midX, y: g.frame(in: .global).midY) }
-            .onChange(of: g.frame(in: .global)) { _, f in run.coinTarget = CGPoint(x: f.midX, y: f.midY) } })
+            .onChange(of: g.frame(in: .global)) { _, f in HangTrace.mark("w:coinTarget"); run.coinTarget = CGPoint(x: f.midX, y: f.midY) } })
       }
       if let boss { BossBar(boss: boss, hp: run.bossHP) }
     }
@@ -733,27 +734,29 @@ struct ScrollsWhenShort: ViewModifier {
   /// The layout's height inside the scroll view.
   var minHeight: CGFloat = ShortRoom.minHeight
   @Environment(\.windowSafeFrame) private var window
-  @State private var room = CGRect.zero
   func body(content: Content) -> some View {
-    let fit = ShortRoom.fit(room: room, window: window, below: below)
-    VStack(spacing: 0) {
-      Group {
-        if fit.scrolls {
-          ScrollView { content.frame(minHeight: minHeight) }.scrollBounceBehavior(.basedOnSize)
-        } else {
-          content
+    let _ = Perf.body("ScrollsWhenShort")
+    // Decided inside one GeometryReader, from the room it's given, with no @State in between (0.21). The
+    // 0.19–0.20 version stored the room's global frame in @State from a background reader; on a fully open
+    // iPhone Duo that frame moved by a little on every pass (the fold's reserved region), so each write
+    // re-laid the screen out and wrote again, about 4,300 times a second until the watchdog killed the app
+    // (traced on hardware 2026-11-13). A GeometryReader's size comes only from its parent, so nothing the
+    // content does can feed back into the decision. Whole points also keep fractional jitter out of it.
+    GeometryReader { g in
+      let fit = ShortRoom.fit(room: ShortRoom.whole(g.frame(in: .global)), window: ShortRoom.whole(window), below: below)
+      VStack(spacing: 0) {
+        Group {
+          if fit.scrolls {
+            ScrollView { content.frame(minHeight: minHeight) }.scrollBounceBehavior(.basedOnSize)
+          } else {
+            content
+          }
         }
+        .frame(maxWidth: .infinity, maxHeight: fit.height ?? .infinity)
+        if fit.height != nil { Spacer(minLength: 0) }
       }
-      .frame(maxWidth: .infinity, maxHeight: fit.height ?? .infinity)
-      if fit.height != nil { Spacer(minLength: 0) }
+      .frame(width: g.size.width, height: g.size.height)
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    // Measures the room (the outer frame), never the content, so switching modes can't feed back.
-    .background(GeometryReader { g in
-      Color.clear
-        .onAppear { room = g.frame(in: .global) }
-        .onChange(of: g.frame(in: .global)) { _, f in room = f }
-    })
   }
 }
 
@@ -762,6 +765,10 @@ enum ShortRoom {
   static let minHeight: CGFloat = 560
   /// `height`: pin the content to this much of the room (the rest is off screen); nil = the whole room.
   struct Fit: Equatable { var scrolls: Bool; var height: CGFloat? }
+  /// Rounds a measured frame to whole points (an open Duo's frames sit at fractional points that drift).
+  static func whole(_ r: CGRect) -> CGRect {
+    r.isEmpty ? r : CGRect(x: r.minX.rounded(), y: r.minY.rounded(), width: r.width.rounded(), height: r.height.rounded())
+  }
   /// `room` and `window` are in the same (global) space; an empty rect means "not measured yet".
   static func fit(room: CGRect, window: CGRect, below: CGFloat = below) -> Fit {
     guard room.height > 0 else { return Fit(scrolls: false, height: nil) }
@@ -794,6 +801,7 @@ struct ReadsCameraCorner: ViewModifier {
   @State private var topTrailing = false
   @Environment(\.layoutDirection) private var direction
   func body(content: Content) -> some View {
+    let _ = Perf.body("ReadsCameraCorner")
     if #available(iOS 27.1, *) {
       // onGeometryChange re-runs whenever the regions arrive or move (reading once on appear raced them).
       content
@@ -803,7 +811,7 @@ struct ReadsCameraCorner: ViewModifier {
           let regions = g.reservedRegions(kind: .occlusion, options: [.includeInactive], layoutDirectionBehavior: .fixed)
             .map { $0.frame.offsetBy(dx: f.minX, dy: f.minY) }
           return CameraCorner.topTrailing(regions, window: f, rtl: direction == .rightToLeft)
-        } action: { v in topTrailing = v }
+        } action: { v in HangTrace.mark("w:CameraCorner"); topTrailing = v }
     } else {
       content   // no occlusion regions before iOS 27.1
     }

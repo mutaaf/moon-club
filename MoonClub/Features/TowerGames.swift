@@ -52,6 +52,7 @@ struct TowerRound: View {
   @Environment(AppModel.self) private var app
 
   var body: some View {
+    let _ = Perf.body("TowerRound")
     let s = level.seed &+ index &* 7919
     var g = Seeded(s)
     switch level.game(index) {
@@ -137,6 +138,7 @@ struct CandlePopRound: View {
   func good(_ s: DayStory) -> Bool { wantUp ? (s == .bigUp || s == .smallUp) : (s == .bigDown || s == .smallDown) }
 
   var body: some View {
+    let _ = Perf.body("CandlePopRound")
     VStack(spacing: 10) {
       HStack(spacing: 10) {
         Image(systemName: wantUp ? "arrow.up.circle.fill" : "arrow.down.circle.fill").font(.title2)
@@ -274,6 +276,7 @@ struct MemoryRound: View {
   }
 
   var body: some View {
+    let _ = Perf.body("MemoryRound")
     let cs = cards
     let cols = cs.count <= 6 ? 3 : 4
     let rows = (cs.count + cols - 1) / cols
@@ -412,6 +415,7 @@ struct LadderRound: View {
   }
 
   var body: some View {
+    let _ = Perf.body("LadderRound")
     let ms = moves
     let cs = ms.indices.map { candle(ms[$0], $0) }
     let lo = (cs.map(\.l).min() ?? 95) - 0.6, hi = (cs.map(\.h).max() ?? 105) + 0.6

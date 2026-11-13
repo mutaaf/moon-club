@@ -175,6 +175,7 @@ struct DrillStage<Prompt: View, Chart: View, Controls: View>: View {
   @Environment(DuoModel.self) private var duo: DuoModel?
 
   var body: some View {
+    let _ = Perf.body("DrillStage")
     if duo?.pose == .tabletop {
       TabletopStage(active: $tabletop, dark: false) {
         VStack(spacing: 10) { prompt; ChartCard(caption: caption) { chart } }
@@ -270,6 +271,7 @@ struct HingeKnob: ViewModifier {
   @State private var used = false
   var live: Bool { enabled && duo?.reading?.status == .partiallyOpen }
   func body(content: Content) -> some View {
+    let _ = Perf.body("HingeKnob")
     content
       .onChange(of: duo?.reading?.degrees) { _, deg in
         guard live, let deg else { return }
