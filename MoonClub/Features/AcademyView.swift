@@ -377,3 +377,75 @@ struct AcademyPlayer: View {
     }
   }
 }
+
+/// The Moon Arcade on the home screen (0.21): one door per climb, right under Start here. A door opens its
+/// climb's path; the header opens the whole Arcade. The same pages the World map's purple chip opens.
+struct ArcadeShelf: View {
+  @Environment(AppModel.self) private var app
+  @State private var hub = false
+  @State private var track: AcademyTrack?
+  @State private var tower = false
+
+  enum Door: CaseIterable { case candles, lines, tower }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Button { hub = true } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "gamecontroller.fill").foregroundStyle(Hue.grape.text)
+          Text("Moon Arcade").font(.kHeadline)
+          Spacer(minLength: 4)
+          Text("See all").font(.subheadline.weight(.bold)).foregroundStyle(Palette.accentInk)
+          Image(systemName: "chevron.right").font(.caption.weight(.heavy)).foregroundStyle(Palette.accentInk)
+        }
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Moon Arcade: see all three climbs")
+      HStack(spacing: 10) {
+        ForEach(Door.allCases, id: \.self) { d in door(d) }
+      }
+    }
+    .navigationDestination(isPresented: $hub) { ArcadeHub() }
+    .navigationDestination(item: $track) { AcademyPath(track: $0) }
+    .navigationDestination(isPresented: $tower) { TowerView() }
+    .onAppear {
+      #if DEBUG
+      // Screenshots: -shelf hub|candles|lines|tower opens that door from the home screen.
+      let a = ProcessInfo.processInfo.arguments
+      if let i = a.firstIndex(of: "-shelf"), i + 1 < a.count {
+        switch a[i + 1] { case "hub": hub = true; case "tower": tower = true; default: track = AcademyTrack(rawValue: a[i + 1]) }
+      }
+      #endif
+    }
+  }
+
+  private func door(_ d: Door) -> some View {
+    let (title, symbol, hues, level): (String, String, [Hue], Int) = {
+      switch d {
+      case .candles: return ("Candles", AcademyTrack.candles.symbol, [.coral, .orange], Academy.current(.candles, app.state))
+      case .lines: return ("Line Lab", AcademyTrack.lines.symbol, [.teal, .sky], Academy.current(.lines, app.state))
+      case .tower: return ("Tower", "stairs", [.grape, .berry], Tower.current(app.state))
+      }
+    }()
+    let full: String = d == .candles ? AcademyTrack.candles.title : d == .lines ? AcademyTrack.lines.title : "Moon Tower"
+    return Button {
+      switch d { case .candles: track = .candles; case .lines: track = .lines; case .tower: tower = true }
+    } label: {
+      VStack(alignment: .leading, spacing: 6) {
+        Image(systemName: symbol).font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
+          .frame(width: 42, height: 42).background(.white.opacity(0.22), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        Text(title).font(.system(.subheadline, design: .rounded).weight(.heavy)).foregroundStyle(.white)
+          .lineLimit(1).minimumScaleFactor(0.7)
+        Text("Level \(level)").font(.caption.weight(.heavy)).monospacedDigit().foregroundStyle(.white.opacity(0.92))
+          .lineLimit(1).minimumScaleFactor(0.7)
+      }
+      .padding(12)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(LinearGradient(colors: hues.map(\.color), startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+      .shadow(color: hues[0].color.opacity(0.3), radius: 8, y: 4)
+    }
+    .buttonStyle(PressStyle())
+    .accessibilityLabel("\(full), level \(level)")
+  }
+}
