@@ -60,6 +60,7 @@ struct StoryView: View {
           HStack(alignment: .top, spacing: 24) {
             hero(step).frame(width: left)
             VStack(alignment: .leading, spacing: 16) {
+              ArcadeShelf()
               MissionStrip(hero: step, go: go)
               more(width: fold.width - left - 24)
             }
@@ -68,6 +69,7 @@ struct StoryView: View {
         } else {
           VStack(alignment: .leading, spacing: 16) {
             hero(step)
+            ArcadeShelf()
             MissionStrip(hero: step, go: go)
             more(width: fold.width)
           }
@@ -82,6 +84,7 @@ struct StoryView: View {
       BookPage(center: true) { hero(step, tall: true) }
     } second: {
       BookPage(spacing: 16) {
+        ArcadeShelf()
         MissionStrip(hero: step, go: go)
         more(width: 0, book: true)
       }
