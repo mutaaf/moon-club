@@ -364,7 +364,11 @@ SIMPLE AND SAFE
 - Widgets and Live Activities for streaks and missions
 - Works on iPhone and iPad
 
-Moon Club teaches how markets work. It is for learning and fun, not investment advice.`,
+Moon Club teaches how markets work. It is for learning and fun, not investment advice.
+
+MOON CLUB PASS: an optional auto-renewable yearly subscription that opens every Arcade level with no breaks. Payment is charged to your Apple Account at confirmation of purchase. It renews automatically unless turned off at least 24 hours before the end of the current period; manage or cancel it any time in your Apple Account settings.
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://mutaafaziz.com/metaphases/kids/privacy`,
   supportUrl: "https://mutaafaziz.com/metaphases/kids/support",
   marketingUrl: "https://mutaafaziz.com/metaphases/kids",
   privacyPolicyUrl: "https://mutaafaziz.com/metaphases/kids/privacy",
