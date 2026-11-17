@@ -24,8 +24,14 @@ public struct PlayLedger: Codable, Hashable, Sendable {
   public var breaks: Int = 0
   public init() {}
   public init(day: String, opened: [String] = [], breaks: Int = 0) { self.day = day; self.opened = opened; self.breaks = breaks }
-  /// The ledger as it stands today (a new day starts empty).
-  public func on(_ today: String) -> PlayLedger { day == today ? self : PlayLedger(day: today) }
+  /// The ledger as it stands today (a new day starts empty). 0.22: a clock moved *back* (today before the ledger's
+  /// day) carries the ledger onto today, so winding the date forward and back never hands out a fresh day, and
+  /// a date set far ahead never locks the next real days either.
+  public func on(_ today: String) -> PlayLedger {
+    if day == today { return self }
+    if !day.isEmpty && today < day { return PlayLedger(day: today, opened: opened, breaks: breaks) }
+    return PlayLedger(day: today)
+  }
 }
 
 public enum PlayPlan {
@@ -71,6 +77,43 @@ public enum PlayPlan {
     return canBreak(ledger, today: today) ? .needsBreak : .doneForToday
   }
 
+  /// Today at a glance (the moons in the limit sheet, the card and the grown-up corner).
+  public struct Today: Equatable, Sendable {
+    public let pass: Bool
+    /// New levels opened today.
+    public let used: Int
+    /// New levels today allows so far (the daily ones plus what finished breaks opened).
+    public let allowance: Int
+    public let breaksUsed: Int
+    public var left: Int { max(0, allowance - used) }
+    public var breaksLeft: Int { max(0, PlayPlan.breaksPerDay - breaksUsed) }
+    /// The most new levels a day can ever open without the pass.
+    public static var most: Int { PlayPlan.dailyFree + PlayPlan.perBreak * PlayPlan.breaksPerDay }
+    /// One slot per possible new level today, in order: used, open, or still behind a break.
+    public enum Slot: Equatable, Sendable { case used, open, locked }
+    public var slots: [Slot] {
+      (0..<Today.most).map { i in i < used ? .used : i < allowance ? .open : .locked }
+    }
+  }
+  public static func today(_ l: PlayLedger, pass: Bool, today: String) -> Today {
+    let t = l.on(today)
+    return Today(pass: pass, used: t.opened.count, allowance: allowance(l, today: today), breaksUsed: min(t.breaks, breaksPerDay))
+  }
+
+  /// "New levels in 5 h 12 min" (minutes until the device's midnight). Kid-facing and short.
+  public static func resetLine(minutes: Int) -> String {
+    let m = max(1, minutes)
+    if m < 60 { return m == 1 ? "New levels in 1 minute" : "New levels in \(m) minutes" }
+    let h = m / 60, r = m % 60
+    return r == 0 ? "New levels in \(h) h" : "New levels in \(h) h \(r) min"
+  }
+  /// Minutes from `now` to the next midnight in `tz`.
+  public static func minutesToTomorrow(_ now: Date = Date(), tz: TimeZone = .current) -> Int {
+    var c = Calendar(identifier: .gregorian); c.timeZone = tz
+    guard let next = c.nextDate(after: now, matching: DateComponents(hour: 0, minute: 0), matchingPolicy: .nextTime) else { return 1 }
+    return Int((next.timeIntervalSince(now) / 60).rounded(.up))
+  }
+
   /// Records a play (only counted levels change the ledger).
   public static func record(_ c: Climb, number: Int, id: String, won: Bool, pass: Bool, ledger: PlayLedger, today: String) -> PlayLedger {
     guard case .counted = check(c, number: number, id: id, won: won, pass: pass, ledger: ledger, today: today) else { return ledger.on(today) }
@@ -101,7 +144,11 @@ public enum PlayPlan {
       ? "Great climbing! New levels open again tomorrow. You can still replay any level you've won."
       : "Take a short break to open \(perBreak) more, or replay any level you've won."
   }
+  public static func breakButton(left: Int) -> String { left == 1 ? "Take today's last break" : "Take a short break" }
   public static let breakButton = "Take a short break"
+  public static let replayButton = "Replay a level I've won"
+  public static let collectButton = "Collect \(perBreak) new levels"
+  public static let collected = "\(perBreak) new levels are open!"
   public static let askButton = "Ask a grown-up"
   public static let askLine = "A grown-up can open every level with Moon Club Pass."
 
@@ -120,6 +167,53 @@ public enum PlayPlan {
     ("plus.forwardslash.minus", "A doji is a tiny-body candle: buyers and sellers tied."),
     ("arrow.down.right", "A filled red candle means the price ended lower than it started."),
   ]
+  /// 0.22: Luna's break is a tiny quiz, so the 15 seconds teach something. One true-or-false question per fact,
+  /// written at reading grade ≤ 5; a miss is never scolded (`why` explains it either way).
+  public struct Quiz: Equatable, Sendable {
+    public let symbol: String
+    public let fact: String
+    public let question: String
+    public let choices: [String]
+    public let answer: Int
+    public let why: String
+  }
+  public static let quizzes: [Quiz] = [
+    Quiz(symbol: "chart.bar.fill", fact: facts[0].line, question: "How many days does one candle show?", choices: ["One day", "One year"], answer: 0,
+         why: "Each candle is one day of prices."),
+    Quiz(symbol: "arrow.up.right", fact: facts[1].line, question: "A hollow green candle ended the day…", choices: ["Higher", "Lower"], answer: 0,
+         why: "Green and hollow means it closed above where it opened."),
+    Quiz(symbol: "hand.raised.fill", fact: facts[2].line, question: "If buyers pull harder, the price goes…", choices: ["Up", "Down"], answer: 0,
+         why: "More buyers than sellers pushes the price up."),
+    Quiz(symbol: "line.diagonal", fact: facts[3].line, question: "A rising trend line joins the…", choices: ["Low points", "High points"], answer: 0,
+         why: "When prices climb, the line goes under the lows, like steps."),
+    Quiz(symbol: "square.split.1x2", fact: facts[4].line, question: "A floor is where buyers keep…", choices: ["Stopping the fall", "Running away"], answer: 0,
+         why: "Buyers step in at the floor, so the price stops falling there."),
+    Quiz(symbol: "waveform.path.ecg", fact: facts[5].line, question: "A moving average makes the line…", choices: ["Smoother", "Wigglier"], answer: 0,
+         why: "It averages many days, so the wiggles blur out."),
+    Quiz(symbol: "person.3.fill", fact: facts[6].line, question: "A tall volume bar means…", choices: ["Lots of trading", "A quiet day"], answer: 0,
+         why: "Volume counts how much was traded that day."),
+    Quiz(symbol: "lightbulb.fill", fact: facts[7].line, question: "Can a chart promise what happens next?", choices: ["No, only clues", "Yes, always"], answer: 0,
+         why: "Charts give clues. Nobody knows the future for sure."),
+    Quiz(symbol: "hourglass", fact: facts[8].line, question: "Who often does better?", choices: ["Patient planters", "Minute checkers"], answer: 0,
+         why: "Waiting and planning usually beats checking all the time."),
+    Quiz(symbol: "basket.fill", fact: facts[9].line, question: "Which is safer?", choices: ["Many baskets", "One basket"], answer: 0,
+         why: "If one basket drops, the other eggs are still fine."),
+    Quiz(symbol: "plus.forwardslash.minus", fact: facts[10].line, question: "A doji means buyers and sellers…", choices: ["Tied", "Gave up"], answer: 0,
+         why: "The price ended right where it started: a tie."),
+    Quiz(symbol: "arrow.down.right", fact: facts[11].line, question: "A filled red candle ended the day…", choices: ["Lower", "Higher"], answer: 0,
+         why: "Red and filled means it closed below where it opened."),
+  ]
+  /// Today's quiz for break `n`, with the choices shuffled the same way every time (so the right one isn't always first).
+  public static func quiz(day: String, n: Int) -> Quiz {
+    let h = day.unicodeScalars.reduce(UInt32(7)) { ($0 &* 31) &+ $1.value }
+    let i = (Int(h % UInt32(quizzes.count)) + n) % quizzes.count
+    let q = quizzes[i]
+    guard (n + i / 2 + Int(h % 5)) % 2 == 1 else { return q }
+    return Quiz(symbol: q.symbol, fact: q.fact, question: q.question, choices: q.choices.reversed(), answer: q.choices.count - 1 - q.answer, why: q.why)
+  }
+  public static let rightLine = "Yes! You got it."
+  public static let missLine = "Good guess! Here's the trick:"
+
   public static func fact(day: String, n: Int) -> (symbol: String, line: String) {
     let h = day.unicodeScalars.reduce(UInt32(7)) { ($0 &* 31) &+ $1.value }
     return facts[(Int(h % UInt32(facts.count)) + n) % facts.count]

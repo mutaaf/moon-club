@@ -63,4 +63,62 @@ final class PassTests: XCTestCase {
     XCTAssertEqual(Set(PlayPlan.facts.map(\.line)).count, PlayPlan.facts.count)
     XCTAssertNotEqual(PlayPlan.fact(day: day, n: 0).line, PlayPlan.fact(day: day, n: 1).line)
   }
+
+  func testClockMovedBackNeverGivesAFreshDay() {
+    let used = PlayLedger(day: "2026-11-14", opened: ["a", "b", "c"], breaks: 2)
+    XCTAssertEqual(PlayPlan.left(used, today: "2026-11-13"), PlayPlan.left(used, today: "2026-11-14"))
+    XCTAssertEqual(used.on("2026-11-13").day, "2026-11-13", "carried onto today, so the next real day is fresh")
+    XCTAssertEqual(PlayPlan.left(used.on("2026-11-13"), today: "2026-11-14"), PlayPlan.dailyFree)
+    XCTAssertEqual(PlayPlan.left(used, today: "2026-11-15"), PlayPlan.dailyFree, "moving forward is a new day")
+    XCTAssertEqual(PlayLedger().on(day), PlayLedger(day: day))
+  }
+
+  func testTodaySlots() {
+    let l = PlayLedger(day: day, opened: ["a", "b", "c", "d"], breaks: 1)
+    let t = PlayPlan.today(l, pass: false, today: day)
+    XCTAssertEqual(t.used, 4); XCTAssertEqual(t.allowance, PlayPlan.dailyFree + PlayPlan.perBreak); XCTAssertEqual(t.left, 2)
+    XCTAssertEqual(t.breaksLeft, PlayPlan.breaksPerDay - 1)
+    XCTAssertEqual(t.slots.count, PlayPlan.Today.most)
+    XCTAssertEqual(t.slots.filter { $0 == .used }.count, 4)
+    XCTAssertEqual(t.slots.filter { $0 == .open }.count, 2)
+    XCTAssertEqual(t.slots.filter { $0 == .locked }.count, PlayPlan.Today.most - 6)
+    XCTAssertEqual(PlayPlan.today(l, pass: false, today: "2026-11-13").used, 0)
+  }
+
+  func testResetLine() {
+    XCTAssertEqual(PlayPlan.resetLine(minutes: 1), "New levels in 1 minute")
+    XCTAssertEqual(PlayPlan.resetLine(minutes: 0), "New levels in 1 minute")
+    XCTAssertEqual(PlayPlan.resetLine(minutes: 45), "New levels in 45 minutes")
+    XCTAssertEqual(PlayPlan.resetLine(minutes: 120), "New levels in 2 h")
+    XCTAssertEqual(PlayPlan.resetLine(minutes: 312), "New levels in 5 h 12 min")
+    let tz = TimeZone(identifier: "America/Chicago")!
+    var c = Calendar(identifier: .gregorian); c.timeZone = tz
+    let at = c.date(from: DateComponents(year: 2026, month: 11, day: 16, hour: 22, minute: 30))!
+    XCTAssertEqual(PlayPlan.minutesToTomorrow(at, tz: tz), 90)
+  }
+
+  func testBreakQuizzes() {
+    XCTAssertEqual(PlayPlan.quizzes.count, PlayPlan.facts.count)
+    var firstRight = 0
+    for n in 0..<24 {
+      let q = PlayPlan.quiz(day: day, n: n)
+      XCTAssertEqual(q.choices.count, 2)
+      XCTAssertTrue(q.choices.indices.contains(q.answer))
+      if q.answer == 0 { firstRight += 1 }
+    }
+    XCTAssertTrue((1..<24).contains(firstRight), "the right answer isn't always in the same place")
+    // The shuffled copy keeps the same right answer.
+    for n in 0..<12 {
+      let q = PlayPlan.quiz(day: day, n: n)
+      let base = PlayPlan.quizzes.first { $0.question == q.question }!
+      XCTAssertEqual(q.choices[q.answer], base.choices[base.answer])
+    }
+    let lines = PlayPlan.quizzes.flatMap { [$0.fact, $0.question, $0.why] + $0.choices } + [PlayPlan.rightLine, PlayPlan.missLine, PlayPlan.replayButton,
+      PlayPlan.collectButton, PlayPlan.collected, PlayPlan.breakButton(left: 1), PlayPlan.resetLine(minutes: 312)]
+    for s in lines {
+      let l = " \(s.lowercased()) "
+      for bad in [" buy ", " sell ", " pay ", "money", "cash", "should", "hurry", " ad ", " ads ", "wrong", "$"] { XCTAssertFalse(l.contains(bad), s) }
+      XCTAssertLessThanOrEqual(s.count, 100, s)
+    }
+  }
 }

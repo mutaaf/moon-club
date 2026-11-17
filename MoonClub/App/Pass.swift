@@ -11,6 +11,12 @@ final class PassModel {
   private(set) var active: Bool
   private(set) var ledger: PlayLedger
   private(set) var product: Product?
+  /// When the current pass year ends (renews or stops), from the verified transaction. nil when off or unknown.
+  private(set) var expires: Date?
+  /// A purchase is waiting for a family organizer's OK (Ask to Buy). Turns on by itself once approved.
+  var pending = false
+  /// Bumps when the pass turns on while the app is open (the kid-side "Moon Club Pass is on!" party).
+  private(set) var turnedOn = 0
   @ObservationIgnored private var updates: Task<Void, Never>?
   @ObservationIgnored private let defaults: UserDefaults
   @ObservationIgnored private var forced: Bool?
@@ -46,10 +52,14 @@ final class PassModel {
 
   func refresh() async {
     guard forced == nil else { return }
-    var on = false
+    var on = false, ends: Date?
     for await e in Transaction.currentEntitlements {
-      if case .verified(let t) = e, t.productID == PlayPlan.productID, t.revocationDate == nil, (t.expirationDate ?? .distantFuture) > Date() { on = true }
+      if case .verified(let t) = e, t.productID == PlayPlan.productID, t.revocationDate == nil, (t.expirationDate ?? .distantFuture) > Date() {
+        on = true; ends = max(ends ?? .distantPast, t.expirationDate ?? .distantPast)
+      }
     }
+    expires = on ? ends.flatMap { $0 == .distantPast ? nil : $0 } : nil
+    if on { pending = false }
     setActive(on)
   }
 
@@ -58,12 +68,19 @@ final class PassModel {
   }
 
   /// Restore: asks the App Store to sync this Apple Account's purchases (it may ask the grown-up to sign in).
-  func restore() async { try? await AppStore.sync(); await refresh() }
+  /// Returns a short line for the grown-up corner.
+  @discardableResult
+  func restore() async -> String {
+    do { try await AppStore.sync() } catch { await refresh(); return active ? "Moon Club Pass is on." : "Couldn't reach the App Store. Try again in a moment." }
+    await refresh()
+    return active ? "Restored: Moon Club Pass is on." : "No Moon Club Pass found for this Apple Account."
+  }
 
   private func setActive(_ on: Bool) {
     guard on != active else { return }
     active = on
     defaults.set(on, forKey: Self.activeKey)
+    if on { turnedOn &+= 1 }
   }
 
   // MARK: Plays
@@ -78,6 +95,7 @@ final class PassModel {
     return true
   }
   func left(today: String) -> Int { PlayPlan.left(ledger, today: today) }
+  func plays(today: String) -> PlayPlan.Today { PlayPlan.today(ledger, pass: active, today: today) }
   func canBreak(today: String) -> Bool { PlayPlan.canBreak(ledger, today: today) }
   func finishBreak(today: String) { save(PlayPlan.finishBreak(ledger, today: today)) }
 

@@ -495,26 +495,48 @@ struct PartnerPicks: View {
 
 // MARK: Moon Club Pass (0.20): the only place it can be bought, behind the gate.
 
-/// The grown-up corner's Pass section: status, start it, restore, manage.
+/// The grown-up corner's Pass section: status (renewal date, today's moons), start it, restore, manage.
 struct PassSettings: View {
   @Environment(AppModel.self) private var app
   @State private var manage = false
   @State private var offer = false
+  @State private var restoring = false
+  @State private var note: String?
   var body: some View {
     let today = app.today
+    let plays = app.pass.plays(today: today)
     if app.pass.active {
       Label("Moon Club Pass is on: every level, no breaks.", systemImage: "checkmark.seal.fill").foregroundStyle(Palette.goodInk)
+      if let e = app.pass.expires {
+        LabeledContent("Current year ends", value: e.formatted(date: .abbreviated, time: .omitted))
+      }
       Button("Manage your subscription") { manage = true }
     } else {
-      LabeledContent("New levels left today", value: "\(app.pass.left(today: today))")
+      VStack(alignment: .leading, spacing: 10) {
+        LabeledContent("New levels left today", value: "\(plays.left)")
+        TodayMoons(plays: plays)
+        Text("\(plays.breaksUsed) of \(PlayPlan.breaksPerDay) breaks taken today").font(.caption).foregroundStyle(.secondary)
+      }
+      .padding(.vertical, 4)
+      if app.pass.pending {
+        Label("Waiting for approval (Ask to Buy). The pass turns on by itself once it's approved.", systemImage: "hourglass")
+          .font(.callout).foregroundStyle(Palette.ink2)
+      }
       Button { offer = true } label: { Label("Get Moon Club Pass", systemImage: "star.circle.fill") }
         .accessibilityIdentifier("get-pass")
     }
-    Button("Restore purchases") { Task { await app.pass.restore() } }
+    Button {
+      restoring = true
+      Task { note = await app.pass.restore(); restoring = false }
+    } label: {
+      HStack { Text("Restore purchases"); if restoring { Spacer(); ProgressView() } }
+    }
+    .disabled(restoring)
+    if let note { Text(note).font(.caption).foregroundStyle(.secondary) }
     About {
       Point("**Free forever:** the first chapter of Candle Academy and Line Lab and the first floor of Moon Tower, plus every lesson, the World map, Guess, Piggy Bank and Luna.", hue: .mint)
       Point("**Every day:** \(PlayPlan.dailyFree) new Arcade levels. A short break (\(PlayPlan.breakSeconds) seconds) opens \(PlayPlan.perBreak) more, up to \(PlayPlan.breaksPerDay) breaks a day. Replaying a level your child has won is always free.", hue: .sky)
-      Point("**Breaks** show a kid-safe sponsor's picture or video from our own ad server, or Luna with a chart fact. No ad network, no tracking, no identifiers, nothing to tap out to.", hue: .grape)
+      Point("**Breaks** show a kid-safe sponsor's picture or video from our own ad server, or Luna's one-question chart quiz. No ad network, no tracking, no identifiers, nothing to tap out to.", hue: .grape)
       Point("**Moon Club Pass** opens every level with no breaks, for a year. It renews each year until you cancel in Settings. Family Sharing is on.", hue: .lemon)
     }
     .manageSubscriptionsSheet(isPresented: $manage)
@@ -526,23 +548,35 @@ struct PassSettings: View {
 }
 
 /// The subscription sheet (StoreKit's own: price, terms, restore, its own close button). Always a sheet. Reached only from the grown-up corner or
-/// from `PlayLimitSheet` after the parental gate.
+/// from `PlayLimitSheet` after the parental gate. 0.22: a free-vs-pass table up top, Ask to Buy handled, and a
+/// thank-you with confetti once the pass is on.
 struct PassOffer: View {
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
+  @State private var party = 0
   var body: some View {
+    Group {
+      if app.pass.active { thanks } else { store }
+    }
+    .onChange(of: app.pass.active) { _, on in if on { party &+= 1 } }
+    #if DEBUG
+    .onAppear { if ProcessInfo.processInfo.arguments.contains("-passThanks") { party &+= 1 } }
+    #endif
+  }
+
+  private var store: some View {
     SubscriptionStoreView(productIDs: [PlayPlan.productID]) {
       VStack(spacing: 14) {
-        Luna(size: 96, mood: .cheering)
+        Luna(size: 84, mood: .cheering)
         Text("Moon Club Pass").font(.kHero)
-        VStack(alignment: .leading, spacing: 8) {
-          Label("All \(AcademyTrack.candles.mainLevels) Candle Academy levels", systemImage: "chart.bar.xaxis")
-          Label("All \(AcademyTrack.lines.mainLevels) Line Lab levels", systemImage: "chart.line.uptrend.xyaxis")
-          Label("Every Moon Tower floor", systemImage: "building.2.fill")
-          Label("No breaks between levels", systemImage: "forward.fill")
+        Text("Every Arcade level, no breaks, for a year.").font(.callout.weight(.semibold)).foregroundStyle(Palette.ink2).multilineTextAlignment(.center)
+        PassTable()
+        if app.pass.pending {
+          Label("Waiting for approval (Ask to Buy). It turns on by itself once it's approved.", systemImage: "hourglass")
+            .font(.footnote.weight(.semibold)).foregroundStyle(Palette.ink2).multilineTextAlignment(.center)
         }
-        .font(.callout.weight(.semibold))
-        Text("Pretend money in the games, always. Nothing about your child leaves this device.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        Text("Pretend money in the games, always. Nothing about your child leaves this device. Family Sharing is on.")
+          .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
       }
       .padding(.horizontal, 20).padding(.top, 12)
     }
@@ -551,6 +585,67 @@ struct PassOffer: View {
     .subscriptionStorePolicyDestination(url: URL(string: "https://mutaafaziz.com/metaphases/kids/privacy")!, for: .privacyPolicy)
     .subscriptionStorePolicyDestination(url: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!, for: .termsOfService)
     .storeButton(.visible, for: .cancellation)
-    .onInAppPurchaseCompletion { _, _ in await app.pass.refresh(); if app.pass.active { dismiss() } }
+    .onInAppPurchaseCompletion { _, result in
+      if case .success(.pending) = result { app.pass.pending = true }
+      await app.pass.refresh()
+    }
+  }
+
+  private var thanks: some View {
+    ZStack {
+      VStack(spacing: 18) {
+        Spacer(minLength: 0)
+        Luna(size: 120, wave: true, mood: .cheering)
+        Image(systemName: "checkmark.seal.fill").font(.system(size: 44, weight: .bold)).foregroundStyle(Hue.gold.color)
+        Text("Moon Club Pass is on!").font(.kHero).multilineTextAlignment(.center)
+        Text("Every level in Candle Academy, Line Lab and Moon Tower is open, with no breaks. Thank you for supporting Moon Club.")
+          .font(.body).foregroundStyle(Palette.ink2).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+        if let e = app.pass.expires { Text("This year runs until \(e.formatted(date: .long, time: .omitted)).").font(.footnote).foregroundStyle(.secondary) }
+        Spacer(minLength: 0)
+        Button("Back to the climb") { dismiss() }.buttonStyle(ChunkyPrimary()).accessibilityIdentifier("pass-done")
+      }
+      .padding(24).readable(520)
+      Celebrate(trigger: party, tier: .large).allowsHitTesting(false).accessibilityHidden(true)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(AuroraField(surface: .luna).ignoresSafeArea())
+    .sensoryFeedback(.success, trigger: party)
+  }
+}
+
+/// Free vs Pass, side by side (grown-up facing).
+private struct PassTable: View {
+  var body: some View {
+    let rows: [(String, String, String)] = [
+      ("First chapter of each climb", "checkmark", "checkmark"),
+      ("Lessons, map, Guess, Piggy, Luna", "checkmark", "checkmark"),
+      ("New Arcade levels a day", "\(PlayPlan.dailyFree) + breaks", "Every level"),
+      ("Short breaks between levels", "Yes", "None"),
+    ]
+    VStack(spacing: 0) {
+      HStack {
+        Text("").frame(maxWidth: .infinity, alignment: .leading)
+        Text("Free").font(.caption.weight(.heavy)).frame(width: 84)
+        Text("Pass").font(.caption.weight(.heavy)).foregroundStyle(Hue.gold.text).frame(width: 96)
+      }
+      .padding(.bottom, 6)
+      ForEach(rows.indices, id: \.self) { i in
+        HStack(alignment: .center) {
+          Text(rows[i].0).font(.footnote.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+          cell(rows[i].1).frame(width: 84)
+          cell(rows[i].2, pass: true).frame(width: 96)
+        }
+        .padding(.vertical, 8)
+        if i < rows.count - 1 { Divider() }
+      }
+    }
+    .padding(14)
+    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Palette.card))
+    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Palette.line))
+    .accessibilityElement(children: .combine)
+  }
+  @ViewBuilder private func cell(_ v: String, pass: Bool = false) -> some View {
+    if v == "checkmark" { Image(systemName: "checkmark.circle.fill").foregroundStyle(pass ? Hue.gold.color : Palette.goodInk) }
+    else { Text(v).font(.caption.weight(.bold)).multilineTextAlignment(.center).foregroundStyle(pass ? Hue.gold.text : Palette.ink2).fixedSize(horizontal: false, vertical: true) }
   }
 }
