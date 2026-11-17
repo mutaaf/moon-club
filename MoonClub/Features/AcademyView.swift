@@ -399,6 +399,9 @@ struct ArcadeShelf: View {
         HStack(spacing: 8) {
           Image(systemName: "gamecontroller.fill").foregroundStyle(Hue.grape.text)
           Text("Moon Arcade").font(.kHeadline)
+          let plays = app.pass.plays(today: app.today)
+          if plays.pass { Image(systemName: "checkmark.seal.fill").font(.caption.weight(.bold)).foregroundStyle(Hue.gold.text).accessibilityLabel("Moon Club Pass") }
+          else if plays.left > 0 { TodayMoons(plays: plays, compact: true) }
           Spacer(minLength: 4)
           Text("See all").font(.subheadline.weight(.bold)).foregroundStyle(Palette.accentInk)
           Image(systemName: "chevron.right").font(.caption.weight(.heavy)).foregroundStyle(Palette.accentInk)
