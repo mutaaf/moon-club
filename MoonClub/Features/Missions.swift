@@ -2,7 +2,8 @@ import SwiftUI
 import MoonClubCore
 
 /// Opens a tab from anywhere (Today's missions sends you to Guess).
-struct OpenTab { let open: (Tab) -> Void; func callAsFunction(_ t: Tab) { open(t) } }
+/// One stable box, like `OpenQuest` (0.23 perf).
+struct OpenTab { let box: ActionBox<Tab>; init(box: ActionBox<Tab>) { self.box = box }; init(_ f: @escaping (Tab) -> Void) { box = ActionBox(f) }; func callAsFunction(_ t: Tab) { box.f(t) } }
 private struct OpenTabKey: EnvironmentKey { static let defaultValue = OpenTab { _ in } }
 extension EnvironmentValues { var openTab: OpenTab { get { self[OpenTabKey.self] } set { self[OpenTabKey.self] = newValue } } }
 

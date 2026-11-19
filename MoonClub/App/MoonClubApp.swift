@@ -80,6 +80,7 @@ struct MoonClubApp: App {
         model.candleLoader = { await LiveMarketData.kidsCandles(Array(AppModel.bundledCandles.keys)) }
         Task { await model.refreshCandles() }
         model.pass.start()
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil { Diagnostics.start() }
       }
       app = model
     } catch {

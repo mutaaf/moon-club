@@ -9,6 +9,11 @@ import MoonClubCore
 /// plain buttons; the cloud parallax uses `visualEffect` (no state writes while scrolling).
 struct WorldView: View {
   @Environment(AppModel.self) private var app
+  /// 0.23 perf: while another tab is on screen the map reads a frozen copy of the state, so banking points on
+  /// the Story no longer re-renders every stop, banner and the sea behind a hidden tab (`-bench`: bank10).
+  @Environment(\.tabActive) private var tabActive
+  @State private var frozen: KidsState?
+  private var state: KidsState { (tabActive ? nil : frozen) ?? app.state }
   @Environment(\.openQuest) private var openQuest
   @Environment(\.accessibilityReduceMotion) private var rm
   @State private var selected: WorldNode?
@@ -42,8 +47,11 @@ struct WorldView: View {
 
   var body: some View {
     let _ = Perf.body("WorldView")
+    #if DEBUG
+    let _ = { if Perf.on && ProcessInfo.processInfo.arguments.contains("-changes") { Self._printChanges() } }()
+    #endif
     let regions = World.regions(app.content)
-    let cur = World.current(regions, app.state, app.content)
+    let cur = World.current(regions, state, app.content)
     let currentNode = regions.isEmpty ? nil : regions[cur.region].nodes[cur.node]
     GeometryReader { geo in
       let side = WorldView.panelSplit(size: geo.size, fold: fold)
@@ -80,7 +88,7 @@ struct WorldView: View {
     .navigationDestination(isPresented: $tower) { TowerView() }
     .navigationDestination(isPresented: $arcade) { ArcadeHub() }
     .onAppear {
-      conquered = Set(regions.filter { World.conquered($0, app.state, app.content) }.map(\.id))
+      conquered = Set(regions.filter { World.conquered($0, state, app.content) }.map(\.id))
       atlasPage = cur.region
       if let id = app.pendingLesson { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } }
       if app.pendingMoonSchool { app.pendingMoonSchool = false; library = true }
@@ -90,21 +98,21 @@ struct WorldView: View {
       #if DEBUG
       if a.contains("-library") { library = true }
       // Moon Tower: -towerAt N climbs to level N (stars on every level below), -tower opens it.
-      if let i = a.firstIndex(of: "-towerAt"), i + 1 < a.count, let n = Int(a[i + 1]), Tower.current(app.state) < n {
+      if let i = a.firstIndex(of: "-towerAt"), i + 1 < a.count, let n = Int(a[i + 1]), Tower.current(state) < n {
         app.mutate { s in for k in 1..<max(2, n) { s.earn(Tower.id(k), stars: 1 + (k * 7) % 3) } }
       }
       if a.contains("-tower") || a.contains("-towerPlay") || a.contains("-towerCard") { tower = true }
       // Chart Academy: -academyAt N (stars on 1…N-1 of the -academy track), -arcade or -academy candles|lines opens it.
       if let i = a.firstIndex(of: "-academyAt"), i + 1 < a.count, let n = Int(a[i + 1]) {
         let t = a.firstIndex(of: "-academy").flatMap { $0 + 1 < a.count ? AcademyTrack(rawValue: a[$0 + 1]) : nil } ?? .candles
-        if Academy.current(t, app.state) < n { app.mutate { s in for k in 1..<max(2, n) { s.earn(Academy.id(t, k), stars: 1 + (k * 7) % 3) } } }
+        if Academy.current(t, state) < n { app.mutate { s in for k in 1..<max(2, n) { s.earn(Academy.id(t, k), stars: 1 + (k * 7) % 3) } } }
       }
       if a.contains("-arcade") || a.contains("-academy") { arcade = true }
       // Screen recordings: -conquer wins the current land after a moment (fog lifts, flag, rocket flies on).
       if a.contains("-conquer") {
         Task {
           try? await Task.sleep(for: .seconds(2))
-          let cur = World.current(regions, app.state, app.content)
+          let cur = World.current(regions, state, app.content)
           for n in regions[cur.region].nodes { app.mutate { $0.earn(n.id, stars: 3) } }
         }
       }
@@ -112,18 +120,19 @@ struct WorldView: View {
     }
     .onChange(of: app.pendingMoonSchool) { _, on in if on { app.pendingMoonSchool = false; library = true } }
     .onChange(of: app.pendingLesson) { _, id in if let id { app.pendingLesson = nil; lesson = app.content.lessons.first { $0.id == id } } }
-    .onChange(of: regions.filter { World.conquered($0, app.state, app.content) }.map(\.id)) { _, now in
+    .onChange(of: regions.filter { World.conquered($0, state, app.content) }.map(\.id)) { _, now in
       let fresh = Set(now).subtracting(conquered)
       conquered = Set(now)
       if !fresh.isEmpty { burst += 1; PartyCenter.shared.fire(.landWon, title: "Land won!") }
     }
     // A land that just opened: its fog burns away (shader dissolve) instead of simply vanishing.
-    .onChange(of: regions.indices.filter { World.regionOpen($0, regions, app.state, app.content) }.map { regions[$0].id }) { old, now in
+    .onChange(of: regions.indices.filter { World.regionOpen($0, regions, state, app.content) }.map { regions[$0].id }) { old, now in
       guard !rm else { return }
       for id in Set(now).subtracting(old) { burning[id] = Date() }
       Task { try? await Task.sleep(for: .seconds(FogFX.burn + 0.2)); burning = [:] }
     }
     .onChange(of: atlasPage) { _, p in if let r = regions[safe: p] { atlasTarget = "banner-\(r.id)" } }
+    .onChange(of: tabActive, initial: true) { _, on in frozen = on ? nil : app.state }
     .overlay(Celebrate(trigger: burst))
     .sensoryFeedback(.success, trigger: burst)
   }
@@ -134,7 +143,7 @@ struct WorldView: View {
     case let .lesson(l): lesson = app.content.lessons.first { $0.id == l }
     case let .unit(u):
       let ls = app.content.lessons.filter { $0.unit == u }
-      lesson = ls.first { !app.state.lessons.contains($0.id) } ?? ls.first
+      lesson = ls.first { !state.lessons.contains($0.id) } ?? ls.first
     default: playing = n
     }
   }
@@ -158,16 +167,16 @@ struct WorldView: View {
   private func map(_ regions: [Region], current: (region: Int, node: Int), width: CGFloat, header: Bool = true) -> some View {
     let z = min(1.7, max(1, zoom * pinch))
     let layout = MapLayout(regions: regions, width: width * z)
-    let mysteryID = Mystery.claimed(app.state, today: app.today) ? nil : Mystery.node(app.state, app.content, today: app.today)?.id
+    let mysteryID = Mystery.claimed(state, today: app.today) ? nil : Mystery.node(state, app.content, today: app.today)?.id
     return ScrollViewReader { proxy in
       ScrollView([.vertical, .horizontal], showsIndicators: false) {
         ZStack(alignment: .topLeading) {
-          MapCanvas(layout: layout, regions: regions, state: app.state, content: app.content)
+          MapCanvas(layout: layout, regions: regions, state: state, content: app.content)
             .frame(width: layout.size.width, height: layout.size.height)
           // Every marker sits at its own frame (MapPlacement), so scrollTo and hit-testing see real sizes.
           MapPlacement {
             ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
-              let open = World.regionOpen(ri, regions, app.state, app.content)
+              let open = World.regionOpen(ri, regions, state, app.content)
               ForEach(Array(MapDecor.items(for: r, ri).enumerated()), id: \.offset) { _, d in
                 Glyph(symbol: d.symbol, hue: open ? hue(r) : .slate, size: d.size, style: .plain)
                   .opacity(open ? 0.6 : 0.25)
@@ -191,15 +200,15 @@ struct WorldView: View {
           .allowsHitTesting(false)
           MapPlacement {
             ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
-              let open = World.regionOpen(ri, regions, app.state, app.content)
-              RegionBanner(region: r, open: open, conquered: World.conquered(r, app.state, app.content))
+              let open = World.regionOpen(ri, regions, state, app.content)
+              RegionBanner(region: r, open: open, conquered: World.conquered(r, state, app.content))
                 .equatable()
                 .id("banner-\(r.id)")
                 .place(layout.banner(ri))
               if open {
                 ForEach(Array(r.nodes.enumerated()), id: \.element.id) { ni, n in
-                  let nodeOpen = World.nodeOpen(n, in: r, regionOpen: true, app.state, app.content)
-                  NodeButton(node: n, stars: World.stars(n, app.state, app.content), open: nodeOpen,
+                  let nodeOpen = World.nodeOpen(n, in: r, regionOpen: true, state, app.content)
+                  NodeButton(node: n, stars: World.stars(n, state, app.content), open: nodeOpen,
                              current: current.region == ri && current.node == ni, hue: hue(r),
                              mystery: n.id == mysteryID,
                              tap: { if nodeOpen { play(n) } else { selected = n } }, info: { selected = n })
@@ -211,21 +220,21 @@ struct WorldView: View {
               }
             }
             ForEach(Array(regions.enumerated()), id: \.element.id) { ri, r in
-              if World.conquered(r, app.state, app.content) {
-                PlantedFlag(hue: hue(r), flag: Shop.equipped(.flag, app.state)).allowsHitTesting(false).place(layout.decor(ri, angle: -.pi / 2 + (ri % 2 == 0 ? -0.5 : 0.5), radius: 0.5))
+              if World.conquered(r, state, app.content) {
+                PlantedFlag(hue: hue(r), flag: Shop.equipped(.flag, state)).allowsHitTesting(false).place(layout.decor(ri, angle: -.pi / 2 + (ri % 2 == 0 ? -0.5 : 0.5), radius: 0.5))
                   .transition(.move(edge: .top).combined(with: .opacity))
               }
             }
             if layout.nodeIfAny(current.region, current.node, regions) != nil {
               let target = layout.rocketCenter(current.region, current.node, regions[current.region])
-              RocketLuna(skin: Skins.current(app.state)).rotationEffect(.degrees(rocketTilt)).allowsHitTesting(false).place(rocketAt ?? target)
+              RocketLuna(skin: Skins.current(state)).rotationEffect(.degrees(rocketTilt)).allowsHitTesting(false).place(rocketAt ?? target)
                 .onAppear { rocketAt = target; rocketKey = "\(current.region)-\(current.node)" }
                 .onChange(of: target) { old, new in fly(from: rocketAt ?? old, to: new, key: "\(current.region)-\(current.node)") }
             }
           }
         }
         .frame(width: layout.size.width, height: layout.size.height)
-        .animation(Motion.safe(Motion.page, rm), value: app.state.stars)
+        .animation(Motion.safe(Motion.page, rm), value: state.stars)
       }
       .defaultScrollAnchor(.bottom)
       // The first land's banner sits at the very bottom of the map: keep it clear of the floating tab bar,
@@ -236,7 +245,7 @@ struct WorldView: View {
       // still and moves only while the kid scrolls (FXClock waitForWake), so it never animates under the glass
       // on its own.
       .background(SeaLayer(mapHeight: layout.size.height,
-                           grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, app.state, app.content) },
+                           grade: SeaLayer.grade(regions, layout: layout) { World.regionOpen($0, regions, state, app.content) },
                            scroll: mapScroll))
       .modifier(TrackMapScroll(scroll: mapScroll))
       .onChange(of: atlasTarget) { _, id in
@@ -271,7 +280,7 @@ struct WorldView: View {
     guard key != rocketKey, !rm else { rocketAt = b; rocketKey = key; return }
     rocketKey = key
     // The trail lights up behind her as she goes (in the kid's Moon Shop trail color).
-    comet = TrailComet.Flight(a: a, b: b, start: Date(), color: Color(hex: Shop.equipped(.trail, app.state)?.color ?? 0xD99A1E))
+    comet = TrailComet.Flight(a: a, b: b, start: Date(), color: Color(hex: Shop.equipped(.trail, state)?.color ?? 0xD99A1E))
     Task { try? await Task.sleep(for: .seconds(TrailComet.duration + 0.1)); comet = nil }
     let mid = CGPoint(x: (a.x + b.x) / 2 + (b.y - a.y) * 0.18, y: (a.y + b.y) / 2 - 40)
     let tilt = max(-35, min(35, Double(b.x - a.x) / 4))

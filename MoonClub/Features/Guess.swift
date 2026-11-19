@@ -4,6 +4,10 @@ import MoonClubCore
 /// Guess the Report Card: beat or miss, a bonus up/down, reveal with a why, and the Family League board.
 struct GuessView: View {
   @Environment(AppModel.self) private var app
+  /// Hidden tab: read a frozen copy of the state (0.23 perf, see `tabActive`).
+  @Environment(\.tabActive) private var tabActive
+  @State private var frozen: KidsState?
+  private var state: KidsState { (tabActive ? nil : frozen) ?? app.state }
   @Namespace private var ns
   @State private var bonus: [String: Direction] = [:]
   @State private var word: String?
@@ -25,14 +29,14 @@ struct GuessView: View {
         guessPage
       }
       .padding(20).readable()
-      .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
+      .animation(.spring(response: 0.5, dampingFraction: 0.82), value: state.guesses)
     }
     .defaultScrollAnchor(Self.startAtEnd ? .bottom : .top)
     } first: {
       BookPage(spacing: 22) { learnPage }
     } second: {
       BookPage(spacing: 22) { guessPage }
-        .animation(.spring(response: 0.5, dampingFraction: 0.82), value: app.state.guesses)
+        .animation(.spring(response: 0.5, dampingFraction: 0.82), value: state.guesses)
     }
     .background(AuroraField(surface: .guess))
     .refreshable { await app.loadMarket() }
@@ -48,7 +52,7 @@ struct GuessView: View {
     .onAppear { if ProcessInfo.processInfo.arguments.contains("-gamenight") { gameNight = true } }   // screenshots
     .task { if ProcessInfo.processInfo.arguments.contains("-seal") {
       try? await Task.sleep(for: .seconds(2))   // after the demo market loads
-      let guessed = Set(app.state.guesses.map { "\($0.s):\($0.d)" })
+      let guessed = Set(state.guesses.map { "\($0.s):\($0.d)" })
       if let e = app.upcoming.filter({ !guessed.contains($0.id) }).prefix(8).last { sealing[e.id] = .beat }
     } }   // screenshots: an envelope
     #endif
@@ -74,13 +78,13 @@ struct GuessView: View {
   /// The family league, your guesses and the report cards coming up (the right page).
   @ViewBuilder private var guessPage: some View {
         LeagueBoard()
-        let mine = app.state.guesses.sorted { $0.d < $1.d }
+        let mine = state.guesses.sorted { $0.d < $1.d }
         if !mine.isEmpty {
           Text("Your guesses").font(.kTitle)
           ForEach(mine, id: \.self) { g in RevealRow(guess: g).matchedGeometryEffect(id: "\(g.s):\(g.d)", in: ns) }
         }
         Text("Coming up").font(.kTitle)
-        let guessed = Set(app.state.guesses.map { "\($0.s):\($0.d)" })
+        let guessed = Set(state.guesses.map { "\($0.s):\($0.d)" })
         let open = app.upcoming.filter { !guessed.contains($0.id) }.prefix(8)
         if app.loadingMarket && app.events.isEmpty { ProgressView().frame(maxWidth: .infinity, minHeight: 120) }
         else if open.isEmpty { Card { Text("No new report cards from companies you know in the next three weeks. Explore Market World while you wait!").font(.kRead) } }
@@ -220,7 +224,8 @@ struct GuessView: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.accent, lineWidth: chosen ? 3 : 0))
     }
     .buttonStyle(.plain)
-    .sensoryFeedback(.impact(weight: .medium), trigger: app.state.guesses.count)
+    .sensoryFeedback(.impact(weight: .medium), trigger: state.guesses.count)
+    .onChange(of: tabActive, initial: true) { _, on in frozen = on ? nil : app.state }
     .accessibilityLabel("Guess \(co.nick) will \(p.rawValue)")
   }
 }

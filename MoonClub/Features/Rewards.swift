@@ -98,7 +98,8 @@ struct RankBadge: View {
 enum LockerTab: String, CaseIterable, Identifiable { case badges, stickers, shop, points; var id: String { rawValue }
   var title: String { ["Badges", "Stickers", "Shop", "Points"][LockerTab.allCases.firstIndex(of: self) ?? 0] }
 }
-struct OpenLocker { let open: (LockerTab) -> Void; func callAsFunction(_ t: LockerTab = .badges) { open(t) } }
+/// One stable box, like `OpenQuest` (0.23 perf: a fresh closure per RootView render re-rendered every reader).
+struct OpenLocker { let box: ActionBox<LockerTab>; init(box: ActionBox<LockerTab>) { self.box = box }; init(_ f: @escaping (LockerTab) -> Void) { box = ActionBox(f) }; func callAsFunction(_ t: LockerTab = .badges) { box.f(t) } }
 private struct OpenLockerKey: EnvironmentKey { static let defaultValue = OpenLocker { _ in } }
 extension EnvironmentValues { var openLocker: OpenLocker { get { self[OpenLockerKey.self] } set { self[OpenLockerKey.self] = newValue } } }
 

@@ -214,3 +214,10 @@ enum HangTrace {
 #else
 enum HangTrace { static let on = false; static func mark(_ name: String) {}; static func start() {} }
 #endif
+
+/// Whether this tab is the one on screen (set per tab in RootView). Hidden tabs stay alive in the TabView, so
+/// heavy ones read a frozen copy of what they show instead of observing every change (0.23 perf pass).
+private struct TabActiveKey: EnvironmentKey { static let defaultValue = true }
+extension EnvironmentValues {
+  var tabActive: Bool { get { self[TabActiveKey.self] } set { self[TabActiveKey.self] = newValue } }
+}

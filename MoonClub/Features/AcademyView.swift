@@ -362,6 +362,7 @@ struct AcademyPlayer: View {
     let node = WorldNode(id: level.id, title: name, art: "👑", kind: .game(.readDay))
     let finish: (Int) -> Void = { s in
       let first = Academy.stars(level.track, level.number, app.state) == 0 && s > 0
+      EventLog.shared.add("level.finish", "\(level.id) stars \(s)")
       app.mutate { $0.earn(level.id, stars: s); $0.play(level.isBoss ? "boss" : "game", level.id, today: app.today) }
       if level.kind == .boss && first { PartyCenter.shared.fire(.bossBeaten, title: "\(Academy.chapterName(level.track, level.chapter)) cleared!") }
     }
