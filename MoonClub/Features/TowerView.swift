@@ -383,6 +383,7 @@ struct TowerPlayer: View {
     let rounds = Rounds(series: Array(app.candles.values).sorted { $0.s < $1.s }, seed: level.seed)
     let finish: (Int) -> Void = { s in
       let first = Tower.stars(level.number, app.state) == 0 && s > 0
+      EventLog.shared.add("level.finish", "\(Tower.id(level.number)) stars \(s)")
       app.mutate { $0.earn(level.id, stars: s); $0.play(level.isBoss ? "boss" : "game", level.id, today: app.today) }
       if level.isBoss && first { PartyCenter.shared.fire(.bossBeaten, title: "Floor \(level.floor) cleared!") }
     }

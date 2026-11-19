@@ -22,15 +22,33 @@ public struct PlayLedger: Codable, Hashable, Sendable {
   public var opened: [String] = []
   /// Sponsor breaks finished today.
   public var breaks: Int = 0
+  /// 0.23: every level ever opened on this device (kept across days). Once a level has been opened it stays
+  /// free: a level tried yesterday and not won yet is an *old* level, not a new one, so it never costs again.
+  public var kept: [String] = []
+  /// The most ids `kept` holds (oldest dropped first); far more than all the climbs' levels together.
+  public static let keptCap = 4000
   public init() {}
-  public init(day: String, opened: [String] = [], breaks: Int = 0) { self.day = day; self.opened = opened; self.breaks = breaks }
-  /// The ledger as it stands today (a new day starts empty). 0.22: a clock moved *back* (today before the ledger's
-  /// day) carries the ledger onto today, so winding the date forward and back never hands out a fresh day, and
-  /// a date set far ahead never locks the next real days either.
+  public init(day: String, opened: [String] = [], breaks: Int = 0, kept: [String] = []) {
+    self.day = day; self.opened = opened; self.breaks = breaks; self.kept = kept
+  }
+  // Ledgers saved before 0.23 have no `kept`; a missing or damaged field never throws the whole ledger away.
+  enum CodingKeys: String, CodingKey { case day, opened, breaks, kept }
+  public init(from d: Decoder) throws {
+    let c = try d.container(keyedBy: CodingKeys.self)
+    day = (try? c.decodeIfPresent(String.self, forKey: .day)) ?? ""
+    opened = (try? c.decodeIfPresent([String].self, forKey: .opened)) ?? []
+    breaks = max(0, (try? c.decodeIfPresent(Int.self, forKey: .breaks)) ?? 0)
+    kept = (try? c.decodeIfPresent([String].self, forKey: .kept)) ?? []
+    // Ledgers from 0.20–0.22: what was opened that day is kept too.
+    for id in opened where !kept.contains(id) { kept.append(id) }
+  }
+  /// The ledger as it stands today (a new day starts empty, but keeps `kept`). 0.22: a clock moved *back*
+  /// (today before the ledger's day) carries the ledger onto today, so winding the date forward and back never
+  /// hands out a fresh day, and a date set far ahead never locks the next real days either.
   public func on(_ today: String) -> PlayLedger {
     if day == today { return self }
-    if !day.isEmpty && today < day { return PlayLedger(day: today, opened: opened, breaks: breaks) }
-    return PlayLedger(day: today)
+    if !day.isEmpty && today < day { return PlayLedger(day: today, opened: opened, breaks: breaks, kept: kept) }
+    return PlayLedger(day: today, kept: kept)
   }
 }
 
@@ -45,7 +63,7 @@ public enum PlayPlan {
   public static let productID = "com.mutaafaziz.moonclub.pass.yearly"
 
   public enum Decision: Equatable, Sendable {
-    /// Free: the pass, the free run, a won level, or one already opened today. Nothing is counted.
+    /// Free: the pass, the free run, a won level, or one opened before (today or any day). Nothing is counted.
     case free
     /// Allowed, and it uses one of today's new levels; `left` is how many remain after this one.
     case counted(left: Int)
@@ -67,7 +85,7 @@ public enum PlayPlan {
   public static func canBreak(_ l: PlayLedger, today: String) -> Bool { l.on(today).breaks < breaksPerDay }
 
   public static func isFree(_ c: Climb, number: Int, id: String, won: Bool, pass: Bool, ledger: PlayLedger, today: String) -> Bool {
-    pass || won || number <= freeRun(c) || ledger.on(today).opened.contains(id)
+    pass || won || number <= freeRun(c) || ledger.kept.contains(id) || ledger.on(today).opened.contains(id)
   }
 
   public static func check(_ c: Climb, number: Int, id: String, won: Bool, pass: Bool, ledger: PlayLedger, today: String) -> Decision {
@@ -119,6 +137,8 @@ public enum PlayPlan {
     guard case .counted = check(c, number: number, id: id, won: won, pass: pass, ledger: ledger, today: today) else { return ledger.on(today) }
     var l = ledger.on(today)
     l.opened.append(id)
+    if !l.kept.contains(id) { l.kept.append(id) }
+    if l.kept.count > PlayLedger.keptCap { l.kept.removeFirst(l.kept.count - PlayLedger.keptCap) }
     return l
   }
 

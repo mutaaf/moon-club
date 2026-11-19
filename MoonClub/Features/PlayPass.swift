@@ -20,9 +20,7 @@ struct PassPlayButton: View {
     let d = app.pass.decision(climb, number: number, id: id, won: won, today: app.today)
     let plays = app.pass.plays(today: app.today)
     VStack(spacing: 8) {
-      Button(title) {
-        if app.pass.request(climb, number: number, id: id, won: won, today: app.today) { play() } else { limit = true }
-      }
+      Button(title) { tapped() }
       .buttonStyle(ChunkyPrimary())
       .accessibilityIdentifier("level-play")
       if plays.pass && number > PlayPlan.freeRun(climb) {
@@ -43,8 +41,17 @@ struct PassPlayButton: View {
         .presentationCornerRadius(32)
     }
     #if DEBUG
-    .onAppear { if ProcessInfo.processInfo.arguments.contains("-limit") && !d.allowed { limit = true } }
+    .onAppear {
+      let a = ProcessInfo.processInfo.arguments
+      if a.contains("-limit") && !d.allowed { limit = true }
+      // Repro / smoke test: press Play by itself (the same action as a tap).
+      if a.contains("-tapPlay") { Task { try? await Task.sleep(for: .seconds(1.5)); tapped() } }
+    }
     #endif
+  }
+
+  private func tapped() {
+    if app.pass.request(climb, number: number, id: id, won: won, today: app.today) { play() } else { limit = true }
   }
 }
 
@@ -158,7 +165,7 @@ struct PlayLimitSheet: View {
     .background(AuroraField(surface: .quest).ignoresSafeArea())
     .scrollsWhenShort(minHeight: 640)
     .fullScreenCover(isPresented: $breakOn) {
-      LunaBreak(climb: climb) { app.pass.finishBreak(today: app.today); breakOn = false; more() }
+      LunaBreak(climb: climb) { source in app.pass.finishBreak(today: app.today, source: source); breakOn = false; more() }
     }
     .sheet(isPresented: $gate, onDismiss: { if passed { passed = false; offer = true } }) { ParentGate { passed = true } }
     .sheet(isPresented: $offer, onDismiss: { if app.pass.active { more() } }) { PassOffer() }
@@ -173,7 +180,8 @@ struct PlayLimitSheet: View {
 /// three new moons with a party. Nothing to tap out to.
 struct LunaBreak: View {
   let climb: Climb
-  let collect: () -> Void
+  /// "sponsor" or "luna" (for the device's event log).
+  let collect: (String) -> Void
   @Environment(AppModel.self) private var app
   @Environment(\.dismiss) private var dismiss
   @Environment(\.scenePhase) private var phase
@@ -202,7 +210,10 @@ struct LunaBreak: View {
         }
         Spacer(minLength: 0)
         Group {
-          if let s = sponsor, s.media == .video { LoopingVideo(url: s.url).aspectRatio(16 / 9, contentMode: .fit) }
+          if let s = sponsor, s.media == .video {
+            // A video that can't play falls back to Luna's quiz (0.23).
+            LoopingVideo(url: s.url) { EventLog.shared.add("sponsor.videoFailed", s.id); sponsor = nil }.aspectRatio(16 / 9, contentMode: .fit)
+          }
           else if sponsor != nil, let image { Image(uiImage: image).resizable().scaledToFit() }
           else if loaded { QuizCard(quiz: quiz, picked: $picked) }
           else { ProgressView().controlSize(.large).frame(height: 200) }
@@ -224,7 +235,8 @@ struct LunaBreak: View {
           Button {
             guard !collecting else { return }
             collecting = true; party &+= 1
-            Task { try? await Task.sleep(for: .milliseconds(rm ? 400 : 1300)); collect() }
+            let source = sponsor == nil ? "luna" : "sponsor"
+            Task { try? await Task.sleep(for: .milliseconds(rm ? 400 : 1300)); collect(source) }
           } label: { Label(collecting ? PlayPlan.collected : PlayPlan.collectButton, systemImage: "star.fill") }
             .buttonStyle(ChunkyPrimary()).accessibilityIdentifier("collect")
             .transition(.scale.combined(with: .opacity))
@@ -242,7 +254,7 @@ struct LunaBreak: View {
     .animation(rm ? nil : .spring(response: 0.4, dampingFraction: 0.7), value: left == 0)
     .task {
       if let s = await SponsorFeed.next() {
-        if s.media == .image, let (d, _) = try? await URLSession.shared.data(from: s.url), let img = UIImage(data: d) { image = img; sponsor = s }
+        if s.media == .image, let img = await SponsorFeed.image(s) { image = img; sponsor = s }
         else if s.media == .video { sponsor = s }
       }
       loaded = true
@@ -336,23 +348,35 @@ private struct CollectMoons: View {
   }
 }
 
-/// A muted, looping sponsor video (no controls, nothing to tap).
+/// A muted, looping sponsor video (no controls, nothing to tap). Calls `failed` once if it can't play.
 private struct LoopingVideo: UIViewRepresentable {
   let url: URL
+  var failed: () -> Void = {}
   final class PlayerView: UIView {
     override static var layerClass: AnyClass { AVPlayerLayer.self }
     var looper: AVPlayerLooper?
+    var watch: NSKeyValueObservation?
   }
   func makeUIView(context: Context) -> PlayerView {
     let v = PlayerView()
     let player = AVQueuePlayer()
     player.isMuted = true
-    v.looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+    player.preventsDisplaySleepDuringVideoPlayback = false
+    let looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+    v.looper = looper
+    let failed = self.failed
+    v.watch = looper.observe(\.status, options: [.new]) { l, _ in
+      if l.status == .failed { Task { @MainActor in failed() } }
+    }
     (v.layer as? AVPlayerLayer)?.player = player
     (v.layer as? AVPlayerLayer)?.videoGravity = .resizeAspect
     player.play()
     return v
   }
   func updateUIView(_ v: PlayerView, context: Context) {}
-  static func dismantleUIView(_ v: PlayerView, coordinator: ()) { ((v.layer as? AVPlayerLayer)?.player)?.pause() }
+  static func dismantleUIView(_ v: PlayerView, coordinator: ()) {
+    v.watch?.invalidate()
+    ((v.layer as? AVPlayerLayer)?.player)?.pause()
+    v.looper?.disableLooping()
+  }
 }

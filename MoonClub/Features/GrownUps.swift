@@ -67,6 +67,7 @@ struct GrownUpsView: View {
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPlay") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("play", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollLearn") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("learn", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollPass") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("pass", anchor: .top) } } }
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollDiagnostics") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("diagnostics", anchor: .top) } } }
       .onAppear { if ProcessInfo.processInfo.arguments.contains("-scrollBrain") { Task { try? await Task.sleep(for: .milliseconds(400)); proxy.scrollTo("brain", anchor: .top) } } }
       #endif
       }
@@ -154,6 +155,10 @@ extension GrownUpsView {
           Text("Every Arcade level, no breaks. \(PlayPlan.dailyFree) new levels a day stay free, plus short breaks for more.")
         }
         .id("pass")
+        Section { DiagnosticsSettings() } header: { Text("Diagnostics") } footer: {
+          Text("Kept on this device only. Nothing is sent unless you share it yourself.")
+        }
+        .id("diagnostics")
         Section {
           PackSettings()
           About {
@@ -647,5 +652,64 @@ private struct PassTable: View {
   @ViewBuilder private func cell(_ v: String, pass: Bool = false) -> some View {
     if v == "checkmark" { Image(systemName: "checkmark.circle.fill").foregroundStyle(pass ? Hue.gold.color : Palette.goodInk) }
     else { Text(v).font(.caption.weight(.bold)).multilineTextAlignment(.center).foregroundStyle(pass ? Hue.gold.text : Palette.ink2).fixedSize(horizontal: false, vertical: true) }
+  }
+}
+
+
+// MARK: Diagnostics (0.23): what happened on this device, for a grown-up to read or share.
+
+struct DiagnosticsSettings: View {
+  @State private var open = false
+  var body: some View {
+    let since = Date().addingTimeInterval(-7 * 86_400)
+    let log = EventLog.shared
+    LabeledContent("Version", value: Diagnostics.version)
+    LabeledContent("Slow moments this week", value: "\(log.count("perf.hang", since: since))")
+    LabeledContent("Memory now", value: "\(Diagnostics.memoryMB()) MB")
+    Button { open = true } label: { Label("Recent events", systemImage: "list.bullet.rectangle") }
+      .accessibilityIdentifier("diagnostics")
+      .sheet(isPresented: $open) { DiagnosticsView() }
+    #if DEBUG
+      .onAppear { if ProcessInfo.processInfo.arguments.contains("-diagnostics") { open = true } }
+    #endif
+  }
+}
+
+struct DiagnosticsView: View {
+  @Environment(\.dismiss) private var dismiss
+  @State private var events = EventLog.shared.events.reversed() as [EventLog.Event]
+  @State private var report = ""
+  var body: some View {
+    NavigationStack {
+      List {
+        Section("Apple metrics") {
+          ForEach(MetricsInbox.shared.summaries(), id: \.self) { Text($0).font(.caption.monospaced()) }
+        }
+        Section("Recent events (\(events.count))") {
+          if events.isEmpty { Text("Nothing yet.").foregroundStyle(.secondary) }
+          ForEach(events.prefix(300), id: \.self) { e in
+            VStack(alignment: .leading, spacing: 2) {
+              Text(e.kind).font(.caption.weight(.bold).monospaced())
+              if !e.detail.isEmpty { Text(e.detail).font(.caption.monospaced()).foregroundStyle(.secondary) }
+              Text(e.t.formatted(date: .abbreviated, time: .standard)).font(.caption2).foregroundStyle(.tertiary)
+            }
+          }
+        }
+        Section {
+          Button("Clear events", role: .destructive) { EventLog.shared.clear(); events = [] }
+        }
+      }
+      .navigationTitle("Diagnostics")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
+        ToolbarItem(placement: .primaryAction) {
+          ShareLink(item: report.isEmpty ? Diagnostics.report() : report, subject: Text("Moon Club diagnostics")) {
+            Label("Share", systemImage: "square.and.arrow.up")
+          }
+        }
+      }
+      .task { report = await Task.detached { Diagnostics.report() }.value }
+    }
   }
 }

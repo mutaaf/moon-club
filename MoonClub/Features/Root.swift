@@ -25,6 +25,10 @@ enum Tab: String, CaseIterable, Identifiable {
 /// the fold. Chosen by size class, never by device. Each scene owns one hinge listener (`DuoModel`).
 struct RootView: View {
   @Environment(AppModel.self) private var app
+  /// Stable boxes for the environment actions (see `ActionBox`).
+  @State private var questBox = ActionBox<String> { _ in }
+  @State private var lockerBox = ActionBox<LockerTab> { _ in }
+  @State private var tabBox = ActionBox<Tab> { _ in }
   @Environment(\.horizontalSizeClass) private var hSize
   @Environment(\.colorScheme) private var scheme
   @State private var duo = DuoModel()
@@ -106,7 +110,7 @@ struct RootView: View {
     // A new rank gets its ceremony once play is over (never on top of a results screen).
     .onChange(of: app.pendingRank, initial: true) { _, r in showRank(r) }
     .onChange(of: PlayActivity.shared.playing) { _, _ in showRank(app.pendingRank) }
-    .environment(\.openLocker, OpenLocker { t in locker = t })
+    .environment(\.openLocker, OpenLocker(box: lockerBox.set { t in locker = t }))
     .environment(\.lunaLook, app.lunaLook)
     // The window's safe area, for sheets that are laid out taller than the screen (`ScrollsWhenShort`).
     .environment(\.windowSafeFrame, windowSafe)
@@ -124,12 +128,13 @@ struct RootView: View {
     // Where the camera is (occlusion regions): iPhone Duo's outer display has it top-trailing, beside a
     // trailing Skip. Sheets inherit this; full-screen covers (What's New) read their own.
     .readsCameraCorner()
-    .environment(\.openQuest, OpenQuest { quest = $0 })
-    .environment(\.openTab, OpenTab { t in withAnimation(Motion.page) { tab = t } })
+    .environment(\.openQuest, OpenQuest(box: questBox.set { quest = $0 }))
+    .environment(\.openTab, OpenTab(box: tabBox.set { t in withAnimation(Motion.page) { tab = t } }))
     .task { await app.loadMarket() }
     .task { app.checkIn(); celebrateStreak() }
     .task { await bench() }
     .task { try? await Task.sleep(for: .seconds(1.5)); Ready.mark("root") }
+    .onAppear { Diagnostics.firstFrame() }
     .onAppear {
       let args = ProcessInfo.processInfo.arguments
       if let s = args.firstIndex(of: "-quest") { quest = args[s + 1] }
@@ -272,7 +277,9 @@ struct RootView: View {
     return TabView(selection: $tab) {
       ForEach(Tab.allCases) { t in
         NavigationStack {
-          screen(t).toolbar { topBar }
+          screen(t).toolbar { topBar(active: tab == t) }
+            // 0.23 perf: hidden tabs know they're hidden (WorldView freezes its state; the level pill sleeps).
+            .environment(\.tabActive, tab == t)
           #if DEBUG
             .overlay { if ProcessInfo.processInfo.arguments.contains("-safearea") { SafeAreaDebug(tag: "tab-\(t.rawValue)") } }
           #endif
@@ -334,13 +341,13 @@ struct RootView: View {
 
   /// On iPhone Duo these bars go vertical. The grown-ups gate is pinned (it never overflows) and both
   /// items carry a title + symbol so the system can pick the form that fits the bar (Apple's HIG).
-  @ToolbarContentBuilder private var topBar: some ToolbarContent {
+  @ToolbarContentBuilder private func topBar(active: Bool = true) -> some ToolbarContent {
     if #available(iOS 27.1, *) {
-      ToolbarItem(placement: .topBarLeading) { LevelPill() }
+      ToolbarItem(placement: .topBarLeading) { LevelPill(active: active) }
         .visibilityPriority(.high)
       ToolbarItem(placement: .topBarPinnedTrailing) { GrownUpsButton { gate = true } }
     } else {
-      ToolbarItem(placement: .topBarLeading) { LevelPill() }
+      ToolbarItem(placement: .topBarLeading) { LevelPill(active: active) }
       ToolbarItem(placement: .topBarTrailing) { GrownUpsButton { gate = true } }
     }
   }
@@ -348,7 +355,18 @@ struct RootView: View {
 
 struct QuestRoute: Identifiable { let id: String }
 struct RankRoute: Identifiable { let id: Int }
-struct OpenQuest { let open: (String) -> Void; func callAsFunction(_ id: String) { open(id) } }
+/// A closure behind one long-lived reference (0.23 perf). RootView used to put a fresh closure in the environment
+/// on every render, and SwiftUI counts a new closure as a changed value, so every view reading `openQuest`,
+/// `openLocker` or `openTab` (the whole World map, even on a hidden tab) re-rendered on every point banked
+/// (`Self._printChanges()`: "_openQuest changed"). RootView keeps one box per action in @State and only
+/// swaps the closure inside it; the environment value (the box's identity) never changes.
+final class ActionBox<T>: @unchecked Sendable {
+  var f: (T) -> Void
+  init(_ f: @escaping (T) -> Void) { self.f = f }
+  /// Points the box at `f` and returns it (for use inline in `body`).
+  func set(_ f: @escaping (T) -> Void) -> ActionBox<T> { self.f = f; return self }
+}
+struct OpenQuest { let box: ActionBox<String>; init(box: ActionBox<String>) { self.box = box }; init(_ f: @escaping (String) -> Void) { box = ActionBox(f) }; func callAsFunction(_ id: String) { box.f(id) } }
 private struct OpenQuestKey: EnvironmentKey { static let defaultValue = OpenQuest { _ in } }
 extension EnvironmentValues { var openQuest: OpenQuest { get { self[OpenQuestKey.self] } set { self[OpenQuestKey.self] = newValue } } }
 
@@ -376,11 +394,16 @@ struct GrownUpsButton: View {
 /// the Moon Locker (badges, the Moon Shop, where points came from).
 struct LevelPill: View {
   @Environment(AppModel.self) private var app
+  /// Off-screen tabs keep their own pill; only the visible one reads the wallet (0.23 perf).
+  var active = true
+  private struct Snap { let level: LevelInfo; let wallet: Int; let earned: Int }
+  @State private var frozen: Snap?
   @Environment(\.toolbarVertical) private var vertical
   @Environment(\.openLocker) private var openLocker
   var body: some View {
     let _ = Perf.body("LevelPill")
-    let l = app.level
+    let snap = (active ? nil : frozen) ?? Snap(level: app.level, wallet: app.wallet, earned: app.earnedCount)
+    let l = snap.level
     Button { openLocker(.badges) } label: {
       HStack(spacing: 8) {
         RankBadge(index: l.index, progress: l.progress, size: 28)
@@ -389,8 +412,8 @@ struct LevelPill: View {
             Text(l.name).font(.caption.weight(.bold)).foregroundStyle(Palette.ink)
             HStack(spacing: 3) {
               PointsMark(size: 11)
-              Text("\(app.wallet)").font(.caption2.weight(.bold)).monospacedDigit().foregroundStyle(Palette.ink2).contentTransition(.numericText(value: Double(app.wallet)))
-              Text("· \(app.earnedCount)").font(.caption2.weight(.bold)).foregroundStyle(Palette.ink2)
+              Text("\(snap.wallet)").font(.caption2.weight(.bold)).monospacedDigit().foregroundStyle(Palette.ink2).contentTransition(.numericText(value: Double(snap.wallet)))
+              Text("· \(snap.earned)").font(.caption2.weight(.bold)).foregroundStyle(Palette.ink2)
               Image(systemName: "rosette").font(.system(size: 9, weight: .bold)).foregroundStyle(Palette.ink2)
             }
           }
@@ -401,7 +424,8 @@ struct LevelPill: View {
     }
     .buttonStyle(PressStyle())
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(l.name). \(app.wallet) Moon points to spend, \(app.earnedCount) badges. Opens your badges and the Moon Shop.")
+    .accessibilityLabel("\(l.name). \(snap.wallet) Moon points to spend, \(snap.earned) badges. Opens your badges and the Moon Shop.")
+    .onChange(of: active, initial: true) { _, on in frozen = on ? nil : Snap(level: app.level, wallet: app.wallet, earned: app.earnedCount) }
   }
 }
 

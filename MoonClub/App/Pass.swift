@@ -1,5 +1,6 @@
 import SwiftUI
 import StoreKit
+import UIKit
 import MoonClubCore
 
 /// Moon Club Pass (0.20) on this device: the yearly subscription (StoreKit 2, no server, no account) and today's
@@ -43,15 +44,27 @@ final class PassModel {
     guard updates == nil, forced == nil else { return }
     updates = Task { [weak self] in
       for await u in Transaction.updates {
-        if case .verified(let t) = u { await t.finish() }
+        switch u {
+        case .verified(let t): await t.finish(); EventLog.shared.add("store.update", t.productID)
+        case .unverified(_, let e): Log.store.error("unverified transaction: \(e.localizedDescription, privacy: .public)"); EventLog.shared.add("store.unverified")
+        }
         await self?.refresh()
       }
     }
     Task { await refresh(); await loadProduct() }
   }
 
+  /// Coalesced: a refresh already running is awaited instead of starting a second walk of the entitlements.
+  @ObservationIgnored private var refreshing: Task<Void, Never>?
   func refresh() async {
     guard forced == nil else { return }
+    if let r = refreshing { await r.value; return }
+    let t = Task { await self.refreshNow() }
+    refreshing = t
+    await t.value
+    refreshing = nil
+  }
+  private func refreshNow() async {
     var on = false, ends: Date?
     for await e in Transaction.currentEntitlements {
       if case .verified(let t) = e, t.productID == PlayPlan.productID, t.revocationDate == nil, (t.expirationDate ?? .distantFuture) > Date() {
@@ -61,10 +74,14 @@ final class PassModel {
     expires = on ? ends.flatMap { $0 == .distantPast ? nil : $0 } : nil
     if on { pending = false }
     setActive(on)
+    Log.store.info("pass refresh: \(on ? "on" : "off", privacy: .public)")
   }
 
   func loadProduct() async {
-    if product == nil { product = try? await Product.products(for: [PlayPlan.productID]).first }
+    guard product == nil else { return }
+    do { product = try await Product.products(for: [PlayPlan.productID]).first }
+    catch { Log.store.error("product load failed: \(error.localizedDescription, privacy: .public)"); EventLog.shared.add("store.productError", error.localizedDescription) }
+    if product == nil { EventLog.shared.add("store.noProduct") }
   }
 
   /// Restore: asks the App Store to sync this Apple Account's purchases (it may ask the grown-up to sign in).
@@ -81,6 +98,7 @@ final class PassModel {
     active = on
     defaults.set(on, forKey: Self.activeKey)
     if on { turnedOn &+= 1 }
+    EventLog.shared.add("pass.state", on ? "on" : "off")
   }
 
   // MARK: Plays
@@ -90,19 +108,29 @@ final class PassModel {
   }
   /// Asks to play: records a counted level and returns true, or returns false (show `PlayLimitSheet`).
   func request(_ c: Climb, number: Int, id: String, won: Bool, today: String) -> Bool {
-    guard decision(c, number: number, id: id, won: won, today: today).allowed else { return false }
+    let d = decision(c, number: number, id: id, won: won, today: today)
+    guard d.allowed else {
+      EventLog.shared.add("level.limit", "\(id) \(d == .doneForToday ? "doneForToday" : "needsBreak")")
+      return false
+    }
+    if case .counted(let left) = d { EventLog.shared.add("level.open", "\(id) counted, \(left) left") }
+    else { EventLog.shared.add("level.open", "\(id) free") }
     save(PlayPlan.record(c, number: number, id: id, won: won, pass: active, ledger: ledger, today: today))
     return true
   }
   func left(today: String) -> Int { PlayPlan.left(ledger, today: today) }
   func plays(today: String) -> PlayPlan.Today { PlayPlan.today(ledger, pass: active, today: today) }
   func canBreak(today: String) -> Bool { PlayPlan.canBreak(ledger, today: today) }
-  func finishBreak(today: String) { save(PlayPlan.finishBreak(ledger, today: today)) }
+  func finishBreak(today: String, source: String = "luna") {
+    save(PlayPlan.finishBreak(ledger, today: today))
+    EventLog.shared.add("break.done", source)
+  }
 
   private func save(_ l: PlayLedger) {
     guard l != ledger else { return }
     ledger = l
-    if let d = try? JSONEncoder().encode(l) { defaults.set(d, forKey: Self.ledgerKey) }
+    do { defaults.set(try JSONEncoder().encode(l), forKey: Self.ledgerKey) }
+    catch { Log.pass.error("ledger save failed: \(error.localizedDescription, privacy: .public)") }
   }
 }
 
@@ -121,36 +149,76 @@ struct Sponsor: Equatable, Sendable {
 enum SponsorFeed {
   static let base = URL(string: "https://mutaafaziz.com/ads/api")!
   static let app = "moonclub", slot = "level-break"
+  /// Pictures bigger than this are skipped (Luna's break shows instead).
+  static let maxImageBytes = 4 * 1024 * 1024
+  /// 0.23 hardening: our own ephemeral session: no cookies, no disk cache, no credentials, short timeouts.
+  static let session: URLSession = {
+    let c = URLSessionConfiguration.ephemeral
+    c.httpCookieAcceptPolicy = .never; c.httpShouldSetCookies = false; c.httpCookieStorage = nil
+    c.urlCredentialStorage = nil; c.urlCache = nil
+    c.timeoutIntervalForRequest = 4; c.timeoutIntervalForResource = 10
+    c.waitsForConnectivity = false
+    return URLSession(configuration: c)
+  }()
 
   /// The slot is declared as gameplay, so Marquee resolves it to direct, kid-safe sponsors only (no ad network).
   static func next() async -> Sponsor? {
     #if DEBUG
     if ProcessInfo.processInfo.arguments.contains("-demo") { return nil }
     #endif
+    let (s, secs) = await Signpost.measure("sponsor fetch") { await fetch() }
+    EventLog.shared.add("sponsor.fetch", (s.map { "\($0.media.rawValue) \($0.id)" } ?? "none") + String(format: " %.0f ms", secs * 1000))
+    return s
+  }
+
+  private static func fetch() async -> Sponsor? {
     var c = URLComponents(url: base.appending(path: "config"), resolvingAgainstBaseURL: false)
     c?.queryItems = [.init(name: "app", value: app), .init(name: "slots", value: "\(slot):rewarded:gameplay")]
     guard let u = c?.url else { return nil }
-    var req = URLRequest(url: u, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 4)
-    req.httpShouldHandleCookies = false
-    guard let (d, _) = try? await URLSession.shared.data(for: req), let cfg = try? JSONDecoder().decode(Config.self, from: d),
-          cfg.enabled, cfg.slots[slot]?.source == "direct" else { return nil }
-    let fits = cfg.campaigns.filter { $0.kinds.contains("rewarded") && ($0.media == "image" || $0.media == "video") }
+    let req = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
+    let d: Data
+    do {
+      let (data, resp) = try await session.data(for: req)
+      guard (resp as? HTTPURLResponse)?.statusCode == 200 else {
+        Log.sponsor.notice("config status \((resp as? HTTPURLResponse)?.statusCode ?? -1)"); return nil
+      }
+      d = data
+    } catch { Log.sponsor.notice("config failed: \(error.localizedDescription, privacy: .public)"); return nil }
+    guard let cfg = try? JSONDecoder().decode(Config.self, from: d) else { Log.sponsor.error("config didn't decode"); return nil }
+    guard cfg.enabled, cfg.slots[slot]?.source == "direct" else { return nil }
+    // Only https pictures/videos we can show; anything else is ignored.
+    let fits = cfg.campaigns.filter { $0.kinds.contains("rewarded") && ($0.media == "image" || $0.media == "video") && URL(string: $0.src)?.scheme == "https" }
     guard !fits.isEmpty else { return nil }
-    var r = Int.random(in: 0..<fits.reduce(0) { $0 + max(1, $1.weight) })
+    var r = Int.random(in: 0..<fits.reduce(0) { $0 + max(1, min($1.weight, 1000)) })
     for f in fits {
-      r -= max(1, f.weight)
-      if r < 0, let url = URL(string: f.src), let m = Sponsor.Media(rawValue: f.media) { return Sponsor(id: f.id, media: m, url: url, label: f.label) }
+      r -= max(1, min(f.weight, 1000))
+      if r < 0, let url = URL(string: f.src), let m = Sponsor.Media(rawValue: f.media) { return Sponsor(id: f.id, media: m, url: url, label: String(f.label.prefix(40))) }
     }
     return nil
+  }
+
+  /// A sponsor's picture: https, an image content type, at most `maxImageBytes`, decoded off the main thread.
+  static func image(_ s: Sponsor) async -> UIImage? {
+    guard s.url.scheme == "https" else { return nil }
+    do {
+      let (d, resp) = try await session.data(from: s.url)
+      guard let h = resp as? HTTPURLResponse, h.statusCode == 200, d.count <= maxImageBytes,
+            (h.value(forHTTPHeaderField: "Content-Type") ?? "image/").hasPrefix("image/") else {
+        EventLog.shared.add("sponsor.imageRejected", s.id); return nil
+      }
+      return await Task.detached(priority: .userInitiated) { UIImage(data: d)?.preparingForDisplay() }.value
+    } catch {
+      EventLog.shared.add("sponsor.imageFailed", s.id); return nil
+    }
   }
 
   /// One aggregate count per finished break (what Marquee's web loader sends too). Fire and forget.
   static func counted(_ s: Sponsor) {
     var req = URLRequest(url: base.appending(path: "beacon"), timeoutInterval: 6)
-    req.httpMethod = "POST"; req.httpShouldHandleCookies = false
+    req.httpMethod = "POST"
     req.setValue("application/json", forHTTPHeaderField: "content-type")
     req.httpBody = try? JSONSerialization.data(withJSONObject: ["app": app, "counts": ["\(slot)|\(s.id)|direct": ["i": 1, "v": 1]]])
-    Task.detached { _ = try? await URLSession.shared.data(for: req) }
+    Task.detached { _ = try? await session.data(for: req) }
   }
 
   struct Config: Decodable {

@@ -121,4 +121,35 @@ final class PassTests: XCTestCase {
       XCTAssertLessThanOrEqual(s.count, 100, s)
     }
   }
+
+  func testOldLevelsStayPlayable() {
+    // Tried level 22 yesterday, didn't win; today's new levels are all used: 22 still plays, free.
+    var l = PlayPlan.record(.candles, number: 22, id: "candle-22", won: false, pass: false, ledger: PlayLedger(), today: "2026-11-12")
+    for n in 30..<(30 + PlayPlan.dailyFree) {
+      l = PlayPlan.record(.candles, number: n, id: "candle-\(n)", won: false, pass: false, ledger: l, today: "2026-11-13")
+    }
+    XCTAssertEqual(PlayPlan.check(.candles, number: 99, id: "candle-99", won: false, pass: false, ledger: l, today: "2026-11-13"), .needsBreak)
+    XCTAssertEqual(PlayPlan.check(.candles, number: 22, id: "candle-22", won: false, pass: false, ledger: l, today: "2026-11-13"), .free)
+    XCTAssertEqual(PlayPlan.check(.candles, number: 30, id: "candle-30", won: false, pass: false, ledger: l, today: "2026-11-20"), .free)
+    XCTAssertEqual(PlayPlan.left(l, today: "2026-11-14"), PlayPlan.dailyFree, "a new day still starts fresh")
+  }
+
+  func testLedgerDecodesOldAndDamagedData() throws {
+    let old = #"{"day":"2026-11-12","opened":["candle-21","candle-22"],"breaks":1}"#.data(using: .utf8)!
+    let l = try JSONDecoder().decode(PlayLedger.self, from: old)
+    XCTAssertEqual(l.kept, ["candle-21", "candle-22"])
+    XCTAssertEqual(PlayPlan.check(.candles, number: 21, id: "candle-21", won: false, pass: false, ledger: l, today: "2026-11-30"), .free)
+    let bad = #"{"day":7,"opened":"x","breaks":-4}"#.data(using: .utf8)!
+    let b = try JSONDecoder().decode(PlayLedger.self, from: bad)
+    XCTAssertEqual(b, PlayLedger(day: ""))
+    let round = try JSONDecoder().decode(PlayLedger.self, from: JSONEncoder().encode(l))
+    XCTAssertEqual(round, l)
+  }
+
+  func testKeptIsCapped() {
+    var l = PlayLedger(day: day, kept: (0..<PlayLedger.keptCap).map { "k\($0)" })
+    l = PlayPlan.record(.candles, number: 50, id: "candle-50", won: false, pass: false, ledger: l, today: day)
+    XCTAssertEqual(l.kept.count, PlayLedger.keptCap)
+    XCTAssertEqual(l.kept.last, "candle-50")
+  }
 }
