@@ -39,9 +39,11 @@
     { "id": "candles", "raw": "03-candles", "layout": "spotlight", "focus": [0.5, 0.5, 0.5], "kicker": "Chart games", "title": "Build a candle with _your thumbs_.", "sub": "Drag start, high, low and end. Suddenly charts make sense.", "badge": "Hands on" },
     { "id": "boss", "raw": "02-boss", "layout": "tilt", "kicker": "Boss battles", "title": "Beat the *Captain's Quiz*.", "sub": "Five questions, three hearts, one flag to plant.", "badge": "Combo!" },
     { "id": "school", "raw": "09-school", "layout": "hero", "kicker": "Moon School", "title": "Luna *acts it out*.", "sub": "Every lesson card is a tiny aurora show, so you know what it's about before you read." },
+    { "id": "arcade", "raw": "11-arcade", "layout": "tilt", "kicker": "Moon Arcade", "title": "Pick a climb. *Keep climbing.*", "sub": "Candle Academy, Line Lab and Moon Tower. Every level is a few quick rounds." },
     { "id": "piggy", "raw": "07-piggy", "layout": "bleed", "kicker": "Moon Garden", "title": "Plant points. *Watch them grow.*", "sub": "They grow or shrink with a real company's price, once a day. Just for fun, nothing real at stake." },
     { "id": "story", "raw": "04-story", "layout": "tilt", "kicker": "Every day", "title": "One tap. *Today's lesson.*", "sub": "A big button for what's next, then three tiny missions and the day's story.", "badge": "Two minutes" },
     { "id": "luna", "raw": "06-luna", "raw2": "04-story", "layout": "duo", "kicker": "Ask Luna", "title": "Why do prices *go up*?", "sub": "Luna answers money questions in simple words." },
+    { "id": "tower", "raw": "10-tower", "layout": "bleed", "kicker": "Moon Tower", "title": "One hundred floors. *Then space.*", "sub": "Mixed games on every floor and a boss every tenth, then Deep Space." },
     { "id": "badges", "raw": "08-badges", "layout": "hero", "kicker": "Badges", "title": "Collect them _all_.", "sub": "Candle Reader, Trend Tracker, Boss Slayer, and more to chase.", "badge": "Bronze to gold" }
   ],
   "feature": { "title": "Learn the market *like a game*.", "sub": "Candles, trends and boss quizzes for curious minds." },
